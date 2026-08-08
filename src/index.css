@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #10151A;
+  --color-ink-2: #171E25;
+  --color-ink-3: #1F2830;
+  --color-paper: #EDE7D9;
+  --color-ochre: #C1793C;
+  --color-ochre-dim: #8F5A2C;
+  --color-verified: #2F6F4F;
+  --color-estime: #9C7A2E;
+  --color-benchmark: #3E5A73;
+  --color-slate-doc: #8B95A0;
+  --color-slate-doc-2: #5C6670;
+  --color-danger-doc: #B4432F;
+
+  --font-display: "Space Grotesk", sans-serif;
+  --font-data: "IBM Plex Mono", monospace;
+}
+
+/* Global High-Contrast Form Inputs Protection */
+@layer base {
+  input:not([class*="text-"]),
+  select:not([class*="text-"]),
+  textarea:not([class*="text-"]) {
+    color: #0f172a; /* Slate 900 high contrast */
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #94a3b8; /* Slate 400 */
+  }
+
+  /* Browser Autofill Contrast Fix */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: #0f172a !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+}
+

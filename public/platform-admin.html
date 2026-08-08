@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-slate-950">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NextTransit • Console d'Administration Plateforme SaaS</title>
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .display-font {
+      font-family: 'Playfair Display', serif;
+    }
+    /* Simple smooth transition */
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+  </style>
+</head>
+<body class="h-full text-slate-100 flex flex-col antialiased selection:bg-indigo-500/30">
+
+  <!-- LOGIN PANEL -->
+  <div id="login-container" class="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl">
+      <div class="flex justify-center mb-6">
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold text-xl shadow-lg">
+          NX
+        </div>
+      </div>
+      <h2 class="text-center text-2xl font-extrabold tracking-tight text-white display-font mb-2">
+        Console Opérateur NextTransit
+      </h2>
+      <p class="text-center text-xs text-slate-400 mb-8">
+        Accès réservé aux administrateurs de la plateforme SaaS
+      </p>
+
+      <form id="login-form" class="space-y-6">
+        <div>
+          <label for="email" class="block text-xs font-semibold uppercase tracking-wider text-slate-300">
+            Adresse Email
+          </label>
+          <div class="mt-2">
+            <input id="email" name="email" type="email" required value="FarsiReda@gmail.com" 
+              class="block w-full rounded-lg bg-slate-800 border border-slate-700 px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+          </div>
+        </div>
+
+        <div>
+          <button type="submit" 
+            class="flex w-full justify-center rounded-lg bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition cursor-pointer">
+            Se connecter à la Console
+          </button>
+        </div>
+      </form>
+      
+      <div id="login-error" class="mt-4 text-xs text-red-400 text-center hidden bg-red-500/10 border border-red-500/20 p-2.5 rounded-lg"></div>
+    </div>
+  </div>
+
+  <!-- MAIN OPERATOR PANEL -->
+  <div id="dashboard-container" class="hidden flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
+      <div class="h-16 flex items-center px-6 border-b border-slate-800 justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white font-bold text-sm">
+            NX
+          </div>
+          <span class="font-bold tracking-tight text-sm text-white">SaaS Operator</span>
+        </div>
+        <span class="rounded-md bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-[10px] font-semibold text-indigo-400">
+          ROOT v2.0
+        </span>
+      </div>
+
+      <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" 
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition cursor-pointer">
+          <i class="fa-solid fa-chart-line w-5 text-slate-400"></i> Vue Globale
+        </button>
+        
+        <button onclick="switchTab('tenants')" id="nav-tenants" 
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition cursor-pointer">
+          <i class="fa-solid fa-building-shield w-5 text-slate-400"></i> Locataires (Tenants)
+        </button>
+
+        <button onclick="switchTab('sovereignty')" id="nav-sovereignty" 
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition cursor-pointer">
+          <i class="fa-solid fa-globe w-5 text-slate-400"></i> Souveraineté & Hébergement
+        </button>
+
+        <button onclick="switchTab('audit-logs')" id="nav-audit-logs" 
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition cursor-pointer">
+          <i class="fa-solid fa-receipt w-5 text-slate-400"></i> Logs d'Audit Plateforme
+        </button>
+      </nav>
+
+      <div class="p-4 border-t border-slate-800">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="h-9 w-9 rounded-lg bg-slate-800 flex items-center justify-center font-bold text-indigo-400" id="user-avatar">
+            FR
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs font-semibold text-white truncate" id="user-name">Farsi Reda</p>
+            <p class="text-[10px] text-slate-400 truncate" id="user-email">FarsiReda@gmail.com</p>
+          </div>
+        </div>
+        <button onclick="logout()" 
+          class="w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 hover:bg-red-500/10 hover:text-red-400 border border-slate-700 hover:border-red-500/20 rounded-xl text-xs font-bold text-slate-300 transition cursor-pointer">
+          <i class="fa-solid fa-sign-out"></i> Déconnexion
+        </button>
+      </div>
+    </aside>
+
+    <!-- Content Area -->
+    <main class="flex-1 bg-slate-900 flex flex-col overflow-hidden">
+      <!-- Top header -->
+      <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900/60 shrink-0">
+        <h1 class="text-lg font-bold text-white display-font" id="header-title">Vue Globale</h1>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            Reconciliation Engine Connecté
+          </div>
+        </div>
+      </header>
+
+      <!-- Main body scroll container -->
+      <div class="flex-1 overflow-y-auto p-8">
+        
+        <!-- TAB: DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content active space-y-8">
+          <!-- Metric Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl flex items-center justify-between shadow-xs">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Tenants</p>
+                <h3 class="text-3xl font-extrabold text-white mt-1" id="stat-total-tenants">-</h3>
+              </div>
+              <div class="h-12 w-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-lg">
+                <i class="fa-solid fa-city"></i>
+              </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl flex items-center justify-between shadow-xs">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Souveraineté (Algérie)</p>
+                <h3 class="text-3xl font-extrabold text-white mt-1" id="stat-vps-algeria">-</h3>
+              </div>
+              <div class="h-12 w-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-lg">
+                <i class="fa-solid fa-shield-halved"></i>
+              </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl flex items-center justify-between shadow-xs">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Abonnements Actifs</p>
+                <h3 class="text-3xl font-extrabold text-white mt-1" id="stat-active-subs">-</h3>
+              </div>
+              <div class="h-12 w-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-lg">
+                <i class="fa-solid fa-credit-card"></i>
+              </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl flex items-center justify-between shadow-xs">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Logs d'Opérateur</p>
+                <h3 class="text-3xl font-extrabold text-white mt-1" id="stat-total-logs">-</h3>
+              </div>
+              <div class="h-12 w-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-lg">
+                <i class="fa-solid fa-file-invoice"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions / Live Health -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl">
+              <h3 class="text-base font-bold text-white mb-4 display-font">Statut de la Plateforme SaaS</h3>
+              <div class="space-y-4">
+                <div class="flex items-center justify-between p-3.5 bg-slate-950 rounded-lg border border-slate-800">
+                  <div class="flex items-center gap-3">
+                    <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                    <span class="text-sm font-semibold text-slate-200">Supabase Cloud Sync Engine</span>
+                  </div>
+                  <span class="text-xs text-slate-400 font-mono">OPÉRATIONNEL</span>
+                </div>
+
+                <div class="flex items-center justify-between p-3.5 bg-slate-950 rounded-lg border border-slate-800">
+                  <div class="flex items-center gap-3">
+                    <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                    <span class="text-sm font-semibold text-slate-200">OBD-II / CAN Telemetry Listener</span>
+                  </div>
+                  <span class="text-xs text-slate-400 font-mono">PORT 3000 ACTIVE</span>
+                </div>
+
+                <div class="flex items-center justify-between p-3.5 bg-slate-950 rounded-lg border border-slate-800">
+                  <div class="flex items-center gap-3">
+                    <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                    <span class="text-sm font-semibold text-slate-200">Sovereignty Isolated Hosting (VPS Algérie)</span>
+                  </div>
+                  <span class="text-xs text-slate-400 font-mono">SOVEREIGN APPROVED</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl flex flex-col justify-between">
+              <div>
+                <h3 class="text-base font-bold text-white mb-2 display-font">Lancement Rapide</h3>
+                <p class="text-xs text-slate-400 mb-6 leading-relaxed">
+                  Accédez directement au workspace de démonstration de la plateforme avec les droits d'administration ou utilisez l'impersonation pour tester les modules.
+                </p>
+              </div>
+              <div class="flex gap-4">
+                <a href="/" target="_blank" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i> Ouvrir l'Application Principale
+                </a>
+                <button onclick="switchTab('tenants')" class="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition">
+                  Gérer les Tenants
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: TENANTS -->
+        <div id="tab-tenants" class="tab-content space-y-8">
+          <div class="flex justify-between items-center">
+            <div>
+              <h2 class="text-xl font-bold text-white display-font">Locataires (Multi-Tenants)</h2>
+              <p class="text-xs text-slate-400 mt-1">Configurez les modules souscrits et ajustez les plans d'abonnement.</p>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 bg-slate-950/40 text-slate-400 text-xs font-semibold uppercase">
+                    <th class="p-4 pl-6">Entreprise / Société</th>
+                    <th class="p-4">Région Opérationnelle</th>
+                    <th class="p-4">Plan & Statut</th>
+                    <th class="p-4">Limite Véhicules</th>
+                    <th class="p-4">Modules Actifs</th>
+                    <th class="p-4 pr-6 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="tenants-table-body" class="divide-y divide-slate-800/60 text-sm">
+                  <!-- JS populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: SOVEREIGNTY -->
+        <div id="tab-sovereignty" class="tab-content space-y-8">
+          <div>
+            <h2 class="text-xl font-bold text-white display-font">Régulation de Souveraineté & Hébergement</h2>
+            <p class="text-xs text-slate-400 mt-1">Conformément aux exigences financières SCF et douanières, basculez l'hébergement des données sensibles de vos locataires.</p>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Config -->
+            <div class="lg:col-span-1 space-y-6">
+              <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl">
+                <h3 class="text-sm font-bold text-white mb-4 uppercase tracking-wider text-slate-300">Configuration Globale</h3>
+                
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Hébergement par Défaut (Nouveaux Tenants)</label>
+                    <select id="global-hosting-provider" class="block w-full rounded-lg bg-slate-800 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                      <option value="vps_algeria">Sovereign On-Premise (VPS Algérie)</option>
+                      <option value="supabase_cloud">Standard Multi-Tenant (Supabase Cloud)</option>
+                    </select>
+                  </div>
+
+                  <button onclick="saveGlobalHosting()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition">
+                    Appliquer Globalement
+                  </button>
+                </div>
+              </div>
+
+              <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl">
+                <h3 class="text-sm font-bold text-white mb-3 uppercase tracking-wider text-slate-300">Indice de Conformité</h3>
+                <div class="flex items-center gap-4 mt-2">
+                  <div class="h-16 w-16 rounded-full border-4 border-emerald-500 flex items-center justify-center font-bold text-white text-lg">
+                    100%
+                  </div>
+                  <div>
+                    <h4 class="text-xs font-bold text-white">Directive Souveraineté Alger</h4>
+                    <p class="text-[10px] text-slate-400 leading-relaxed mt-1">Données OBD-II et logistique stockées localement en Algérie.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right list -->
+            <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-xl">
+              <h3 class="text-base font-bold text-white mb-4 display-font">Politique par Tenant</h3>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr class="border-b border-slate-800 bg-slate-950/20 text-slate-400 font-semibold uppercase">
+                      <th class="p-3">Société</th>
+                      <th class="p-3">Hébergement Actuel</th>
+                      <th class="p-3">Raison Audit</th>
+                      <th class="p-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="sovereignty-table-body" class="divide-y divide-slate-800/40 text-sm">
+                    <!-- JS populated -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: AUDIT LOGS -->
+        <div id="tab-audit-logs" class="tab-content space-y-8">
+          <div class="flex justify-between items-center">
+            <div>
+              <h2 class="text-xl font-bold text-white display-font">Logs d'Audit de la Plateforme</h2>
+              <p class="text-xs text-slate-400 mt-1">Registre immuable des actions d'administration et d'override.</p>
+            </div>
+            
+            <div class="flex gap-4">
+              <select id="filter-action" onchange="loadAuditLogs()" class="rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs text-white">
+                <option value="">Toutes les actions</option>
+                <option value="UPDATE_TENANT_MODULES">UPDATE_TENANT_MODULES</option>
+                <option value="UPDATE_TENANT_SUBSCRIPTION">UPDATE_TENANT_SUBSCRIPTION</option>
+                <option value="UPDATE_BACKEND_CONFIG">UPDATE_BACKEND_CONFIG</option>
+                <option value="IMPERSONATION_TOKEN_ISSUED">IMPERSONATION_TOKEN_ISSUED</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 bg-slate-950/40 text-slate-400 text-xs font-semibold uppercase">
+                    <th class="p-4 pl-6">Horodatage</th>
+                    <th class="p-4">Opérateur (Actor)</th>
+                    <th class="p-4">Locataire Scoped</th>
+                    <th class="p-4">Action</th>
+                    <th class="p-4">Détails (Modifications)</th>
+                  </tr>
+                </thead>
+                <tbody id="audit-table-body" class="divide-y divide-slate-800/60 text-sm font-mono">
+                  <!-- JS populated -->
+                </tbody>
+              </table>
+            </div>
+            <div class="p-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-400">
+              <span id="audit-pagination-text">Affichage de - logs</span>
+              <div class="flex gap-2">
+                <button onclick="prevAuditPage()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded transition">Précédent</button>
+                <button onclick="nextAuditPage()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded transition">Suivant</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODULE EDIT MODAL -->
+  <div id="module-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+      <h3 class="text-base font-bold text-white mb-2 display-font">Édition des Modules Actifs</h3>
+      <p class="text-xs text-slate-400 mb-6" id="module-modal-subtitle">Configurez l'accès fonctionnel du tenant.</p>
+      
+      <div class="space-y-3.5 max-h-96 overflow-y-auto pr-2 mb-6" id="modules-list">
+        <!-- JS Populated Checkboxes -->
+      </div>
+
+      <div class="flex justify-end gap-3">
+        <button onclick="closeModuleModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition">Annuler</button>
+        <button onclick="saveTenantModules()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBSCRIPTION EDIT MODAL -->
+  <div id="subscription-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+      <h3 class="text-base font-bold text-white mb-2 display-font">Plan & Abonnement Locataire</h3>
+      <p class="text-xs text-slate-400 mb-6" id="subscription-modal-subtitle">Ajustez la facturation et les quotas de la flotte.</p>
+      
+      <div class="space-y-4 mb-6">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Tier / Formule</label>
+          <select id="sub-plan" class="block w-full rounded-lg bg-slate-800 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:outline-none">
+            <option value="enterprise_trial">Enterprise Trial</option>
+            <option value="professional">Professional Tier</option>
+            <option value="enterprise">Enterprise VIP</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Statut de l'Abonnement</label>
+          <select id="sub-status" class="block w-full rounded-lg bg-slate-800 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:outline-none">
+            <option value="trial">Période d'essai (Trial)</option>
+            <option value="active">Actif (Active)</option>
+            <option value="past_due">Retard de paiement (Past Due)</option>
+            <option value="cancelled">Résilié (Cancelled)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Quota Max Véhicules</label>
+          <input type="number" id="sub-max-vehicles" class="block w-full rounded-lg bg-slate-800 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:outline-none">
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3">
+        <button onclick="closeSubscriptionModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition">Annuler</button>
+        <button onclick="saveTenantSubscription()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Config state
+    let authToken = localStorage.getItem('nexttransit_operator_token') || '';
+    let currentAdmin = null;
+    let tenants = [];
+    let backendConfigs = [];
+    let auditPage = 1;
+    let auditLimit = 15;
+    
+    // Active modal targets
+    let activeTenantId = null;
+
+    // Dom elements
+    const loginContainer = document.getElementById('login-container');
+    const dashboardContainer = document.getElementById('dashboard-container');
+    const loginForm = document.getElementById('login-form');
+    const loginError = document.getElementById('login-error');
+
+    // Available modules config
+    const AVAILABLE_MODULES = [
+      { id: 'STRATEGIC_DASHBOARD', name: 'Tableau de Bord Stratégique', desc: 'KPIs direction générale et budgets' },
+      { id: 'VARIANCE_DASHBOARD', name: 'Analyse des Écarts Budgétaires', desc: 'R7 comparatifs et audits comptables' },
+      { id: 'FLEET_HEALTH_GRID', name: 'Grille de Santé de la Flotte', desc: 'Alertes OBD-II R1 et état véhicules' },
+      { id: 'INVENTORY_DASHBOARD', name: 'Gestion des Stocks & Pièces', desc: 'R3 réservations de pièces détachées' },
+      { id: 'WORK_ORDER_QUEUE', name: 'Gestion des Ordres de Travail (OT)', desc: 'R4 calculs de coûts et dispatching' },
+      { id: 'PM_SCHEDULES', name: 'Maintenance Préventive Planifiée', desc: 'Garanties et plans d\'entretien' },
+      { id: 'FUEL_LOGS', name: 'Suivi Carburant & Consommation', desc: 'Détection d\'anomalies de carburant' },
+      { id: 'TELEMETRY_STREAM', name: 'Flux Télématique Raw CAN', desc: 'Parsing Teltonika temps réel' },
+      { id: 'AUDIT_LOG', name: 'Registre d\'Audit Tenant', desc: 'Règles et overrides immuables' }
+    ];
+
+    // Handle Authentication
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loginError.classList.add('hidden');
+      const email = document.getElementById('email').value;
+
+      try {
+        // We will seed the admin if it doesn't exist, and get back a dev token
+        await fetch('/api/platform/seed-admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, full_name: 'Farsi Reda' })
+        });
+
+        const token = `dev-token-${email}`;
+        const res = await fetch('/api/platform/auth-check', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          throw new Error('Identifiants ou privilèges opérateur invalides');
+        }
+
+        const data = await res.json();
+        authToken = token;
+        currentAdmin = data.admin;
+        localStorage.setItem('nexttransit_operator_token', token);
+        
+        showDashboard();
+      } catch (err) {
+        loginError.innerText = err.message;
+        loginError.classList.remove('hidden');
+      }
+    });
+
+    function showDashboard() {
+      loginContainer.classList.add('hidden');
+      dashboardContainer.classList.remove('hidden');
+      
+      document.getElementById('user-name').innerText = currentAdmin.full_name;
+      document.getElementById('user-email').innerText = currentAdmin.email;
+      document.getElementById('user-avatar').innerText = currentAdmin.full_name.split(' ').map(n => n[0]).join('');
+
+      // Load all data
+      loadAllData();
+    }
+
+    async function loadAllData() {
+      await Promise.all([
+        loadTenants(),
+        loadBackendConfigs(),
+        loadAuditLogs()
+      ]);
+      updateStats();
+    }
+
+    async function loadTenants() {
+      try {
+        const res = await fetch('/api/platform/tenants', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch tenants');
+        tenants = await res.json();
+        renderTenants();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function loadBackendConfigs() {
+      try {
+        const res = await fetch('/api/platform/backend-config', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch backend configs');
+        backendConfigs = await res.json();
+        renderSovereignty();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function loadAuditLogs() {
+      const actionFilter = document.getElementById('filter-action').value;
+      try {
+        let url = `/api/platform/audit-logs?page=${auditPage}&limit=${auditLimit}`;
+        if (actionFilter) url += `&action=${actionFilter}`;
+
+        const res = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch audit logs');
+        const data = await res.json();
+        
+        renderAuditLogs(data.logs);
+        document.getElementById('audit-pagination-text').innerText = `Affichage de ${data.logs.length} sur ${data.total} entrées`;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function updateStats() {
+      document.getElementById('stat-total-tenants').innerText = tenants.length;
+      document.getElementById('stat-vps-algeria').innerText = backendConfigs.filter(c => c.hosting_provider === 'vps_algeria').length;
+      document.getElementById('stat-active-subs').innerText = tenants.filter(t => t.status === 'active').length;
+      document.getElementById('stat-total-logs').innerText = auditPage * 5 + 3; // simulated estimate or live log length
+    }
+
+    function renderTenants() {
+      const tbody = document.getElementById('tenants-table-body');
+      tbody.innerHTML = '';
+
+      tenants.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-800/40 hover:bg-slate-900/40 transition';
+
+        const modulesCount = t.enabled_modules ? t.enabled_modules.length : 0;
+        
+        tr.innerHTML = `
+          <td class="p-4 pl-6">
+            <p class="font-bold text-white">${t.societyName}</p>
+            <p class="text-xs text-slate-400 mt-0.5">${t.id}</p>
+          </td>
+          <td class="p-4 text-slate-300 font-semibold">${t.operatingRegion}</td>
+          <td class="p-4">
+            <span class="inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold ${t.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
+              ${t.plan.toUpperCase()} • ${t.status.toUpperCase()}
+            </span>
+          </td>
+          <td class="p-4 font-mono font-semibold text-slate-300">${t.max_vehicles} camions</td>
+          <td class="p-4">
+            <button onclick="openModuleModal('${t.id}')" class="text-xs text-indigo-400 font-bold hover:underline">
+              ${modulesCount} modules actifs
+            </button>
+          </td>
+          <td class="p-4 pr-6 text-right space-x-2">
+            <button onclick="openSubscriptionModal('${t.id}')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition">
+              <i class="fa-solid fa-pen-to-square"></i> Plan
+            </button>
+            <button onclick="impersonateTenant('${t.id}')" class="px-2.5 py-1.5 bg-amber-600/10 hover:bg-amber-600 text-amber-400 hover:text-white border border-amber-500/20 rounded-lg text-xs font-bold transition">
+              <i class="fa-solid fa-user-secret"></i> Impersonate
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderSovereignty() {
+      const tbody = document.getElementById('sovereignty-table-body');
+      tbody.innerHTML = '';
+
+      tenants.forEach(t => {
+        const config = backendConfigs.find(c => c.tenant_id === t.id) || { hosting_provider: 'supabase_cloud' };
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-800/40 hover:bg-slate-900/40 transition';
+
+        tr.innerHTML = `
+          <td class="p-3">
+            <p class="font-bold text-slate-200">${t.societyName}</p>
+          </td>
+          <td class="p-3">
+            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold ${config.hosting_provider === 'vps_algeria' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-slate-800 text-slate-400'}">
+              ${config.hosting_provider === 'vps_algeria' ? 'VPS ALGERIA (SOUVERAIN)' : 'SUPABASE CLOUD (STANDARD)'}
+            </span>
+          </td>
+          <td class="p-3 text-xs text-slate-400 italic">Directive finance locale & conformité fiscale</td>
+          <td class="p-3 text-right">
+            <select onchange="changeTenantHosting('${t.id}', this.value)" class="bg-slate-800 border border-slate-700 text-xs rounded px-2.5 py-1 text-white focus:outline-none">
+              <option value="supabase_cloud" ${config.hosting_provider === 'supabase_cloud' ? 'selected' : ''}>Supabase Cloud</option>
+              <option value="vps_algeria" ${config.hosting_provider === 'vps_algeria' ? 'selected' : ''}>VPS Algérie</option>
+            </select>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderAuditLogs(logs) {
+      const tbody = document.getElementById('audit-table-body');
+      tbody.innerHTML = '';
+
+      logs.forEach(l => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-800/30 hover:bg-slate-950/20 transition';
+
+        const beforeText = l.before ? JSON.stringify(l.before) : '-';
+        const afterText = l.after ? JSON.stringify(l.after) : '-';
+
+        tr.innerHTML = `
+          <td class="p-4 pl-6 text-xs text-slate-500">${new Date(l.created_at).toLocaleString()}</td>
+          <td class="p-4 text-xs font-semibold text-slate-300">${l.actor_email || l.actor_id}</td>
+          <td class="p-4 text-xs text-indigo-400">${l.tenant_id || 'GLOBAL'}</td>
+          <td class="p-4 text-xs text-slate-100">${l.action}</td>
+          <td class="p-4 text-xs text-slate-400 truncate max-w-xs" title="Modifications">
+            <div class="text-slate-500">Avant: ${beforeText}</div>
+            <div class="text-indigo-300">Après: ${afterText}</div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Tab switcher
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('bg-indigo-600', 'text-white'));
+      
+      document.getElementById(`tab-${tabId}`).classList.add('active');
+      document.getElementById(`nav-${tabId}`).classList.add('bg-indigo-600', 'text-white');
+
+      // Update header title
+      const titleMap = {
+        'dashboard': 'Vue Globale',
+        'tenants': 'Locataires (Tenants)',
+        'sovereignty': 'Souveraineté & Hébergement',
+        'audit-logs': 'Logs d\'Audit Plateforme'
+      };
+      document.getElementById('header-title').innerText = titleMap[tabId] || 'Administration';
+    }
+
+    // Modal Module Handlers
+    function openModuleModal(tenantId) {
+      activeTenantId = tenantId;
+      const tenant = tenants.find(t => t.id === tenantId);
+      document.getElementById('module-modal-subtitle').innerText = `Modules pour : ${tenant.societyName}`;
+      
+      const container = document.getElementById('modules-list');
+      container.innerHTML = '';
+
+      AVAILABLE_MODULES.forEach(m => {
+        const isChecked = tenant.enabled_modules && tenant.enabled_modules.includes(m.id);
+        const div = document.createElement('div');
+        div.className = 'flex items-start gap-3 p-3 bg-slate-950 rounded-xl border border-slate-800/60';
+        div.innerHTML = `
+          <input type="checkbox" id="mod-${m.id}" value="${m.id}" ${isChecked ? 'checked' : ''} 
+            class="mt-1 h-4 w-4 rounded border-slate-700 bg-slate-800 text-indigo-600 focus:ring-indigo-500">
+          <div>
+            <label for="mod-${m.id}" class="block text-xs font-bold text-white cursor-pointer">${m.name}</label>
+            <p class="text-[10px] text-slate-400 mt-0.5">${m.desc}</p>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+
+      document.getElementById('module-modal').classList.remove('hidden');
+    }
+
+    function closeModuleModal() {
+      document.getElementById('module-modal').classList.add('hidden');
+    }
+
+    async function saveTenantModules() {
+      const selectedModules = [];
+      AVAILABLE_MODULES.forEach(m => {
+        const cb = document.getElementById(`mod-${m.id}`);
+        if (cb && cb.checked) {
+          selectedModules.push(m.id);
+        }
+      });
+
+      try {
+        const res = await fetch(`/api/platform/tenants/${activeTenantId}/modules`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ enabled_modules: selectedModules })
+        });
+
+        if (!res.ok) throw new Error('Failed to save modules');
+        
+        closeModuleModal();
+        loadAllData();
+      } catch (e) {
+        alert('Erreur lors de l\'enregistrement : ' + e.message);
+      }
+    }
+
+    // Modal Subscription Handlers
+    function openSubscriptionModal(tenantId) {
+      activeTenantId = tenantId;
+      const tenant = tenants.find(t => t.id === tenantId);
+      document.getElementById('subscription-modal-subtitle').innerText = `Abonnement de : ${tenant.societyName}`;
+
+      document.getElementById('sub-plan').value = tenant.plan;
+      document.getElementById('sub-status').value = tenant.status;
+      document.getElementById('sub-max-vehicles').value = tenant.max_vehicles || 200;
+
+      document.getElementById('subscription-modal').classList.remove('hidden');
+    }
+
+    function closeSubscriptionModal() {
+      document.getElementById('subscription-modal').classList.add('hidden');
+    }
+
+    async function saveTenantSubscription() {
+      const plan = document.getElementById('sub-plan').value;
+      const status = document.getElementById('sub-status').value;
+      const max_vehicles = parseInt(document.getElementById('sub-max-vehicles').value);
+
+      try {
+        const res = await fetch(`/api/platform/tenants/${activeTenantId}/subscription`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ plan, status, max_vehicles })
+        });
+
+        if (!res.ok) throw new Error('Failed to save subscription');
+        
+        closeSubscriptionModal();
+        loadAllData();
+      } catch (e) {
+        alert('Erreur lors de l\'enregistrement : ' + e.message);
+      }
+    }
+
+    // Sovereignty host trigger
+    async function changeTenantHosting(tenantId, provider) {
+      try {
+        const res = await fetch(`/api/platform/backend-config`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ tenant_id: tenantId, hosting_provider: provider })
+        });
+
+        if (!res.ok) throw new Error('Failed to update tenant hosting');
+        loadAllData();
+      } catch (e) {
+        alert('Erreur lors du changement de hosting : ' + e.message);
+      }
+    }
+
+    async function saveGlobalHosting() {
+      const provider = document.getElementById('global-hosting-provider').value;
+      try {
+        const res = await fetch(`/api/platform/backend-config`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ tenant_id: null, hosting_provider: provider })
+        });
+
+        if (!res.ok) throw new Error('Failed to update global hosting');
+        loadAllData();
+        alert('Politique d\'hébergement globale mise à jour.');
+      } catch (e) {
+        alert('Erreur lors de la mise à jour globale : ' + e.message);
+      }
+    }
+
+    // Impersonation trigger
+    async function impersonateTenant(tenantId) {
+      try {
+        const res = await fetch('/api/platform/impersonate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ tenant_id: tenantId })
+        });
+
+        if (!res.ok) throw new Error('Failed to issue impersonation token');
+        const data = await res.json();
+        
+        // Write special key so tenant UI knows to render banner and allow full access
+        localStorage.setItem('nexttransit_impersonation_active', 'true');
+        localStorage.setItem('nexttransit_impersonated_tenant_id', tenantId);
+
+        // Open main app in new window/tab
+        window.open('/', '_blank');
+      } catch (e) {
+        alert('Erreur lors du lancement de la session d\'impersonation : ' + e.message);
+      }
+    }
+
+    // Pagination for Audit Logs
+    function prevAuditPage() {
+      if (auditPage > 1) {
+        auditPage--;
+        loadAuditLogs();
+      }
+    }
+
+    function nextAuditPage() {
+      auditPage++;
+      loadAuditLogs();
+    }
+
+    // Logout
+    function logout() {
+      authToken = '';
+      currentAdmin = null;
+      localStorage.removeItem('nexttransit_operator_token');
+      
+      loginContainer.classList.remove('hidden');
+      dashboardContainer.classList.add('hidden');
+    }
+
+    // Init check
+    if (authToken) {
+      (async () => {
+        try {
+          const res = await fetch('/api/platform/auth-check', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            currentAdmin = data.admin;
+            showDashboard();
+            return;
+          }
+        } catch (e) {
+          console.warn('Silent token check failed:', e);
+        }
+        logout();
+      })();
+    }
+  </script>
+</body>
+</html>
