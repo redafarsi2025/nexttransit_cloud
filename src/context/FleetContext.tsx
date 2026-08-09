@@ -125,8 +125,8 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [costRecords, setCostRecords] = useState<CostRecord[]>([]);
   const [alerts, setAlerts] = useState<FleetAlert[]>([]);
   const [fuelLogs, setFuelLogs] = useState<FuelLog[]>([]);
-  const [pmSchedules, setPmSchedules] = useState<PMSchedule[]>(INITIAL_PM_SCHEDULES);
-  const [ediOrders, setEdiOrders] = useState<EdiSupplierPurchaseOrder[]>(INITIAL_EDI_ORDERS);
+  const [pmSchedules, setPmSchedules] = useState<PMSchedule[]>([]);
+  const [ediOrders, setEdiOrders] = useState<EdiSupplierPurchaseOrder[]>([]);
 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
 
@@ -245,9 +245,14 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return newLog;
   };
 
+  const DEMO_TENANT_ID = 'c0a80101-0000-0000-0000-000000000001';
+
   const loadData = useCallback(async () => {
     if (!currentUser) return;
     setSyncStatus('syncing');
+
+    const isDemoTenant = isDemoMode || activeTenantId === DEMO_TENANT_ID;
+
     try {
       const [dbVehicles, dbInventory, dbWO, dbIncidents, dbCosts, dbAlerts] = await Promise.all([
         fetchVehicles(),
@@ -257,24 +262,53 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         fetchCostRecords(),
         fetchAlerts()
       ]);
-      setVehicles(dbVehicles.length ? dbVehicles : INITIAL_VEHICLES);
-      setInventory(dbInventory.length ? dbInventory : INITIAL_INVENTORY);
-      setWorkOrders(dbWO.length ? dbWO : INITIAL_WORK_ORDERS);
-      setIncidents(dbIncidents.length ? dbIncidents : INITIAL_INCIDENTS);
-      setCostRecords(dbCosts.length ? dbCosts : INITIAL_COST_RECORDS);
-      setAlerts(dbAlerts.length ? dbAlerts : INITIAL_ALERTS);
+
+      if (isDemoTenant) {
+        setVehicles(dbVehicles.length ? dbVehicles : INITIAL_VEHICLES);
+        setInventory(dbInventory.length ? dbInventory : INITIAL_INVENTORY);
+        setWorkOrders(dbWO.length ? dbWO : INITIAL_WORK_ORDERS);
+        setIncidents(dbIncidents.length ? dbIncidents : INITIAL_INCIDENTS);
+        setCostRecords(dbCosts.length ? dbCosts : INITIAL_COST_RECORDS);
+        setAlerts(dbAlerts.length ? dbAlerts : INITIAL_ALERTS);
+        setPmSchedules(INITIAL_PM_SCHEDULES);
+        setEdiOrders(INITIAL_EDI_ORDERS);
+      } else {
+        // PRODUCTION TENANT: Show ONLY the connected tenant's actual DB records
+        // Zero demo data is populated for a real tenant workspace!
+        setVehicles(dbVehicles);
+        setInventory(dbInventory);
+        setWorkOrders(dbWO);
+        setIncidents(dbIncidents);
+        setCostRecords(dbCosts);
+        setAlerts(dbAlerts);
+        setPmSchedules([]);
+        setEdiOrders([]);
+      }
       setSyncStatus('online');
     } catch (e) {
-      console.warn('DB load failed, using seed data fallback.', e);
-      setVehicles(INITIAL_VEHICLES);
-      setInventory(INITIAL_INVENTORY);
-      setWorkOrders(INITIAL_WORK_ORDERS);
-      setIncidents(INITIAL_INCIDENTS);
-      setCostRecords(INITIAL_COST_RECORDS);
-      setAlerts(INITIAL_ALERTS);
+      console.warn('DB load failed', e);
+      if (isDemoTenant) {
+        setVehicles(INITIAL_VEHICLES);
+        setInventory(INITIAL_INVENTORY);
+        setWorkOrders(INITIAL_WORK_ORDERS);
+        setIncidents(INITIAL_INCIDENTS);
+        setCostRecords(INITIAL_COST_RECORDS);
+        setAlerts(INITIAL_ALERTS);
+        setPmSchedules(INITIAL_PM_SCHEDULES);
+        setEdiOrders(INITIAL_EDI_ORDERS);
+      } else {
+        setVehicles([]);
+        setInventory([]);
+        setWorkOrders([]);
+        setIncidents([]);
+        setCostRecords([]);
+        setAlerts([]);
+        setPmSchedules([]);
+        setEdiOrders([]);
+      }
       setSyncStatus('offline');
     }
-  }, [currentUser, setSyncStatus]);
+  }, [currentUser, isDemoMode, activeTenantId, setSyncStatus]);
 
   useEffect(() => {
     loadData();

@@ -12,7 +12,7 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ onClose, initialTab = 'login', initialInviteToken = '' }) => {
-  const { userProfile, refreshUserSession } = useAuth();
+  const { userProfile, refreshUserSession, changeScreen } = useAuth();
   const { t } = useLocalization();
 
   const [tab, setTab] = useState<'login' | 'register' | 'invite' | 'forgot'>(initialTab);
@@ -78,9 +78,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, initialTab = 'log
         password: regPassword,
       });
 
-      setSuccessMsg(`Company workspace "${company.name}" created successfully! Signed in as ${user.full_name} (SUPER_ADMIN).`);
+      setSuccessMsg(`Workspace "${company.name}" créé avec succès ! Orientation vers la configuration de votre espace de travail...`);
       await refreshUserSession();
-      setTimeout(() => onClose(), 1500);
+      changeScreen('TENANT_CONFIG');
+      setTimeout(() => onClose(), 1200);
     } catch (err: any) {
       setErrorMsg(err.message || 'Registration error');
     } finally {

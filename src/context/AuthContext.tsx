@@ -61,20 +61,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setCurrentRole(role);
           
           // Check if onboarding is complete, redirect accordingly
-          if (navigateRef.current && window.location.pathname === '/') {
-            if (profile.tenant_id) {
-              // Query tenant to check onboarding completion
+          if (navigateRef.current && (window.location.pathname === '/' || window.location.pathname === '/dashboard')) {
+            if (profile.tenant_id && profile.tenant_id !== 'c0a80101-0000-0000-0000-000000000001') {
+              // Query tenant to check onboarding / workspace configuration status
               const { data: tenant } = await supabase
                 .from('tenants')
-                .select('onboarding_completed_at')
+                .select('onboarding_completed_at, is_configured')
                 .eq('id', profile.tenant_id)
                 .single();
               
-              if (tenant && !tenant.onboarding_completed_at) {
-                // New tenant — needs onboarding wizard
-                navigateRef.current('/onboarding');
+              if (!tenant || (!tenant.onboarding_completed_at && !tenant.is_configured)) {
+                // New production tenant — orient directly to workspace configuration screen
+                navigateRef.current('/tenant-config');
+                setCurrentScreen('TENANT_CONFIG');
               } else {
-                // Onboarding done — send to role default route
                 const defaultRoute = getRoleDefaultRoute(role);
                 navigateRef.current(defaultRoute);
               }

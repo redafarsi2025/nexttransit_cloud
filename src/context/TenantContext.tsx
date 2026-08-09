@@ -29,11 +29,43 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   useEffect(() => {
     if (userProfile?.tenant_id) {
       setActiveTenantIdState(userProfile.tenant_id);
+
+      setTenantConfigs((prev) => {
+        const exists = prev.some((t) => t.id === userProfile.tenant_id);
+        if (exists) return prev;
+
+        const newConfig: TenantConfig = {
+          id: userProfile.tenant_id,
+          societyName: userProfile.company_id || 'Mon Espace de Travail',
+          operatingRegion: 'North Africa',
+          currency: 'DZD',
+          laborRatePerHour: 2500,
+          scfTaxRate: 19,
+          language: 'fr',
+          lastUpdated: new Date().toISOString(),
+          brandColorHex: '#4f46e5',
+          accentColorHex: '#059669',
+          onboardingCompleted: false,
+        };
+        return [...prev, newConfig];
+      });
     }
   }, [userProfile]);
 
   const activeTenant = useMemo(
-    () => tenantConfigs.find((t) => t.id === activeTenantId) || tenantConfigs[0],
+    () => tenantConfigs.find((t) => t.id === activeTenantId) || {
+      id: activeTenantId,
+      societyName: 'Mon Espace de Travail',
+      operatingRegion: 'North Africa',
+      currency: 'DZD',
+      laborRatePerHour: 2500,
+      scfTaxRate: 19,
+      language: 'fr',
+      lastUpdated: new Date().toISOString(),
+      brandColorHex: '#4f46e5',
+      accentColorHex: '#059669',
+      onboardingCompleted: false,
+    },
     [tenantConfigs, activeTenantId]
   );
 
