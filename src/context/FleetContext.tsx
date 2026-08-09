@@ -251,7 +251,9 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!currentUser) return;
     setSyncStatus('syncing');
 
-    const isDemoTenant = isDemoMode || activeTenantId === DEMO_TENANT_ID;
+    // Only load demo seed data for the explicit Numilog demo tenant.
+    // Real registered tenants ALWAYS start with empty DB-backed data.
+    const isDemoTenant = activeTenantId === DEMO_TENANT_ID;
 
     try {
       const [dbVehicles, dbInventory, dbWO, dbIncidents, dbCosts, dbAlerts] = await Promise.all([
@@ -308,7 +310,7 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       setSyncStatus('offline');
     }
-  }, [currentUser, isDemoMode, activeTenantId, setSyncStatus]);
+  }, [currentUser, activeTenantId, setSyncStatus]);
 
   useEffect(() => {
     loadData();

@@ -1,8 +1,24 @@
-import React, { createContext, useContext, useState, ReactNode, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import { TenantConfig } from '../types';
-import { INITIAL_TENANT_CONFIGS } from '../data/seedData';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
+
+const DEMO_TENANT_ID = 'c0a80101-0000-0000-0000-000000000001';
+
+const EMPTY_TENANT_CONFIG = (id: string): TenantConfig => ({
+  id,
+  societyName: 'Mon Espace de Travail',
+  currency: 'DZD (DA)',
+  currencySymbol: 'DA',
+  allocatedBudget: 0,
+  moneyUsed: 0,
+  operatingRegion: 'North Africa',
+  defaultLanguage: 'fr',
+  defaultLaborRate: 2500,
+  primaryColor: '#4f46e5',
+  accentColor: '#059669',
+  lastUpdated: new Date().toISOString(),
+});
 
 interface TenantContextType {
   tenantConfigs: TenantConfig[];
@@ -17,73 +33,111 @@ const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { userProfile } = useAuth();
-  
-  // Local state for demo purposes. In production, this would sync with public.tenants
-  const [tenantConfigs, setTenantConfigs] = useState<TenantConfig[]>(INITIAL_TENANT_CONFIGS);
-  
-  // Initialize with seed or from authenticated profile
-  const [activeTenantId, setActiveTenantIdState] = useState<string>(
-    INITIAL_TENANT_CONFIGS[0].id
-  );
 
+  const [tenantConfigs, setTenantConfigs] = useState<TenantConfig[]>([]);
+  const [activeTenantId, setActiveTenantIdState] = useState<string>(DEMO_TENANT_ID);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load tenant config from Supabase when user profile is available
   useEffect(() => {
-    if (userProfile?.tenant_id) {
-      setActiveTenantIdState(userProfile.tenant_id);
+    const tenantId = userProfile?.tenant_id;
+    if (!tenantId) return;
 
-      setTenantConfigs((prev) => {
-        const exists = prev.some((t) => t.id === userProfile.tenant_id);
-        if (exists) return prev;
+    setActiveTenantIdState(tenantId);
 
-        const newConfig: TenantConfig = {
-          id: userProfile.tenant_id,
-          societyName: userProfile.company_id || 'Mon Espace de Travail',
-          currency: 'DZD (DA)',
-          currencySymbol: 'DA',
-          allocatedBudget: 0,
-          moneyUsed: 0,
-          operatingRegion: 'North Africa',
-          defaultLanguage: 'fr',
-          defaultLaborRate: 2500,
-          primaryColor: '#4f46e5',
-          accentColor: '#059669',
-          lastUpdated: new Date().toISOString(),
-        };
-        return [...prev, newConfig];
-      });
-    }
+    const loadTenantFromDb = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('id', tenantId)
+          .single();
+
+        if (!error && data) {
+          const config: TenantConfig = {
+            id: data.id,
+            societyName: data.society_name || data.name || userProfile.company_id || 'Mon Espace de Travail',
+            currency: data.currency || 'DZD (DA)',
+            currencySymbol: data.currency_symbol || 'DA',
+            allocatedBudget: data.allocated_budget || 0,
+            moneyUsed: data.money_used || 0,
+            operatingRegion: data.operating_region || 'North Africa',
+            defaultLanguage: (data.default_language as TenantConfig['defaultLanguage']) || 'fr',
+            defaultLaborRate: data.default_labor_rate || 2500,
+            primaryColor: data.primary_color || '#4f46e5',
+            accentColor: data.accent_color || '#059669',
+            lastUpdated: data.updated_at || new Date().toISOString(),
+            timezone: data.timezone,
+            contactEmail: data.contact_email,
+            contactPhone: data.contact_phone,
+            taxRegistrationId: data.tax_registration_id,
+            fiscalYear: data.fiscal_year,
+            emergencyApprovalThreshold: data.emergency_approval_threshold,
+          };
+          setTenantConfigs([config]);
+        } else {
+          // Supabase table doesn't have this tenant yet — use in-memory blank
+          setTenantConfigs([EMPTY_TENANT_CONFIG(tenantId)]);
+        }
+      } catch {
+        setTenantConfigs([EMPTY_TENANT_CONFIG(tenantId)]);
+      } finally {
+        setIsLoaded(true);
+      }
+    };
+
+    loadTenantFromDb();
   }, [userProfile]);
 
   const activeTenant: TenantConfig = useMemo(
     (): TenantConfig =>
-      tenantConfigs.find((t) => t.id === activeTenantId) || {
-        id: activeTenantId,
-        societyName: 'Mon Espace de Travail',
-        currency: 'DZD (DA)',
-        currencySymbol: 'DA',
-        allocatedBudget: 0,
-        moneyUsed: 0,
-        operatingRegion: 'North Africa',
-        defaultLanguage: 'fr',
-        defaultLaborRate: 2500,
-        primaryColor: '#4f46e5',
-        accentColor: '#059669',
-        lastUpdated: new Date().toISOString(),
-      },
+      tenantConfigs.find((t) => t.id === activeTenantId) || EMPTY_TENANT_CONFIG(activeTenantId),
     [tenantConfigs, activeTenantId]
   );
 
-  const updateTenantConfig = (id: string, updated: Partial<TenantConfig>) => {
+  const updateTenantConfig = useCallback((id: string, updated: Partial<TenantConfig>) => {
+    const updatedAt = new Date().toISOString();
+    // 1. Immediately update local React state so UI reflects changes
     setTenantConfigs((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updated, lastUpdated: new Date().toISOString() } : t))
+      prev.map((t) => (t.id === id ? { ...t, ...updated, lastUpdated: updatedAt } : t))
     );
-  };
+
+    // 2. Persist to Supabase tenants table
+    supabase
+      .from('tenants')
+      .upsert({
+        id,
+        society_name: updated.societyName,
+        currency: updated.currency,
+        currency_symbol: updated.currencySymbol,
+        allocated_budget: updated.allocatedBudget,
+        money_used: updated.moneyUsed,
+        operating_region: updated.operatingRegion,
+        default_language: updated.defaultLanguage,
+        default_labor_rate: updated.defaultLaborRate,
+        primary_color: updated.primaryColor,
+        accent_color: updated.accentColor,
+        timezone: updated.timezone,
+        contact_email: updated.contactEmail,
+        contact_phone: updated.contactPhone,
+        tax_registration_id: updated.taxRegistrationId,
+        fiscal_year: updated.fiscalYear,
+        emergency_approval_threshold: updated.emergencyApprovalThreshold,
+        updated_at: updatedAt,
+      }, { onConflict: 'id' })
+      .then(({ error }) => {
+        if (error) {
+          console.warn('[TenantContext] Failed to persist tenant config to Supabase:', error.message);
+        }
+      });
+  }, []);
 
   const setActiveTenantId = (id: string) => {
     setActiveTenantIdState(id);
   };
 
   const addTenantConfig = (newTenant: Omit<TenantConfig, 'id' | 'lastUpdated'>) => {
-    const id = `TNT-${Date.now()}`;
+    const id = crypto.randomUUID();
     const newConfig: TenantConfig = {
       ...newTenant,
       id,
