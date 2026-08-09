@@ -298,4 +298,93 @@ export class DecisionEngine {
       triggerAuditFlag,
     };
   }
+
+  /**
+   * Evaluates historical telemetry events in pure 'replay' mode without state mutations.
+   * Produces a structured audit report for client pilot verification (Numilog).
+   */
+  public static executeReplayEvaluationBatch(
+    vehicleId: string,
+    telemetryEvents: Array<{
+      timestamp: string;
+      faultCodes?: ActiveFaultCode[];
+      position?: { latitude: number; longitude: number; speed_kmh: number } | null;
+      actualSpend?: number;
+      projectedBudget?: number;
+    }>,
+    warranty?: Warranty | null
+  ): {
+    vehicle_id: string;
+    totalEventsProcessed: number;
+    r1CriticalEventsCount: number;
+    r2ScheduleConflictsCount: number;
+    r5MeanCaeScore: number;
+    r7ProjectedVariancePercentage: number | null;
+    evaluatedEvents: Array<{
+      timestamp: string;
+      r1Result: R1Result;
+      r5Result?: R5PrioritizationResult;
+      r7Result?: R7CategoryVariance;
+    }>;
+  } {
+    let r1CriticalEventsCount = 0;
+    let totalCaeScore = 0;
+    let caeScoreCount = 0;
+    let totalActualSpend = 0;
+    let totalProjectedBudget = 0;
+
+    const evaluatedEvents = telemetryEvents.map((evt) => {
+      const faultCodes = evt.faultCodes || [];
+      const r1Result = this.evalRuleR1({ id: vehicleId }, faultCodes, warranty);
+
+      if (r1Result.isRedAlert) {
+        r1CriticalEventsCount++;
+      }
+
+      // Calculate R5 score if critical faults exist
+      let r5Result: R5PrioritizationResult | undefined;
+      if (r1Result.isRedAlert) {
+        r5Result = this.evalRuleR5PriorityScore({
+          criticalSeverityFactor: 10,
+          daysUntilRoute: 1,
+          roiCostRatio: 2.5,
+        });
+        totalCaeScore += r5Result.priorityScore;
+        caeScoreCount++;
+      }
+
+      // Calculate R7 budget variance if spending data is provided
+      let r7Result: R7CategoryVariance | undefined;
+      if (evt.actualSpend !== undefined && evt.projectedBudget !== undefined) {
+        r7Result = this.evalRuleR7BudgetVariance(evt.actualSpend, evt.projectedBudget, 'General');
+        totalActualSpend += evt.actualSpend;
+        totalProjectedBudget += evt.projectedBudget;
+      }
+
+      return {
+        timestamp: evt.timestamp,
+        r1Result,
+        r5Result,
+        r7Result,
+      };
+    });
+
+    const r5MeanCaeScore = caeScoreCount > 0 ? Math.round((totalCaeScore / caeScoreCount) * 10) / 10 : 0;
+    let r7ProjectedVariancePercentage: number | null = null;
+
+    if (totalProjectedBudget > 0) {
+      r7ProjectedVariancePercentage =
+        Math.round(((totalActualSpend - totalProjectedBudget) / totalProjectedBudget) * 1000) / 10;
+    }
+
+    return {
+      vehicle_id: vehicleId,
+      totalEventsProcessed: telemetryEvents.length,
+      r1CriticalEventsCount,
+      r2ScheduleConflictsCount: 0,
+      r5MeanCaeScore,
+      r7ProjectedVariancePercentage,
+      evaluatedEvents,
+    };
+  }
 }

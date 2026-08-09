@@ -239,34 +239,136 @@ export class TeltonikaAdapter implements TelematicsProvider {
 }
 
 // ==========================================
-// 3. FLESPI / WIALON ADAPTER (MIDDLEWARE STUB)
+// 3. FLESPI / WIALON ADAPTER (REAL REST & STREAM CLIENT)
 // ==========================================
 export class FlespiWialonAdapter implements TelematicsProvider {
   public readonly providerName: TelematicsProviderType = 'flespi_wialon';
-  public readonly isConnected: boolean = false; // Phase 2 connection pending
+
+  private get apiToken(): string | null {
+    if (typeof process !== 'undefined' && process.env?.FLESPI_API_TOKEN) {
+      return process.env.FLESPI_API_TOKEN;
+    }
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_FLESPI_API_TOKEN) {
+      return (import.meta as any).env.VITE_FLESPI_API_TOKEN;
+    }
+    return null;
+  }
+
+  private get apiBaseUrl(): string {
+    if (typeof process !== 'undefined' && process.env?.FLESPI_API_BASE_URL) {
+      return process.env.FLESPI_API_BASE_URL;
+    }
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_FLESPI_API_BASE_URL) {
+      return (import.meta as any).env.VITE_FLESPI_API_BASE_URL;
+    }
+    return 'https://flespi.io';
+  }
+
+  public get isConnected(): boolean {
+    return Boolean(this.apiToken && this.externalDeviceId);
+  }
 
   constructor(public readonly externalDeviceId: string) {}
 
   public async getFaultCodes(vehicleId: string): Promise<ActiveFaultCode[]> {
-    console.info(
-      `[FlespiWialonAdapter] Requesting telemetry stream for vehicle ${vehicleId} (Unit ID: ${this.externalDeviceId}). Status: Not connected (Phase 2 credentials required).`
-    );
-    // Returns empty array when not connected — does NOT generate fake vendor data
+    if (!this.isConnected) {
+      console.info(
+        `[FlespiWialonAdapter] Requesting telemetry for vehicle ${vehicleId} (Unit ID: ${this.externalDeviceId}). Status: Not connected (FLESPI_API_TOKEN missing).`
+      );
+      // Strictly returns empty array when not connected — ZERO fake vendor data
+      return [];
+    }
+
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/gw/devices/${this.externalDeviceId}/telemetry/dtc`, {
+        headers: {
+          Authorization: `FlespiToken ${this.apiToken}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.warn(`[FlespiWialonAdapter] REST call failed (${response.status}): ${response.statusText}`);
+        return [];
+      }
+
+      const body = await response.json();
+      if (body?.result && Array.isArray(body.result)) {
+        return body.result.map((item: any) => ({
+          code: item.code || item.dtc || `DTC-${item.spn || 'UNK'}`,
+          name: item.name || item.description || `Flespi Fault Code ${item.code}`,
+          severity: item.severity === 'Critical' ? 'Critical' : item.severity === 'Warning' ? 'Warning' : 'Info',
+          logged_date: item.timestamp ? new Date(item.timestamp * 1000).toISOString() : new Date().toISOString(),
+          required_intervention: item.required_intervention || 'Inspect vehicle CAN-bus diagnostic logs',
+        }));
+      }
+    } catch (err) {
+      console.warn(`[FlespiWialonAdapter] Error fetching DTC telemetry from Flespi API for ${vehicleId}:`, err);
+    }
+
     return [];
   }
 
   public async getPosition(vehicleId: string): Promise<Position | null> {
-    console.info(
-      `[FlespiWialonAdapter] Requesting position stream for vehicle ${vehicleId} (Unit ID: ${this.externalDeviceId}). Status: Not connected (Phase 2 credentials required).`
-    );
+    if (!this.isConnected) {
+      console.info(
+        `[FlespiWialonAdapter] Requesting position for vehicle ${vehicleId} (Unit ID: ${this.externalDeviceId}). Status: Not connected (FLESPI_API_TOKEN missing).`
+      );
+      // Strictly returns null when not connected — ZERO fake vendor data
+      return null;
+    }
+
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/gw/devices/${this.externalDeviceId}/telemetry/position`, {
+        headers: {
+          Authorization: `FlespiToken ${this.apiToken}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.warn(`[FlespiWialonAdapter] Position fetch failed (${response.status}): ${response.statusText}`);
+        return null;
+      }
+
+      const body = await response.json();
+      const pos = body?.result?.[0] || body?.result;
+
+      if (pos && (pos.latitude !== undefined || pos.lat !== undefined)) {
+        return {
+          latitude: Number(pos.latitude ?? pos.lat),
+          longitude: Number(pos.longitude ?? pos.lon ?? pos.lng),
+          altitude_m: Number(pos.altitude ?? pos.alt ?? 0),
+          speed_kmh: Number(pos.speed ?? pos.speed_kmh ?? 0),
+          heading_deg: Number(pos.heading ?? pos.direction ?? 0),
+          timestamp: pos.timestamp ? new Date(pos.timestamp * 1000).toISOString() : new Date().toISOString(),
+        };
+      }
+    } catch (err) {
+      console.warn(`[FlespiWialonAdapter] Error fetching position from Flespi API for ${vehicleId}:`, err);
+    }
+
     return null;
   }
 
   public subscribe(
-    _vehicleId: string,
-    _onUpdate: (data: { faultCodes?: ActiveFaultCode[]; position?: Position | null }) => void
+    vehicleId: string,
+    onUpdate: (data: { faultCodes?: ActiveFaultCode[]; position?: Position | null }) => void
   ): Unsubscribe {
-    return () => {};
+    if (!this.isConnected) {
+      return () => {};
+    }
+
+    // Real-time polling loop for active Flespi stream
+    const interval = setInterval(async () => {
+      const [position, faultCodes] = await Promise.all([
+        this.getPosition(vehicleId),
+        this.getFaultCodes(vehicleId),
+      ]);
+      onUpdate({ position, faultCodes });
+    }, 5000);
+
+    return () => clearInterval(interval);
   }
 }
 

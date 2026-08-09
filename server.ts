@@ -14,6 +14,9 @@ import { inventoryRouter } from './src/api/inventory';
 import { incidentRouter } from './src/api/incidents';
 import { platformAdminRouter } from './src/api/platformAdmin';
 import { platformAuthCheck } from './src/api/middleware';
+import { translateJ1939ToActiveFault } from './src/services/j1939MappingService';
+import { DecisionEngine } from './src/services/decisionEngine';
+import { supabase } from './src/lib/supabase';
 
 let genAIClient: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI | null {
@@ -361,6 +364,132 @@ Provide your rationale in clear French (reasoning_fr).`;
         error: error.message || 'Free Translation failed',
         fallback: req.body.sourceText,
       });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Telemetry Webhook Ingestion Route (Flespi / Wialon MQTT & HTTP Push)
+  // ─────────────────────────────────────────────────────────────────────────────
+  app.post('/api/telemetry/webhook', express.json(), async (req, res) => {
+    const webhookSecret = process.env.FLESPI_WEBHOOK_SECRET;
+    const authHeader = req.headers['authorization'] || req.headers['x-flespi-secret'];
+
+    // Security validation: Reject any unauthenticated request with 401 Unauthorized
+    if (!webhookSecret || (authHeader !== webhookSecret && authHeader !== `Bearer ${webhookSecret}`)) {
+      return res.status(401).json({ error: 'Unauthorized: Invalid or missing telemetry webhook secret' });
+    }
+
+    try {
+      const payload = req.body;
+      const messages = Array.isArray(payload) ? payload : [payload];
+      let processedCount = 0;
+      let ignoredCount = 0;
+
+      for (const msg of messages) {
+        const externalDeviceId = String(
+          msg.external_device_id || msg.ident || msg.device_id || msg.unit_id || ''
+        );
+        if (!externalDeviceId) {
+          ignoredCount++;
+          continue;
+        }
+
+        // Resolve vehicle_id from device_mappings
+        const { data: mapping } = await supabase
+          .from('device_mappings')
+          .select('vehicle_id, tenant_id')
+          .eq('external_device_id', externalDeviceId)
+          .maybeSingle();
+
+        if (!mapping) {
+          console.warn(`[TelemetryWebhook] Unmapped external_device_id received: ${externalDeviceId}`);
+          ignoredCount++;
+          continue;
+        }
+
+        const { vehicle_id, tenant_id } = mapping;
+        const lat = msg.latitude ?? msg.lat ?? msg['position.latitude'];
+        const lng = msg.longitude ?? msg.lon ?? msg.lng ?? msg['position.longitude'];
+        const speed = msg.speed_kmh ?? msg.speed ?? msg['position.speed'] ?? 0;
+        const heading = msg.heading ?? msg['position.direction'] ?? 0;
+        const timestamp = msg.timestamp
+          ? new Date(msg.timestamp * 1000).toISOString()
+          : new Date().toISOString();
+
+        // Parse fault codes (OBD-II DTC or J1939 SPN/FMI)
+        let faultCodes: any[] = [];
+        if (Array.isArray(msg.fault_codes)) {
+          faultCodes = msg.fault_codes;
+        } else if (msg.spn !== undefined && msg.fmi !== undefined) {
+          const translated = translateJ1939ToActiveFault({
+            spn: Number(msg.spn),
+            fmi: Number(msg.fmi),
+            loggedDate: timestamp,
+          });
+          faultCodes = [translated];
+        } else if (msg.dtc) {
+          faultCodes = [
+            {
+              code: String(msg.dtc),
+              name: msg.dtc_name || `Diagnostic Code ${msg.dtc}`,
+              severity: msg.severity || 'Warning',
+              logged_date: timestamp,
+              required_intervention: 'Inspect vehicle OBD system',
+            },
+          ];
+        }
+
+        // Record position to Supabase
+        if (lat !== undefined && lng !== undefined) {
+          await supabase.from('positions').insert({
+            tenant_id,
+            vehicle_id,
+            latitude: lat,
+            longitude: lng,
+            speed_kmh: speed,
+            heading_deg: heading,
+            timestamp,
+            data_source: 'live_telematics',
+          });
+        }
+
+        // Record fault codes and trigger Rule R1 evaluation
+        if (faultCodes.length > 0) {
+          const { data: currentVehicle } = await supabase
+            .from('vehicles')
+            .select('*')
+            .eq('id', vehicle_id)
+            .single();
+
+          if (currentVehicle) {
+            const r1Result = DecisionEngine.evalRuleR1(currentVehicle, faultCodes);
+            const updatedStatus = r1Result.isRedAlert ? 'Unsafe / Red' : currentVehicle.status;
+
+            await supabase
+              .from('vehicles')
+              .update({
+                active_fault_codes: faultCodes,
+                status: updatedStatus,
+                status_reason: r1Result.isRedAlert
+                  ? `Alerte R1: ${r1Result.criticalFaults[0]?.name}`
+                  : currentVehicle.status_reason,
+                data_source: 'live_telematics',
+              })
+              .eq('id', vehicle_id);
+          }
+        }
+
+        processedCount++;
+      }
+
+      return res.json({
+        status: 'success',
+        processed: processedCount,
+        ignored: ignoredCount,
+      });
+    } catch (err: any) {
+      console.error('[TelemetryWebhook] Processing error:', err);
+      return res.status(500).json({ error: 'Webhook processing failed', message: err.message });
     }
   });
 

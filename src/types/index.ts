@@ -99,11 +99,12 @@ export interface Invitation {
 
 export type VehicleStatus = 'Healthy' | 'Attention' | 'Critical' | 'Unknown';
 export type VehicleClassification = 'Keystone' | 'Standard';
+export type SeverityTier = 'Critical' | 'Warning' | 'Info' | 'Unknown';
 
 export interface ActiveFaultCode {
   code: string;
   name: string;
-  severity: 'Critical' | 'Warning' | 'Info';
+  severity: SeverityTier;
   logged_date: string;
   required_part_id?: string;
   required_intervention: string;

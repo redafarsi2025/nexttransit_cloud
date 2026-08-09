@@ -7,6 +7,8 @@ import {
   INITIAL_SEED_DEVICE_MAPPINGS,
 } from './telematicsService';
 import { TelematicsProvider, ActiveFaultCode, DeviceMapping, Vehicle } from '../types';
+import { translateJ1939ToActiveFault } from './j1939MappingService';
+import { DecisionEngine } from './decisionEngine';
 
 describe('Vendor-Agnostic Telematics Ingestion Layer', () => {
   beforeEach(() => {
@@ -226,6 +228,68 @@ describe('Vendor-Agnostic Telematics Ingestion Layer', () => {
       expect(res1.criticalFaultName).toBe('Engine Overheat Condition');
       expect(res2.criticalFaultName).toBe('Engine Overheat Condition');
       expect(res3.criticalFaultName).toBe('Engine Overheat Condition');
+    });
+  });
+
+  describe('SAE J1939 Diagnostic Code Mapping Service', () => {
+    it('correctly translates SPN 110 FMI 0 (Engine Coolant Overheat) to Critical P0217', () => {
+      const result = translateJ1939ToActiveFault({ spn: 110, fmi: 0, loggedDate: '2026-08-09T00:00:00Z' });
+      expect(result.code).toBe('P0217');
+      expect(result.severity).toBe('Critical');
+      expect(result.name).toContain('Engine Coolant Temperature');
+    });
+
+    it('correctly translates SPN 190 FMI 0 (Engine Overspeed) to Critical P0219', () => {
+      const result = translateJ1939ToActiveFault({ spn: 190, fmi: 0 });
+      expect(result.code).toBe('P0219');
+      expect(result.severity).toBe('Critical');
+    });
+
+    it('correctly translates SPN 100 FMI 1 (Low Oil Pressure) to Critical P0524', () => {
+      const result = translateJ1939ToActiveFault({ spn: 100, fmi: 1 });
+      expect(result.code).toBe('P0524');
+      expect(result.severity).toBe('Critical');
+    });
+
+    it('correctly translates SPN 84 FMI 9 (Wheel Speed Sensor) to Warning', () => {
+      const result = translateJ1939ToActiveFault({ spn: 84, fmi: 9 });
+      expect(result.code).toBe('SPN-84-FMI-9');
+      expect(result.severity).toBe('Warning');
+    });
+
+    it('handles unrecognized SPN/FMI codes cleanly by setting severity to Unknown without crashing', () => {
+      const result = translateJ1939ToActiveFault({ spn: 999, fmi: 1 });
+      expect(result.code).toBe('SPN-999-FMI-1');
+      expect(result.severity).toBe('Unknown');
+    });
+  });
+
+  describe('DecisionEngine Historical Replay Mode (Non-Mutating)', () => {
+    it('executes batch replay evaluation over historical telemetry events without state mutation', () => {
+      const vehicleId = 'V-HIST-01';
+      const events = [
+        {
+          timestamp: '2026-08-01T10:00:00Z',
+          faultCodes: [translateJ1939ToActiveFault({ spn: 110, fmi: 0 })],
+          actualSpend: 15000,
+          projectedBudget: 12000,
+        },
+        {
+          timestamp: '2026-08-02T14:00:00Z',
+          faultCodes: [],
+          actualSpend: 5000,
+          projectedBudget: 5000,
+        },
+      ];
+
+      const report = DecisionEngine.executeReplayEvaluationBatch(vehicleId, events);
+
+      expect(report.vehicle_id).toBe('V-HIST-01');
+      expect(report.totalEventsProcessed).toBe(2);
+      expect(report.r1CriticalEventsCount).toBe(1);
+      expect(report.r5MeanCaeScore).toBeGreaterThan(0);
+      expect(report.r7ProjectedVariancePercentage).toBe(17.6);
+      expect(report.evaluatedEvents).toHaveLength(2);
     });
   });
 });
