@@ -64,7 +64,13 @@ export async function createInvitation(payload: {
 
 /**
  * Accept an invitation via invitation token.
- * Validates token, sets password, creates User Profile with invited role & tenant.
+ * Security model:
+ *   1. Validate token client-side for fast UX feedback (expiry, existence)
+ *   2. Create Auth user via signUp() with NO role/tenant_id in metadata
+ *   3. Call accept_tenant_invitation() SECURITY DEFINER which:
+ *      - Atomically claims the token (prevents concurrent double-accept)
+ *      - Reads role and tenant_id from the invitations table (NOT from client)
+ *      - Updates profiles with the server-sourced values
  */
 export async function acceptInvitation(payload: {
   token: string;
@@ -76,7 +82,8 @@ export async function acceptInvitation(payload: {
     throw new Error(passCheck.error);
   }
 
-  // 1. Find invitation by token
+  // 1. Client-side pre-validation for fast feedback (token existence, expiry)
+  //    The real atomic validation happens server-side in the RPC function.
   let invite: Invitation | null = inMemoryInvitations.find((i) => i.token === payload.token && !i.accepted_at) || null;
 
   if (!invite) {
@@ -89,7 +96,7 @@ export async function acceptInvitation(payload: {
         .single();
       if (data) invite = data as Invitation;
     } catch (e) {
-      console.warn('Could not query invitations table:', e);
+      console.warn('Could not pre-validate invitation token:', e);
     }
   }
 
@@ -101,14 +108,16 @@ export async function acceptInvitation(payload: {
     throw new Error('Invitation token has expired. Please request a new invitation from your administrator.');
   }
 
-  // 2. Create Auth User
+  // 2. Create Auth user.
+  // SECURITY: Do NOT pass role or tenant_id in metadata.
+  // The trigger sets DRIVER + NULL tenant; the RPC function provisions the real values.
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: invite.email,
     password: payload.password,
     options: {
       data: {
         full_name: payload.fullName,
-        role: invite.role,
+        // SECURITY: role and tenant_id intentionally omitted — set by server RPC below
       },
     },
   });
@@ -117,31 +126,46 @@ export async function acceptInvitation(payload: {
     throw new Error(`Failed to create account: ${authError.message}`);
   }
 
-  const authUserId = authData.user?.id || `auth-${Date.now()}`;
-  const profileId = `usr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const authUserId = authData.user?.id;
+  if (!authUserId) {
+    throw new Error('Account creation failed: no user ID returned.');
+  }
+
+  // 3. Call the SECURITY DEFINER function which:
+  //    - Atomically marks token as accepted (preventing concurrent reuse)
+  //    - Reads role + tenant_id from invitations table (never from client)
+  //    - Updates profiles with server-sourced values
+  const { data: rpcData, error: rpcError } = await supabase.rpc('accept_tenant_invitation', {
+    p_token:     payload.token,
+    p_full_name: payload.fullName,
+    p_email:     invite.email,
+  });
+
+  if (rpcError) {
+    throw new Error(`Invitation acceptance failed: ${rpcError.message}`);
+  }
+
+  const assignedTenantId = (rpcData as any)?.tenant_id || invite.tenant_id;
+  const assignedRole     = (rpcData as any)?.role      || invite.role;
+
+  // Update in-memory cache
+  const memIdx = inMemoryInvitations.findIndex((i) => i.token === payload.token);
+  if (memIdx >= 0) {
+    inMemoryInvitations[memIdx].accepted_at = new Date().toISOString();
+  }
 
   const userProfile: UserProfile = {
-    id: profileId,
+    id:          authUserId,
     auth_user_id: authUserId,
-    tenant_id: invite.tenant_id,
-    company_id: invite.company_id || 'cmp-default',
-    full_name: payload.fullName,
-    email: invite.email,
-    role: invite.role,
-    status: 'active',
-    invited_by: invite.invited_by,
-    created_at: new Date().toISOString(),
+    tenant_id:   assignedTenantId,
+    company_id:  invite.company_id || '',
+    full_name:   payload.fullName,
+    email:       invite.email,
+    role:        assignedRole as Role,
+    status:      'active',
+    invited_by:  invite.invited_by,
+    created_at:  new Date().toISOString(),
   };
-
-  // 3. Update invitation & save profile
-  invite.accepted_at = new Date().toISOString();
-
-  try {
-    await supabase.from('users').insert(userProfile);
-    await supabase.from('invitations').update({ accepted_at: invite.accepted_at }).eq('id', invite.id);
-  } catch (err) {
-    console.warn('Database write error during invitation acceptance:', err);
-  }
 
   // Audit Log
   await recordAudit(
@@ -149,10 +173,10 @@ export async function acceptInvitation(payload: {
     invite.id,
     'INVITATION_ACCEPT',
     { status: 'pending' },
-    { status: 'accepted', user_id: profileId, email: invite.email, role: invite.role },
-    profileId,
-    invite.role,
-    invite.tenant_id
+    { status: 'accepted', user_id: authUserId, email: invite.email, role: assignedRole },
+    authUserId,
+    assignedRole as Role,
+    assignedTenantId
   );
 
   return userProfile;

@@ -134,14 +134,12 @@ export async function fetchVehicles(bypassCache: boolean = false): Promise<Vehic
       .eq('tenant_id', tenantId);
     
     if (error) {
-      throw new Error(`fetchVehicles failed: ${error.message}`);
-    }
-    
-    if (!data) {
+      // RLS, table-not-found, or schema error: treat as empty, not offline
+      console.warn(`fetchVehicles: ${error.message} (code=${error.code})`);
       return [];
     }
     
-    return data as Vehicle[];
+    return (data || []) as Vehicle[];
   });
 }
 
@@ -156,14 +154,11 @@ export async function fetchInventory(bypassCache: boolean = false): Promise<Inve
       .eq('tenant_id', tenantId);
     
     if (error) {
-      throw new Error(`fetchInventory failed: ${error.message}`);
-    }
-    
-    if (!data) {
+      console.warn(`fetchInventory: ${error.message} (code=${error.code})`);
       return [];
     }
     
-    return data as InventoryItem[];
+    return (data || []) as InventoryItem[];
   });
 }
 
@@ -178,14 +173,11 @@ export async function fetchWorkOrders(bypassCache: boolean = false): Promise<Wor
       .eq('tenant_id', tenantId);
     
     if (error) {
-      throw new Error(`fetchWorkOrders failed: ${error.message}`);
-    }
-    
-    if (!data) {
+      console.warn(`fetchWorkOrders: ${error.message} (code=${error.code})`);
       return [];
     }
     
-    return (data as any[]).map((wo) => {
+    return ((data || []) as any[]).map((wo) => {
       let notes = { before: '', after: '' };
       if (wo.before_after_notes) {
         if (typeof wo.before_after_notes === 'string') {
@@ -221,14 +213,11 @@ export async function fetchIncidents(bypassCache: boolean = false): Promise<Inci
       .eq('tenant_id', tenantId);
     
     if (error) {
-      throw new Error(`fetchIncidents failed: ${error.message}`);
-    }
-    
-    if (!data) {
+      console.warn(`fetchIncidents: ${error.message} (code=${error.code})`);
       return [];
     }
     
-    return data as Incident[];
+    return (data || []) as Incident[];
   });
 }
 
@@ -243,14 +232,11 @@ export async function fetchCostRecords(bypassCache: boolean = false): Promise<Co
       .eq('tenant_id', tenantId);
     
     if (error) {
-      throw new Error(`fetchCostRecords failed: ${error.message}`);
-    }
-    
-    if (!data) {
+      console.warn(`fetchCostRecords: ${error.message} (code=${error.code})`);
       return [];
     }
     
-    return data as CostRecord[];
+    return (data || []) as CostRecord[];
   });
 }
 
@@ -265,14 +251,11 @@ export async function fetchAlerts(bypassCache: boolean = false): Promise<FleetAl
       .eq('tenant_id', tenantId);
     
     if (error) {
-      throw new Error(`fetchAlerts failed: ${error.message}`);
-    }
-    
-    if (!data) {
+      console.warn(`fetchAlerts: ${error.message} (code=${error.code})`);
       return [];
     }
     
-    return data as FleetAlert[];
+    return (data || []) as FleetAlert[];
   });
 }
 

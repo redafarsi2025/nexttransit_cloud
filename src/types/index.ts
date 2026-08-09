@@ -1,5 +1,6 @@
 export type Role =
   | 'SUPER_ADMIN'
+  | 'TENANT_ADMIN'
   | 'DIRECTOR'
   | 'FLEET_MANAGER'
   | 'MAINTENANCE_MANAGER'
@@ -46,6 +47,7 @@ export type PermissionLevel = 'full' | 'view' | 'none' | 'resolve' | 'parts_stat
 
 export const DEFAULT_ROLE_SCREENS: Record<Role, ScreenId> = {
   SUPER_ADMIN: 'TENANT_CONFIG',
+  TENANT_ADMIN: 'STRATEGIC_DASHBOARD',
   DIRECTOR: 'STRATEGIC_DASHBOARD',
   FLEET_MANAGER: 'FLEET_HEALTH_GRID',
   MAINTENANCE_MANAGER: 'WORK_ORDER_QUEUE',

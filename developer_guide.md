@@ -93,3 +93,45 @@ console.log(JSON.stringify(report, null, 2));
 | **175** | Engine Oil Temp | 0 | **Critical** | Oil Overheat (`SPN-175-FMI-0`) |
 | **84** | Wheel Speed Sensor | 9 | Warning | Speed Sensor Abnormal Update |
 | **91** | Accelerator Pedal | 3 | Warning | Sensor Voltage High |
+
+---
+
+## 4. Flux d'authentification sécurisé et Multi-Tenant
+
+Le provisioning des locataires (tenants) et l'attribution des rôles ont été renforcés pour prévenir toute escalade de privilèges via l'API Supabase Auth.
+
+**Règle d'or :** L'UI client n'a jamais l'autorité pour définir `role` ou `tenant_id` lors de l'inscription. Tout se fait via des fonctions SQL `SECURITY DEFINER`.
+
+### Flux 1 — Inscription Publique (Nouveau Tenant)
+1. L'utilisateur remplit le formulaire et appelle `supabase.auth.signUp()`.
+2. Le trigger de base de données `handle_new_user` intercepte la création dans `auth.users` et crée un `public.profiles` avec `role = 'DRIVER'` et `tenant_id = NULL`.
+3. Le client appelle immédiatement la fonction RPC `register_new_tenant()`.
+4. La fonction RPC (exécutée avec les droits admin côté serveur) :
+   - Génère un UUID serveur pour le nouveau `tenant_id`.
+   - Crée le locataire dans `public.tenants` et `public.companies`.
+   - Promeut l'utilisateur courant en `role = 'SUPER_ADMIN'` sur ce nouveau `tenant_id`.
+
+### Flux 2 — Acceptation d'Invitation
+1. Le token d'invitation est validé rapidement côté client.
+2. `supabase.auth.signUp()` est appelé (le trigger crée un profil `DRIVER` + tenant `NULL`).
+3. Le client appelle la fonction RPC `accept_tenant_invitation(token)`.
+4. La fonction RPC :
+   - Marque l'invitation comme acceptée de façon **atomique** (prévient les doubles appels).
+   - Lit le `role` et le `tenant_id` **depuis la table `invitations`** (la source de vérité).
+   - Met à jour `public.profiles` avec ces valeurs sécurisées.
+
+### Dépannage (Tenant `NULL`)
+Si le processus de provisioning (l'appel RPC) échoue en cours de route à cause d'une coupure réseau, l'utilisateur aura un compte valide mais avec `tenant_id = NULL`. 
+Le `AuthContext` détectera cet état et bloquera l'accès au tableau de bord, affichant un écran "Provisioning en attente". Un administrateur système devra finaliser le rattachement manuellement.
+
+---
+
+## 5. Rôle TENANT_ADMIN et Opérateurs Plateforme (SUPER_ADMIN)
+
+Pour garantir une étanchéité totale entre les différents clients de la plateforme, le rôle assigné par défaut lors d'une nouvelle inscription est **`TENANT_ADMIN`**. Ce rôle possède tous les droits de configuration et de gestion des utilisateurs, **mais strictement restreint à son propre `tenant_id`**.
+
+Le rôle **`SUPER_ADMIN`** est désormais un rôle global (non-scopé) réservé aux **opérateurs internes de la plateforme NextTransit**. Un utilisateur s'inscrivant publiquement ou via une invitation ne pourra jamais obtenir le rôle `SUPER_ADMIN`.
+
+> [!TODO] Chantier technique en cours : `platformDbService.ts`
+> Actuellement, le service `platformDbService.ts` (qui gère l'espace opérateur /platform-admin) utilise un mock JSON (`platform_db.json`) pour son stockage de données.
+> Bien que la table SQL `public.platform_admins` ait été créée dans la migration `20260810000001` pour sécuriser les RLS, **le service TypeScript doit encore être refactoré** pour abandonner le mock JSON et utiliser directement cette table via Supabase Client.

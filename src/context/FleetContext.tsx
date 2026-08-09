@@ -116,7 +116,7 @@ const FleetContext = createContext<FleetContextType | undefined>(undefined);
 
 export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentRole, currentUser, changeRole, changeScreen, setSyncStatus, isDemoMode } = useAuth();
-  const { activeTenantId } = useTenant();
+  const { activeTenantId, isTenantResolved } = useTenant();
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -248,7 +248,10 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const DEMO_TENANT_ID = 'c0a80101-0000-0000-0000-000000000001';
 
   const loadData = useCallback(async () => {
+    // Wait for TenantContext to resolve the real tenant ID before loading.
+    // Without this guard, activeTenantId may still be DEMO_TENANT_ID and demo data would be injected.
     if (!currentUser) return;
+    if (!isTenantResolved) return;
     setSyncStatus('syncing');
 
     // Only load demo seed data for the explicit Numilog demo tenant.
@@ -288,29 +291,11 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       setSyncStatus('online');
     } catch (e) {
-      console.warn('DB load failed', e);
-      if (isDemoTenant) {
-        setVehicles(INITIAL_VEHICLES);
-        setInventory(INITIAL_INVENTORY);
-        setWorkOrders(INITIAL_WORK_ORDERS);
-        setIncidents(INITIAL_INCIDENTS);
-        setCostRecords(INITIAL_COST_RECORDS);
-        setAlerts(INITIAL_ALERTS);
-        setPmSchedules(INITIAL_PM_SCHEDULES);
-        setEdiOrders(INITIAL_EDI_ORDERS);
-      } else {
-        setVehicles([]);
-        setInventory([]);
-        setWorkOrders([]);
-        setIncidents([]);
-        setCostRecords([]);
-        setAlerts([]);
-        setPmSchedules([]);
-        setEdiOrders([]);
-      }
+      console.warn('DB load failed with network error', e);
+      // Only set offline for a real network/fetch error, not for empty tables
       setSyncStatus('offline');
     }
-  }, [currentUser, activeTenantId, setSyncStatus]);
+  }, [currentUser, isTenantResolved, activeTenantId, setSyncStatus]);
 
   useEffect(() => {
     loadData();

@@ -178,8 +178,8 @@ export const InvitationsScreen: React.FC = () => {
                     {r.label} ({r.role})
                   </option>
                 ))}
-                {currentRole === 'SUPER_ADMIN' && (
-                  <option value="SUPER_ADMIN">Super Admin (SUPER_ADMIN)</option>
+                {['SUPER_ADMIN', 'TENANT_ADMIN'].includes(currentRole as string) && (
+                  <option value="TENANT_ADMIN">Tenant Admin (TENANT_ADMIN)</option>
                 )}
               </select>
               <p className="text-xs text-slate-500 mt-1.5">

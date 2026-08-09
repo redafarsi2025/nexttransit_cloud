@@ -11,6 +11,7 @@ interface AuthContextType {
   currentRole: Role;
   currentScreen: ScreenId;
   isRoleSelectorOpen: boolean;
+  isPlatformAdmin: boolean;
   syncStatus: 'online' | 'offline' | 'syncing' | 'error';
   isDemoMode: boolean;
   enterDemoMode: () => void;
@@ -33,6 +34,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [currentRole, setCurrentRole] = useState<Role>('DIRECTOR');
   const [currentScreen, setCurrentScreen] = useState<ScreenId>('LANDING_PAGE');
   const [isRoleSelectorOpen, setIsRoleSelectorOpen] = useState<boolean>(false);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<'online' | 'offline' | 'syncing' | 'error'>('online');
   const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
   // navigateRef holds the react-router navigate function injected by AppLayout
@@ -48,7 +50,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (session?.user) {
         setCurrentUser(session.user);
         
-        // Fetch User Profile from public.profiles table
+        // Fetch User Profile from public.profiles (single source of truth)
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
@@ -56,9 +58,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           .single();
 
         if (profile) {
-          setUserProfile(profile as UserProfile);
+          // Enrich with fields now on profiles table (full_name, email added in security migration)
+          // Fall back to auth user metadata if profiles columns not yet populated
+          const enrichedProfile: UserProfile = {
+            ...profile,
+            full_name: profile.full_name || session.user.user_metadata?.full_name || '',
+            email:     profile.email     || session.user.email || '',
+          } as UserProfile;
+
+          setUserProfile(enrichedProfile);
           const role = (profile.role as Role) || 'DRIVER';
           setCurrentRole(role);
+          
+          // SECURITY GUARD: Do not navigate to dashboard when provisioning is incomplete.
+          // tenant_id = NULL means register_new_tenant() hasn't run yet (unlikely but possible
+          // if the RPC call failed after signUp, or the user is brand-new).
+          if (!profile.tenant_id) {
+            // Stay on the login / registration page — the UI shows an appropriate message.
+            // Do not set syncStatus to error — this is not a network problem.
+            console.warn('[AuthContext] Profile has no tenant_id — provisioning pending.');
+            return;
+          }
+          // Check if user is a platform admin
+          try {
+            const { data: pAdmin } = await supabase
+              .from('platform_admins')
+              .select('id')
+              .eq('id', profile.id)
+              .single();
+            setIsPlatformAdmin(!!pAdmin);
+          } catch (e) {
+            setIsPlatformAdmin(false);
+          }
           
           // Check if onboarding is complete, redirect accordingly
           if (navigateRef.current && (window.location.pathname === '/' || window.location.pathname === '/dashboard')) {
@@ -100,6 +131,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setCurrentUser(null);
         setUserProfile(null);
         setSubscription(null);
+        setIsPlatformAdmin(false);
       }
     } catch (e) {
       console.warn('Error refreshing user session:', e);
@@ -109,12 +141,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const changeRole = useCallback((role: Role, preferredScreen?: ScreenId) => {
     // SECURITY: Free role switching is only permitted in demo mode (unauthenticated presentation)
-    // or when the current authenticated user is a SUPER_ADMIN (platform operator).
+    // or when the current authenticated user is a platform admin.
     // Regular users may NOT escalate their role client-side.
     const canSwitch =
       isDemoMode ||
       !currentUser || // not authenticated yet
-      userProfile?.role === 'SUPER_ADMIN' ||
+      isPlatformAdmin ||
       userProfile?.role === role; // switching to own role is always fine
 
     if (!canSwitch) {
@@ -172,6 +204,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         currentRole,
         currentScreen,
         isRoleSelectorOpen,
+        isPlatformAdmin,
         syncStatus,
         isDemoMode,
         enterDemoMode,

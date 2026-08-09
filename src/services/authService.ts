@@ -175,8 +175,11 @@ export function clearRateLimit(email: string) {
 
 /**
  * Public Self-Registration:
- * Creates Supabase Auth User -> Company -> first Tenant -> User Profile (SUPER_ADMIN) -> Trial Subscription
- * This is the ONLY role obtainable via public self-registration.
+ * 1. Creates Supabase Auth User (trigger sets profile to DRIVER + NULL tenant)
+ * 2. Calls register_new_tenant() SECURITY DEFINER to:
+ *    - Create company, tenant (fresh server-side UUID), subscription
+ *    - Promote profile to TENANT_ADMIN for the new tenant
+ * The client CANNOT influence tenant_id or role — those are set server-side.
  */
 export async function registerPublicCompany(payload: {
   email: string;
@@ -190,14 +193,18 @@ export async function registerPublicCompany(payload: {
     throw new Error(passCheck.error);
   }
 
-  // 1. Create Supabase Auth User
+  // Step 1: Create the Supabase Auth user.
+  // The trigger handle_new_user() creates profiles(role='DRIVER', tenant_id=NULL).
+  // We pass ONLY display metadata (full_name, company_name) — NEVER role or tenant_id.
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: payload.email,
     password: payload.password,
     options: {
       data: {
-        full_name: payload.fullName,
+        full_name:    payload.fullName,
         company_name: payload.companyName,
+        // SECURITY: Do NOT pass role or tenant_id here.
+        // The SECURITY DEFINER function sets them server-side.
       },
     },
   });
@@ -206,79 +213,67 @@ export async function registerPublicCompany(payload: {
     throw new Error(`Registration failed: ${authError.message}`);
   }
 
-  const generateUuid = () => {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return crypto.randomUUID();
-    }
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = (Math.random() * 16) | 0;
-      const v = c === 'x' ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    });
-  };
+  const authUserId = authData.user?.id;
+  if (!authUserId) {
+    throw new Error('Registration failed: no auth user ID returned.');
+  }
 
-  const authUserId = authData.user?.id || generateUuid();
-  const companyId = generateUuid();
-  const tenantId = generateUuid();
-  const profileId = authUserId;
-  const subscriptionId = generateUuid();
+  // Step 2: Call the SECURITY DEFINER function to provision company, tenant, subscription.
+  // All UUIDs are generated server-side. Client cannot supply or influence them.
+  const { data: rpcData, error: rpcError } = await supabase.rpc('register_new_tenant', {
+    p_company_name: payload.companyName,
+    p_full_name:    payload.fullName,
+    p_email:        payload.email,
+    p_region:       payload.region || 'North Africa',
+  });
+
+  if (rpcError) {
+    throw new Error(`Workspace provisioning failed: ${rpcError.message}`);
+  }
+
+  const tenantId  = (rpcData as any)?.tenant_id  || '';
+  const companyId = (rpcData as any)?.company_id || '';
 
   try {
     localStorage.setItem('nexttransit_active_tenant_id', tenantId);
   } catch (e) {}
 
+  // Build return objects from server-confirmed values
   const company: Company = {
-    id: companyId,
-    name: payload.companyName,
+    id:         companyId,
+    name:       payload.companyName,
     created_at: new Date().toISOString(),
   };
 
   const subscription: Subscription = {
-    id: subscriptionId,
-    company_id: companyId,
-    plan: 'enterprise_trial',
-    status: 'trial',
-    current_period_end: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
-    created_at: new Date().toISOString(),
+    id:                  (rpcData as any)?.subscription_id || '',
+    company_id:          companyId,
+    plan:                'enterprise_trial',
+    status:              'trial',
+    current_period_end:  new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
+    created_at:          new Date().toISOString(),
   };
 
   const userProfile: UserProfile = {
-    id: profileId,
+    id:          authUserId,
     auth_user_id: authUserId,
-    company_id: companyId,
-    tenant_id: tenantId,
-    full_name: payload.fullName,
-    email: payload.email,
-    role: 'SUPER_ADMIN',
-    status: 'active',
-    created_at: new Date().toISOString(),
+    company_id:  companyId,
+    tenant_id:   tenantId,
+    full_name:   payload.fullName,
+    email:       payload.email,
+    role:        'TENANT_ADMIN',
+    status:      'active',
+    created_at:  new Date().toISOString(),
   };
 
-  // Attempt DB writes (ignoring transient table errors if running offline mock)
-  try {
-    await supabase.from('companies').insert(company);
-    await supabase.from('tenants').insert({
-      id: tenantId,
-      company_id: companyId,
-      societyName: payload.companyName,
-      operatingRegion: payload.region || 'North Africa',
-      created_at: new Date().toISOString(),
-    });
-    await supabase.from('users').insert(userProfile);
-    await supabase.from('subscriptions').insert(subscription);
-  } catch (err) {
-    console.warn('DB insertion skipped/warned during registration:', err);
-  }
-
-  // Audit Log account creation
   await recordAudit(
     'users',
     userProfile.id,
     'ACCOUNT_CREATE',
     {},
-    { email: userProfile.email, role: 'SUPER_ADMIN', company_id: companyId, tenant_id: tenantId },
+    { email: userProfile.email, role: 'TENANT_ADMIN', company_id: companyId, tenant_id: tenantId },
     userProfile.id,
-    'SUPER_ADMIN',
+    'TENANT_ADMIN',
     tenantId
   );
 
@@ -311,14 +306,14 @@ export async function loginUser(email: string, password: string): Promise<{ prof
   clearRateLimit(email);
   const authUserId = authData.user?.id;
 
-  // Fetch profile from 'users' table or construct fallbacks
+  // Fetch profile from 'profiles' table or construct fallbacks
   let profile: UserProfile | null = null;
   if (authUserId) {
     try {
       const { data: dbProfile } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
-        .eq('auth_user_id', authUserId)
+        .eq('id', authUserId)
         .single();
 
       if (dbProfile) {
@@ -330,8 +325,8 @@ export async function loginUser(email: string, password: string): Promise<{ prof
   }
 
   if (!profile) {
-    // Fallback profile if user exists in auth but not yet in public.users.
-    // SECURITY: Always assign minimal DRIVER role — NEVER SUPER_ADMIN — to prevent privilege escalation.
+    // Fallback profile if user exists in auth but not yet in public.profiles.
+    // SECURITY: Always assign minimal DRIVER role — NEVER TENANT_ADMIN — to prevent privilege escalation.
     // The user will need to complete onboarding to get their proper role from the DB.
     profile = {
       id: `usr-${authUserId || 'default'}`,
@@ -351,6 +346,13 @@ export async function loginUser(email: string, password: string): Promise<{ prof
 
   if (resolvedProfile.status === 'disabled') {
     throw new Error('Your account has been disabled. Please contact your organization administrator.');
+  }
+
+  // SECURITY GUARD: Block dashboard access when tenant is not provisioned.
+  // This happens if register_new_tenant() failed after signUp(), or for a fresh
+  // account that hasn't completed provisioning.
+  if (!resolvedProfile.tenant_id) {
+    throw new Error('PROVISIONING_PENDING');
   }
 
   if (resolvedProfile.tenant_id) {

@@ -24,6 +24,7 @@ interface TenantContextType {
   tenantConfigs: TenantConfig[];
   activeTenantId: string;
   activeTenant: TenantConfig;
+  isTenantResolved: boolean; // true once userProfile has been loaded (or no auth)
   updateTenantConfig: (id: string, updated: Partial<TenantConfig>) => void;
   setActiveTenantId: (id: string) => void;
   addTenantConfig: (newTenant: Omit<TenantConfig, 'id' | 'lastUpdated'>) => string;
@@ -32,15 +33,28 @@ interface TenantContextType {
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { userProfile } = useAuth();
+  const { userProfile, currentUser } = useAuth();
 
   const [tenantConfigs, setTenantConfigs] = useState<TenantConfig[]>([]);
   const [activeTenantId, setActiveTenantIdState] = useState<string>(DEMO_TENANT_ID);
+  // isTenantResolved: becomes true once we know the real tenant (user logged in) or that no user is logged in
+  const [isTenantResolved, setIsTenantResolved] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load tenant config from Supabase when user profile is available
   useEffect(() => {
+    // currentUser===null AND userProfile===null means AuthContext has checked and there is no session
+    // We can resolve to demo mode only when we are sure no auth session exists.
+    // When currentUser is null but session check hasn't finished yet, both will be null initially —
+    // but AuthContext calls refreshUserSession on mount which sets currentUser. So we gate on currentUser.
+    if (currentUser === null && userProfile === null) {
+      // Not logged in — resolve as demo tenant immediately
+      setIsTenantResolved(true);
+      return;
+    }
+
     const tenantId = userProfile?.tenant_id;
+    // userProfile not yet loaded (currentUser set but profile still fetching)
     if (!tenantId) return;
 
     setActiveTenantIdState(tenantId);
@@ -83,11 +97,12 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setTenantConfigs([EMPTY_TENANT_CONFIG(tenantId)]);
       } finally {
         setIsLoaded(true);
+        setIsTenantResolved(true);
       }
     };
 
     loadTenantFromDb();
-  }, [userProfile]);
+  }, [userProfile, currentUser]);
 
   const activeTenant: TenantConfig = useMemo(
     (): TenantConfig =>
@@ -160,6 +175,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         tenantConfigs: visibleTenantConfigs,
         activeTenantId,
         activeTenant,
+        isTenantResolved,
         updateTenantConfig,
         setActiveTenantId,
         addTenantConfig,

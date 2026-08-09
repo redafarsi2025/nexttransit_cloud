@@ -131,15 +131,20 @@ export const TopBar: React.FC = () => {
                 ? 'bg-red-50 border-red-200 text-red-700'
                 : syncStatus === 'syncing'
                 ? 'bg-blue-50 border-blue-200 text-blue-700'
-                : 'bg-slate-50 border-slate-200 text-slate-700'
+                : 'bg-amber-50 border-amber-200 text-amber-700'
             }`}
-            title={`Sync Status: ${syncStatus.toUpperCase()}`}
+            title={`Statut de synchronisation : ${syncStatus.toUpperCase()}`}
           >
             {syncStatus === 'online' && <Wifi className="w-3.5 h-3.5" />}
             {syncStatus === 'error' && <AlertCircle className="w-3.5 h-3.5" />}
             {syncStatus === 'offline' && <WifiOff className="w-3.5 h-3.5" />}
             {syncStatus === 'syncing' && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-            <span className="capitalize">{syncStatus}</span>
+            <span>
+              {syncStatus === 'online' ? 'En ligne' :
+               syncStatus === 'syncing' ? 'Synchronisation...' :
+               syncStatus === 'error' ? 'Erreur' :
+               'Hors ligne'}
+            </span>
           </div>
 
           {/* Language Selector */}

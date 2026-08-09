@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
-import { LogIn, UserPlus, KeyRound, ShieldCheck, X, Building, CheckCircle2, AlertCircle, Mail, Lock, User as UserIcon } from 'lucide-react';
+import { LogIn, UserPlus, KeyRound, ShieldCheck, X, Building, CheckCircle2, AlertCircle, Mail, Lock, User as UserIcon, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { registerPublicCompany, loginUser, logoutUser, requestPasswordReset } from '../../services/authService';
 import { acceptInvitation } from '../../services/invitationService';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+
+type ConnStatus = 'checking' | 'online' | 'offline' | 'misconfigured';
 
 interface AuthModalProps {
   onClose: () => void;
@@ -20,9 +23,46 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, initialTab = 'log
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  // Supabase connectivity status
+  const [connStatus, setConnStatus] = useState<ConnStatus>('checking');
+  const [connError, setConnError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Step 1: check env vars are set
+    if (!isSupabaseConfigured) {
+      setConnStatus('misconfigured');
+      return;
+    }
+    // Step 2: live ping using auth.getSession() — works regardless of RLS/table structure
+    const ping = async () => {
+      try {
+        const { error } = await supabase.auth.getSession();
+        if (!error) {
+          setConnStatus('online');
+          setConnError(null);
+        } else {
+          // Any supabase error still means the server responded — we are online
+          setConnStatus('online');
+          setConnError(null);
+        }
+      } catch (e: any) {
+        const msg = String(e?.message || e || '').toLowerCase();
+        setConnError(String(e?.message || e || 'Erreur réseau inconnue'));
+        if (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('network request failed')) {
+          setConnStatus('offline');
+        } else {
+          // Any other exception (CORS, invalid URL, etc.) — treat as misconfigured
+          setConnStatus('misconfigured');
+        }
+      }
+    };
+    ping();
+  }, []);
+
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [isProvisioning, setIsProvisioning] = useState(false);
 
   // Self-Registration form state (Company + Tenant + SUPER_ADMIN)
   const [regFullName, setRegFullName] = useState('');
@@ -54,7 +94,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, initialTab = 'log
       await refreshUserSession();
       setTimeout(() => onClose(), 1000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Authentication error');
+      if (err.message === 'PROVISIONING_PENDING') {
+        setIsProvisioning(true);
+      } else {
+        setErrorMsg(err.message || 'Authentication error');
+      }
     } finally {
       setLoading(false);
     }
@@ -152,16 +196,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, initialTab = 'log
           <div className="flex items-center gap-2.5">
             <ShieldCheck className="w-6 h-6 text-indigo-400" />
             <div>
-              <h3 className="font-bold text-base tracking-wide">NextTransit Supabase Auth</h3>
-              <p className="text-xs text-slate-400">Production Multi-Tenant Identity Provider</p>
+              <h3 className="font-bold text-base tracking-wide">NextTransit — Authentification</h3>
+              <p className="text-xs text-slate-400">Espace de travail multi-entreprise sécurisé</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Connectivity Pill */}
+            {connStatus === 'checking' && (
+              <span className="flex items-center gap-1.5 rounded-full bg-slate-700 px-2.5 py-1 text-xs text-slate-300">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Vérification...
+              </span>
+            )}
+            {connStatus === 'online' && (
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-600/20 border border-emerald-500/30 px-2.5 py-1 text-xs text-emerald-400 font-semibold">
+                <Wifi className="w-3 h-3" />
+                Connecté
+              </span>
+            )}
+            {(connStatus === 'offline' || connStatus === 'misconfigured') && (
+              <span className="flex items-center gap-1.5 rounded-full bg-red-600/20 border border-red-500/30 px-2.5 py-1 text-xs text-red-400 font-semibold">
+                <WifiOff className="w-3 h-3" />
+                Hors ligne
+              </span>
+            )}
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tab Navigation */}
@@ -194,6 +259,91 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, initialTab = 'log
 
         {/* Modal Body */}
         <div className="p-6 space-y-4">
+
+          {isProvisioning ? (
+            <div className="py-12 flex flex-col items-center justify-center space-y-4 animate-in fade-in zoom-in duration-300">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full blur-md bg-indigo-500/30 animate-pulse"></div>
+                <Loader2 className="w-12 h-12 text-indigo-600 animate-spin relative z-10" />
+              </div>
+              <div className="text-center space-y-2">
+                <h4 className="text-lg font-bold text-slate-800">Provisionnement en cours...</h4>
+                <p className="text-sm text-slate-500 max-w-[280px] mx-auto">
+                  La création de votre espace de travail est en cours de finalisation. Veuillez patienter quelques secondes.
+                </p>
+                <div className="w-48 h-1.5 bg-slate-100 rounded-full mx-auto mt-4 overflow-hidden">
+                  <div className="h-full bg-indigo-500 w-1/2 rounded-full animate-[progress_2s_ease-in-out_infinite]"></div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsProvisioning(false)} 
+                className="mt-6 text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* ── Connectivity Warning Banners ────────────────────────────── */}
+              {connStatus === 'misconfigured' && !isSupabaseConfigured && (
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm">
+              <div className="flex items-start gap-3">
+                <WifiOff className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-orange-800 mb-1">Variables Supabase manquantes</p>
+                  <p className="text-orange-700 text-xs leading-relaxed">
+                    <code className="font-mono bg-orange-100 px-1 rounded">VITE_SUPABASE_URL</code> et{' '}
+                    <code className="font-mono bg-orange-100 px-1 rounded">VITE_SUPABASE_PUBLISHABLE_KEY</code> sont absentes du fichier <code className="font-mono">.env</code>.
+                  </p>
+                  <p className="text-orange-600 text-xs mt-2 font-medium">
+                    👉 Ajoutez vos clés Supabase dans <code className="font-mono">.env</code> et relancez l'application.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {connStatus === 'misconfigured' && isSupabaseConfigured && (
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm">
+              <div className="flex items-start gap-3">
+                <WifiOff className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-orange-800 mb-1">Clé Supabase invalide ou URL incorrecte</p>
+                  <p className="text-orange-700 text-xs leading-relaxed">
+                    Les variables sont définies mais la connexion a échoué. Vérifiez que l'URL et la clé Supabase dans <code className="font-mono">.env</code> sont correctes.
+                  </p>
+                  {connError && (
+                    <p className="text-orange-600 text-xs mt-1 font-mono bg-orange-100 rounded px-2 py-1">
+                      Erreur : {connError}
+                    </p>
+                  )}
+                  <p className="text-orange-600 text-xs mt-2 font-medium">
+                    👉 Récupérez la bonne clé depuis votre dashboard Supabase → Settings → API.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {connStatus === 'offline' && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm">
+              <div className="flex items-start gap-3">
+                <WifiOff className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-red-800 mb-1">Serveur d'authentification inaccessible</p>
+                  <p className="text-red-700 text-xs leading-relaxed">
+                    Impossible de joindre Supabase. Vérifiez votre connexion Internet ou que votre instance Supabase est active.
+                  </p>
+                  {connError && (
+                    <p className="text-red-600 text-xs mt-1 font-mono bg-red-100 rounded px-2 py-1">
+                      {connError}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {errorMsg && (
             <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-medium flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
@@ -271,10 +421,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, initialTab = 'log
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+                disabled={loading || connStatus === 'offline' || connStatus === 'misconfigured'}
+                className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                {loading ? 'Authenticating...' : 'Sign In'}
+                {loading ? 'Authentification...' : connStatus === 'checking' ? 'Vérification de la connexion...' : connStatus !== 'online' ? 'Connexion indisponible' : 'Se connecter'}
               </button>
             </form>
           )}
@@ -334,7 +484,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, initialTab = 'log
               </div>
 
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-[11px] text-amber-900">
-                Self-registration creates a new Company & Tenant workspace with role <strong>SUPER_ADMIN</strong>. All other operational roles require an invitation token.
+                Self-registration creates a new Company & Tenant workspace with role <strong>TENANT_ADMIN</strong>. All other operational roles require an invitation token.
               </div>
 
               <button
@@ -424,6 +574,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, initialTab = 'log
               </button>
             </form>
           )}
+            </>
+          )}
+
         </div>
       </div>
     </div>
