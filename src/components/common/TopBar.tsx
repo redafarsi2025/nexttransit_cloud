@@ -5,6 +5,7 @@ import { useLocalization } from '../../context/LocalizationContext';
 import { ROLES_CONFIG } from '../../data/seedData';
 import { Role } from '../../types';
 import { supabase } from '../../lib/supabase';
+import { useTenant } from '../../context/TenantContext';
 import {
   Bell,
   ChevronDown,
@@ -25,6 +26,7 @@ import {
   WifiOff,
   AlertCircle,
   RefreshCw,
+  Building2,
 } from 'lucide-react';
 import { AlertFeedModal } from './AlertFeedModal';
 import { GoldenPathModal } from './GoldenPathModal';
@@ -34,6 +36,7 @@ import { LanguageSelector } from '../localization/LanguageSelector';
 
 export const TopBar: React.FC = () => {
   const { alerts, resetSeedData } = useFleet();
+  const { activeTenant } = useTenant();
   const { currentRole, changeRole, isRoleSelectorOpen, setIsRoleSelectorOpen, currentUser, syncStatus } = useAuth();
   const { t } = useLocalization();
   const [showAlertModal, setShowAlertModal] = useState(false);
@@ -141,6 +144,12 @@ export const TopBar: React.FC = () => {
 
           {/* Language Selector */}
           <LanguageSelector />
+
+          {/* Active Workspace / Company Badge */}
+          <div className="hidden lg:flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-1.5 shadow-xs text-xs font-bold text-indigo-900">
+            <Building2 className="w-4 h-4 text-indigo-600 shrink-0" />
+            <span className="truncate max-w-[160px]">{activeTenant.societyName}</span>
+          </div>
 
           {/* Read-Only Role Badge */}
           <div

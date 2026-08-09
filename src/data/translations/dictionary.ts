@@ -109,8 +109,8 @@ const DICTIONARY_RAW_DATA: RawTranslationItem[] = [
   { key: 'nav.mechanic_desc', namespace: 'nav', fr: 'Interface mobile d\'exécution des OT & scanner OBD-II', ar: 'مسح الأعطال والتنفيذ الميداني على الجوال', en: 'Mobile task execution & OBD fault scanner' },
   { key: 'nav.driver_mobile_view', namespace: 'nav', fr: 'Interface Chauffeur Mobile', ar: 'واجهة السائق الإلكترونية', en: 'Driver Mobile View' },
   { key: 'nav.driver_desc', namespace: 'nav', fr: 'Statut du véhicule & signalement instantané d\'anomalie', ar: 'تسجيل البلاغات وفحص ما قبل الرحلة بالسائق', en: 'Status indicator & instant issue report' },
-  { key: 'nav.tenant_config', namespace: 'nav', fr: 'Configuration Société & Tenant', ar: 'إعدادات المؤسسة والميزانية', en: 'Tenant & Enterprise Config' },
-  { key: 'nav.tenant_desc', namespace: 'nav', fr: 'Nom de la société, budget annuel & devises de gestion', ar: 'بيانات الشركة، العملة والميزانية المستهلكة', en: 'Society name, budget & money used settings' },
+  { key: 'nav.tenant_config', namespace: 'nav', fr: 'Configuration Espace Entreprise', ar: 'إعدادات المؤسسة والميزانية', en: 'Enterprise Workspace Setup' },
+  { key: 'nav.tenant_desc', namespace: 'nav', fr: 'Nom de la société, budget annuel & devises de gestion', ar: 'بيانات الشركة، العملة والميزانية المستهلكة', en: 'Company name, annual budget & currency settings' },
   { key: 'nav.translation_center', namespace: 'nav', fr: 'Centre de Traduction Enterprise', ar: 'مركز الترجمة والتوطين', en: 'Translation Center' },
   { key: 'nav.translation_desc', namespace: 'nav', fr: 'Localisation globale, traduction Gemini AI & support RTL', ar: 'التوطين المؤسسي، الذكاء الاصطناعي ودعم العربية RTL', en: 'Enterprise localization, Gemini AI & RTL' },
 
@@ -343,6 +343,13 @@ const DICTIONARY_RAW_DATA: RawTranslationItem[] = [
   { key: 'telemetry.simulate_ping_btn', namespace: 'telemetry', fr: 'Pinger Position GPS', ar: 'تحديث موقع GPS', en: 'Ping GPS Position' },
   { key: 'telemetry.chart_title', namespace: 'telemetry', fr: 'Tendance Télématique & Diagnostic (Dernière Heure)', ar: 'اتجاه البيانات التليمتري والتشخيص (الساعة الأخيرة)', en: 'Telemetry & Diagnostic Trend (Last 60 Mins)' },
   { key: 'telemetry.chart_desc', namespace: 'telemetry', fr: 'Évolution en temps réel des codes défauts OBD, vitesses GPS et température moteur.', ar: 'التطور المباشر لرموز أعطال OBD وسرعة GPS ودرجة حرارة المحرك.', en: 'Real-time progression of OBD fault codes, GPS speeds, and engine thermal metrics across the fleet.' },
+
+  // ==========================================
+  // ENTERPRISE & WORKSPACE CONFIG NAMESPACE
+  // ==========================================
+  { key: 'tenant.header_tag', namespace: 'tenant', fr: 'Configuration Espace Entreprise', ar: 'إعدادات مساحة العمل والمؤسسة', en: 'Enterprise Workspace Engine' },
+  { key: 'tenant.header_title', namespace: 'tenant', fr: 'Configuration de l\'Entreprise & Espace Client', ar: 'إعدادات المؤسسة وحساب العميل', en: 'Enterprise & Client Workspace Setup' },
+  { key: 'tenant.header_desc', namespace: 'tenant', fr: 'Configurez les paramètres de votre entreprise, devises de gestion, langue par défaut, identité visuelle et règles financières.', ar: 'ضبط إعدادات المؤسسة، العملة، اللغة، والشعار الخاص.', en: 'Configure your company parameters, operating currencies, default language, fleet branding, and fiscal caps.' },
 
   // ==========================================
   // AUDIT LOG NAMESPACE

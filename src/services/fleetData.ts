@@ -78,7 +78,7 @@ export function getTenantUuid(tenantId: string | null | undefined): string {
     case 'TNT-DZD-004':
       return 'c0a80101-0000-0000-0000-000000000004';
     default:
-      return 'c0a80101-0000-0000-0000-000000000001';
+      return tenantId;
   }
 }
 
@@ -87,6 +87,11 @@ export function getTenantUuid(tenantId: string | null | undefined): string {
  */
 export async function getCurrentTenantId(): Promise<string> {
   try {
+    const stored = localStorage.getItem('nexttransit_active_tenant_id');
+    if (stored) return getTenantUuid(stored);
+  } catch (e) {}
+
+  try {
     const { data: { session } } = await supabase.auth.getSession();
     const userMetadataTenant = session?.user?.user_metadata?.tenant_id || session?.user?.app_metadata?.tenant_id;
     if (userMetadataTenant) return getTenantUuid(userMetadataTenant);
@@ -94,10 +99,6 @@ export async function getCurrentTenantId(): Promise<string> {
     console.warn('Error fetching Supabase session for tenant isolation:', err);
   }
   
-  try {
-    const stored = localStorage.getItem('nexttransit_active_tenant_id');
-    if (stored) return getTenantUuid(stored);
-  } catch (e) {}
   return 'c0a80101-0000-0000-0000-000000000001';
 }
 

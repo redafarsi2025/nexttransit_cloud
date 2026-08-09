@@ -206,11 +206,26 @@ export async function registerPublicCompany(payload: {
     throw new Error(`Registration failed: ${authError.message}`);
   }
 
-  const authUserId = authData.user?.id || `auth-${Date.now()}`;
-  const companyId = `cmp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  const tenantId = `tnt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  const profileId = `usr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  const subscriptionId = `sub-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const generateUuid = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  };
+
+  const authUserId = authData.user?.id || generateUuid();
+  const companyId = generateUuid();
+  const tenantId = generateUuid();
+  const profileId = authUserId;
+  const subscriptionId = generateUuid();
+
+  try {
+    localStorage.setItem('nexttransit_active_tenant_id', tenantId);
+  } catch (e) {}
 
   const company: Company = {
     id: companyId,
@@ -338,6 +353,12 @@ export async function loginUser(email: string, password: string): Promise<{ prof
     throw new Error('Your account has been disabled. Please contact your organization administrator.');
   }
 
+  if (resolvedProfile.tenant_id) {
+    try {
+      localStorage.setItem('nexttransit_active_tenant_id', resolvedProfile.tenant_id);
+    } catch (e) {}
+  }
+
   // Log successful login
   await recordAudit(
     'users',
@@ -357,6 +378,9 @@ export async function loginUser(email: string, password: string): Promise<{ prof
  * Logout user.
  */
 export async function logoutUser(userProfile?: UserProfile | null) {
+  try {
+    localStorage.removeItem('nexttransit_active_tenant_id');
+  } catch (e) {}
   if (userProfile) {
     await recordAudit(
       'users',

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useFleet } from '../../context/FleetContext';
 import { useTenant } from '../../context/TenantContext';
+import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { KPIBadge } from '../common/KPIBadge';
 import { TenantConfig as TenantConfigType } from '../../types';
@@ -80,6 +81,7 @@ export const TenantConfig: React.FC = () => {
   const { costRecords, vehicles } = useFleet();
   const { tenantConfigs, activeTenantId, activeTenant, updateTenantConfig, setActiveTenantId, addTenantConfig } = useTenant();
   const { t } = useLocalization();
+  const { currentRole } = useAuth();
 
   // Telematics Device Mappings State
   const [deviceMappings, setDeviceMappings] = useState<DeviceMapping[]>([]);
@@ -348,7 +350,7 @@ export const TenantConfig: React.FC = () => {
           <div className="flex items-center gap-2 mb-1">
             <KPIBadge type="Configured" />
             <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-              {t('tenant.header_tag', {}, 'Tenant & Workspace Setup Engine')}
+              {t('tenant.header_tag', {}, 'Configuration Espace Entreprise')}
             </span>
             <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
               {autoSaveStatus === 'saving' ? (
@@ -370,61 +372,72 @@ export const TenantConfig: React.FC = () => {
             </span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            {t('tenant.header_title', {}, 'Tenant & Workspace Configuration Wizard')}
+            {t('tenant.header_title', {}, 'Configuration de l\'Entreprise & Espace Client')}
           </h1>
           <p className="text-sm text-slate-600 mt-1">
-            Configure multi-tenant parameters, currency rules, default languages, custom fleet branding, and Supabase per-tenant persistence.
+            {t('tenant.header_desc', {}, 'Configurez les paramètres de votre entreprise, devises de gestion, langue par défaut, identité visuelle et règles financières.')}
           </p>
         </div>
 
         {/* Tenant Switcher & Mode Switcher */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* View Mode Toggle */}
-          <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs font-semibold">
-            <button
-              onClick={() => setViewMode('wizard')}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                viewMode === 'wizard' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>Wizard Setup</span>
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                viewMode === 'grid' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Grid View</span>
-            </button>
-          </div>
-
-          <div className="flex flex-col">
-            <div className="relative">
-              <select
-                value={activeTenantId}
-                onChange={(e) => setActiveTenantId(e.target.value)}
-                className="appearance-none rounded-lg border border-slate-300 bg-slate-50 pl-9 pr-8 py-2 text-sm font-semibold text-slate-800 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+          {/* View Mode Toggle (SUPER_ADMIN only) */}
+          {currentRole === 'SUPER_ADMIN' && (
+            <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs font-semibold">
+              <button
+                onClick={() => setViewMode('wizard')}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                  viewMode === 'wizard' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                {tenantConfigs.map((tenant) => (
-                  <option key={tenant.id} value={tenant.id}>
-                    {tenant.societyName} ({tenant.id})
-                  </option>
-                ))}
-              </select>
-              <Building2 className="w-4 h-4 text-slate-500 absolute left-3 top-2.5 pointer-events-none" />
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Wizard Setup</span>
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                  viewMode === 'grid' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Grid View</span>
+              </button>
             </div>
-          </div>
+          )}
 
-          <button
-            onClick={() => setIsCreatingNew(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            New Society
-          </button>
+          {currentRole === 'SUPER_ADMIN' && tenantConfigs.length > 1 ? (
+            <div className="flex flex-col">
+              <div className="relative">
+                <select
+                  value={activeTenantId}
+                  onChange={(e) => setActiveTenantId(e.target.value)}
+                  className="appearance-none rounded-lg border border-slate-300 bg-slate-50 pl-9 pr-8 py-2 text-sm font-semibold text-slate-800 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                >
+                  {tenantConfigs.map((tenant) => (
+                    <option key={tenant.id} value={tenant.id}>
+                      {tenant.societyName} ({tenant.id})
+                    </option>
+                  ))}
+                </select>
+                <Building2 className="w-4 h-4 text-slate-500 absolute left-3 top-2.5 pointer-events-none" />
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-800 shadow-xs">
+              <Building2 className="w-4 h-4 text-indigo-600" />
+              <span>{activeTenant.societyName}</span>
+            </div>
+          )}
+
+          {currentRole === 'SUPER_ADMIN' && (
+            <button
+              onClick={() => setIsCreatingNew(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              New Society
+            </button>
+          )}
 
           {allowDemoSeed && (
             <button

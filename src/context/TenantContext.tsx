@@ -93,10 +93,17 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return id;
   };
 
+  const visibleTenantConfigs = useMemo(() => {
+    if (!userProfile || userProfile.role === 'SUPER_ADMIN') {
+      return tenantConfigs;
+    }
+    return tenantConfigs.filter((t) => t.id === activeTenantId);
+  }, [tenantConfigs, userProfile, activeTenantId]);
+
   return (
     <TenantContext.Provider
       value={{
-        tenantConfigs,
+        tenantConfigs: visibleTenantConfigs,
         activeTenantId,
         activeTenant,
         updateTenantConfig,

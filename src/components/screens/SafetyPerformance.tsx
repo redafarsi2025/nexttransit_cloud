@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useFleet } from '../../context/FleetContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTenant } from '../../context/TenantContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { DriverSafetyView } from './DriverSafetyView';
 import { recordAudit } from '../../services/auditService';
@@ -157,9 +158,14 @@ const INITIAL_DRIVERS_TELEMETRY: DriverTelemetry[] = [
 export const SafetyPerformance: React.FC = () => {
   const { currentLanguage, dir, t } = useLocalization();
   const { setSelectedVehicleId, createWorkOrder } = useFleet();
-  const { currentRole } = useAuth();
+  const { currentRole, isDemoMode } = useAuth();
+  const { activeTenantId } = useTenant();
 
-  const [drivers, setDrivers] = useState<DriverTelemetry[]>(INITIAL_DRIVERS_TELEMETRY);
+  const isDemoTenant = isDemoMode || activeTenantId === 'c0a80101-0000-0000-0000-000000000001';
+
+  const [drivers, setDrivers] = useState<DriverTelemetry[]>(
+    isDemoTenant ? INITIAL_DRIVERS_TELEMETRY : []
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRisk, setFilterRisk] = useState<'All' | 'High Risk' | 'Moderate Risk' | 'Exemplary'>('All');
   const [selectedDriver, setSelectedDriver] = useState<DriverTelemetry | null>(null);
@@ -183,9 +189,9 @@ export const SafetyPerformance: React.FC = () => {
   const totalRapidAccels = drivers.reduce((acc, d) => acc + d.rapidAccelCount, 0);
   const totalCornering = drivers.reduce((acc, d) => acc + d.highCorneringCount, 0);
   const totalSpeeding = drivers.reduce((acc, d) => acc + d.speedingIncidents, 0);
-  const avgSafetyScore = Math.round(
-    drivers.reduce((acc, d) => acc + d.safetyScore, 0) / drivers.length
-  );
+  const avgSafetyScore = drivers.length
+    ? Math.round(drivers.reduce((acc, d) => acc + d.safetyScore, 0) / drivers.length)
+    : 0;
   const highRiskCount = drivers.filter((d) => d.status === 'High Risk').length;
 
   // Calculate ranked drivers for Leaderboard

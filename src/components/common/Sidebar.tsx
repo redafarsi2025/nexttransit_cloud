@@ -143,7 +143,7 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'TENANT_CONFIG',
-      label: t('nav.tenant_config', {}, 'Tenant & Society Config'),
+      label: t('nav.tenant_config', {}, 'Configuration Espace Entreprise'),
       icon: Building2,
       description: t('nav.tenant_desc', {}, 'Society name, budget & money used settings'),
     },
