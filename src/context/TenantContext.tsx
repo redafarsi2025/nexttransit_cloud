@@ -37,35 +37,38 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const newConfig: TenantConfig = {
           id: userProfile.tenant_id,
           societyName: userProfile.company_id || 'Mon Espace de Travail',
+          currency: 'DZD (DA)',
+          currencySymbol: 'DA',
+          allocatedBudget: 0,
+          moneyUsed: 0,
           operatingRegion: 'North Africa',
-          currency: 'DZD',
-          laborRatePerHour: 2500,
-          scfTaxRate: 19,
-          language: 'fr',
+          defaultLanguage: 'fr',
+          defaultLaborRate: 2500,
+          primaryColor: '#4f46e5',
+          accentColor: '#059669',
           lastUpdated: new Date().toISOString(),
-          brandColorHex: '#4f46e5',
-          accentColorHex: '#059669',
-          onboardingCompleted: false,
         };
         return [...prev, newConfig];
       });
     }
   }, [userProfile]);
 
-  const activeTenant = useMemo(
-    () => tenantConfigs.find((t) => t.id === activeTenantId) || {
-      id: activeTenantId,
-      societyName: 'Mon Espace de Travail',
-      operatingRegion: 'North Africa',
-      currency: 'DZD',
-      laborRatePerHour: 2500,
-      scfTaxRate: 19,
-      language: 'fr',
-      lastUpdated: new Date().toISOString(),
-      brandColorHex: '#4f46e5',
-      accentColorHex: '#059669',
-      onboardingCompleted: false,
-    },
+  const activeTenant: TenantConfig = useMemo(
+    (): TenantConfig =>
+      tenantConfigs.find((t) => t.id === activeTenantId) || {
+        id: activeTenantId,
+        societyName: 'Mon Espace de Travail',
+        currency: 'DZD (DA)',
+        currencySymbol: 'DA',
+        allocatedBudget: 0,
+        moneyUsed: 0,
+        operatingRegion: 'North Africa',
+        defaultLanguage: 'fr',
+        defaultLaborRate: 2500,
+        primaryColor: '#4f46e5',
+        accentColor: '#059669',
+        lastUpdated: new Date().toISOString(),
+      },
     [tenantConfigs, activeTenantId]
   );
 
