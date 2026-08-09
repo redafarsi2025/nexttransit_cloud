@@ -50,7 +50,38 @@ export function validatePasswordPolicy(password: string): { valid: boolean; erro
 }
 
 /**
- * Check rate limit for an email before attempting login.
+ * Check rate limit for an email before attempting login (Async DB check with memory fallback).
+ */
+export async function checkRateLimitAsync(email: string): Promise<{ locked: boolean; remainingMinutes?: number }> {
+  const normEmail = email.toLowerCase().trim();
+  try {
+    const { data, error } = await supabase
+      .from('login_attempts')
+      .select('email, attempts, locked_until')
+      .eq('email', normEmail)
+      .single();
+
+    if (!error && data) {
+      if (data.locked_until) {
+        const lockedUntilTime = new Date(data.locked_until).getTime();
+        const now = Date.now();
+        if (now < lockedUntilTime) {
+          const remainingMinutes = Math.ceil((lockedUntilTime - now) / 60000);
+          return { locked: true, remainingMinutes };
+        } else {
+          await clearRateLimitAsync(normEmail);
+          return { locked: false };
+        }
+      }
+    }
+  } catch (err) {
+    // Fallback to in-memory check
+  }
+  return checkRateLimit(email);
+}
+
+/**
+ * Synchronous check for rate limit from local memory cache.
  */
 export function checkRateLimit(email: string): { locked: boolean; remainingMinutes?: number } {
   const normEmail = email.toLowerCase().trim();
@@ -72,24 +103,43 @@ export function checkRateLimit(email: string): { locked: boolean; remainingMinut
 }
 
 /**
- * Record a failed login attempt for rate limiting.
+ * Record a failed login attempt for rate limiting, persisting to Supabase login_attempts table.
  */
-export async function recordFailedLogin(email: string, tenantId?: string): Promise<{ locked: boolean; remainingAttempts: number }> {
+export async function recordFailedLogin(
+  email: string,
+  tenantId?: string
+): Promise<{ locked: boolean; remainingAttempts: number }> {
   const normEmail = email.toLowerCase().trim();
   const current = loginAttemptsMap.get(normEmail) || { attempts: 0 };
   current.attempts += 1;
 
+  let lockedUntilIso: string | null = null;
   if (current.attempts >= MAX_FAILED_ATTEMPTS) {
     current.lockedUntil = Date.now() + LOCKOUT_MS;
-    loginAttemptsMap.set(normEmail, current);
+    lockedUntilIso = new Date(current.lockedUntil).toISOString();
+  }
+  loginAttemptsMap.set(normEmail, current);
 
+  // Persist to Supabase login_attempts table
+  try {
+    await supabase.from('login_attempts').upsert({
+      email: normEmail,
+      attempts: current.attempts,
+      locked_until: lockedUntilIso,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    // Gracefully handle persistence fallback
+  }
+
+  if (current.attempts >= MAX_FAILED_ATTEMPTS) {
     // Audit log the lockout event
     await recordAudit(
       'auth',
       normEmail,
       'LOGIN_LOCKOUT',
       { consecutive_failures: current.attempts },
-      { status: 'locked', duration_minutes: 15, locked_until: new Date(current.lockedUntil).toISOString() },
+      { status: 'locked', duration_minutes: 15, locked_until: lockedUntilIso },
       'system',
       'SUPER_ADMIN',
       tenantId || 'c0a80101-0000-0000-0000-000000000001'
@@ -97,8 +147,20 @@ export async function recordFailedLogin(email: string, tenantId?: string): Promi
 
     return { locked: true, remainingAttempts: 0 };
   } else {
-    loginAttemptsMap.set(normEmail, current);
     return { locked: false, remainingAttempts: MAX_FAILED_ATTEMPTS - current.attempts };
+  }
+}
+
+/**
+ * Reset failed attempts on successful login asynchronously.
+ */
+export async function clearRateLimitAsync(email: string): Promise<void> {
+  const normEmail = email.toLowerCase().trim();
+  loginAttemptsMap.delete(normEmail);
+  try {
+    await supabase.from('login_attempts').delete().eq('email', normEmail);
+  } catch (err) {
+    // Ignore clear DB error
   }
 }
 
@@ -106,7 +168,9 @@ export async function recordFailedLogin(email: string, tenantId?: string): Promi
  * Reset failed attempts on successful login.
  */
 export function clearRateLimit(email: string) {
-  loginAttemptsMap.delete(email.toLowerCase().trim());
+  const normEmail = email.toLowerCase().trim();
+  loginAttemptsMap.delete(normEmail);
+  clearRateLimitAsync(normEmail).catch(() => {});
 }
 
 /**

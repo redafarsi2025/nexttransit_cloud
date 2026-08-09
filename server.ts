@@ -5,6 +5,7 @@ import { freeTranslateText } from './src/services/freeTranslationService';
 import { z } from 'zod';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
+import helmet from 'helmet';
 import { vehicleRouter } from './src/api/vehicles';
 import { maintenanceRouter } from './src/api/maintenance';
 import { workOrderRouter } from './src/api/workOrders';
@@ -66,16 +67,17 @@ const PredictiveAiRequestSchema = z.object({
 }).strict();
 
 // ─────────────────────────────────────────────────────────────────────────────
-// H3: HTTP Security Headers Middleware (Helmet Equivalent - OWASP Compliant)
+// H3: HTTP Security Headers Middleware (Helmet + Explicit CSP - OWASP Compliant)
 // ─────────────────────────────────────────────────────────────────────────────
 function securityHeadersMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
-  // Content Security Policy (CSP)
+  // Content Security Policy (CSP) - Scoped to Supabase ONLY (Gemini remains server-side only)
   const supabaseDomain = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://*.supabase.co';
+  const cleanSupabaseDomain = supabaseDomain.replace(/^https?:\/\//, '');
   const cspDirectives = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
-    `connect-src 'self' ${supabaseDomain} wss://${supabaseDomain.replace(/^https?:\/\//, '')} https://generativelanguage.googleapis.com`,
+    `connect-src 'self' ${supabaseDomain} wss://${cleanSupabaseDomain}`,
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     "object-src 'none'",
@@ -90,30 +92,35 @@ function securityHeadersMiddleware(req: express.Request, res: express.Response, 
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
-  res.setHeader('X-XSS-Protection', '0'); // Modern best practice: disable browser XSS auditor to avoid security vulnerabilities
+  res.setHeader('X-XSS-Protection', '0');
   next();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// M2: CORS Middleware with Allowed Origins Whitelist
+// M2: CORS Middleware with Whitelist and 403 Rejection
 // ─────────────────────────────────────────────────────────────────────────────
 function corsMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000').split(',');
+  const defaultOrigins = ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'];
+  const rawAllowed = process.env.ALLOWED_ORIGINS;
+  const allowedOrigins = rawAllowed
+    ? rawAllowed.split(',').map((o) => o.trim()).filter(Boolean)
+    : defaultOrigins;
+
   const origin = req.headers.origin;
 
-  if (origin && (allowedOrigins.includes(origin) || allowedOrigins.includes('*'))) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else if (!origin) {
-    // Same-origin or server-to-server requests
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
+  if (origin) {
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Tenant-Id');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
 
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Tenant-Id');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
+      if (req.method === 'OPTIONS') {
+        return res.status(204).end();
+      }
+    } else {
+      return res.status(403).json({ error: 'CORS Forbidden: Origin not allowed' });
+    }
   }
 
   next();
@@ -134,7 +141,29 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // 1. Security & Middleware Setup (H3 & M2)
+  // 1. Security & Middleware Setup (Helmet, CSP, CORS)
+  const supabaseDomain = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://*.supabase.co';
+  const cleanSupabaseDomain = supabaseDomain.replace(/^https?:\/\//, '');
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          connectSrc: ["'self'", supabaseDomain, `wss://${cleanSupabaseDomain}`],
+          imgSrc: ["'self'", "data:", "blob:", "https:"],
+          fontSrc: ["'self'", "data:"],
+          objectSrc: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
+          frameAncestors: ["'none'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+    })
+  );
   app.use(securityHeadersMiddleware);
   app.use(corsMiddleware);
   app.use(express.json({ limit: '1mb' }));
