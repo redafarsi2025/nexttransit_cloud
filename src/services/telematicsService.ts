@@ -245,23 +245,13 @@ export class FlespiWialonAdapter implements TelematicsProvider {
   public readonly providerName: TelematicsProviderType = 'flespi_wialon';
 
   private get apiToken(): string | null {
-    if (typeof process !== 'undefined' && process.env?.FLESPI_API_TOKEN) {
-      return process.env.FLESPI_API_TOKEN;
-    }
-    if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_FLESPI_API_TOKEN) {
-      return (import.meta as any).env.VITE_FLESPI_API_TOKEN;
-    }
-    return null;
+    const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env || {} : {};
+    return process.env.FLESPI_API_TOKEN || metaEnv.VITE_FLESPI_API_TOKEN || null;
   }
 
   private get apiBaseUrl(): string {
-    if (typeof process !== 'undefined' && process.env?.FLESPI_API_BASE_URL) {
-      return process.env.FLESPI_API_BASE_URL;
-    }
-    if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_FLESPI_API_BASE_URL) {
-      return (import.meta as any).env.VITE_FLESPI_API_BASE_URL;
-    }
-    return 'https://flespi.io';
+    const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env || {} : {};
+    return process.env.FLESPI_API_BASE_URL || metaEnv.VITE_FLESPI_API_BASE_URL || 'https://flespi.io';
   }
 
   public get isConnected(): boolean {
