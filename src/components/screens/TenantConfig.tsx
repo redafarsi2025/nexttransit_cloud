@@ -134,7 +134,7 @@ export const TenantConfig: React.FC = () => {
   const [viewMode, setViewMode] = useState<'wizard' | 'grid'>('wizard');
   const [wizardStep, setWizardStep] = useState<number>(1);
   const [isCreatingNew, setIsCreatingNew] = useState<boolean>(false);
-  const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'pending' | 'saving'>('saved');
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSeedingDemo, setIsSeedingDemo] = useState<boolean>(false);
 
   const allowDemoSeed =
@@ -158,8 +158,12 @@ export const TenantConfig: React.FC = () => {
     }
   };
 
-  const debouncedFormData = useDebounce(formData, 2000);
-  const lastSavedDataRef = React.useRef<string>('');
+  const handleManualSave = () => {
+    setIsSaving(true);
+    updateTenantConfig(activeTenant.id, formData);
+    setIsSaving(false);
+    showToast(`Les modifications pour "${formData.societyName}" ont été enregistrées avec succès !`);
+  };
 
   // New Tenant Form State
   const [newTenantData, setNewTenantData] = useState<Omit<TenantConfigType, 'id' | 'lastUpdated'>>({
@@ -198,29 +202,7 @@ export const TenantConfig: React.FC = () => {
       ...activeTenant,
     };
     setFormData(initial);
-    lastSavedDataRef.current = JSON.stringify(initial);
-    setAutoSaveStatus('saved');
   }, [activeTenant]);
-
-  // Mark changes as pending auto-save when user edits formData
-  useEffect(() => {
-    if (lastSavedDataRef.current && JSON.stringify(formData) !== lastSavedDataRef.current) {
-      setAutoSaveStatus('pending');
-    }
-  }, [formData]);
-
-  // Auto-save effect: saves to Supabase 2 seconds after the user stops typing/editing
-  useEffect(() => {
-    if (!lastSavedDataRef.current) return;
-    const currentJson = JSON.stringify(debouncedFormData);
-    if (currentJson !== lastSavedDataRef.current) {
-      setAutoSaveStatus('saving');
-      updateTenantConfig(activeTenant.id, debouncedFormData);
-      lastSavedDataRef.current = currentJson;
-      setAutoSaveStatus('saved');
-      showToast(`Workspace settings for "${debouncedFormData.societyName}" auto-saved to Supabase!`);
-    }
-  }, [debouncedFormData, activeTenant.id, updateTenantConfig]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -254,9 +236,7 @@ export const TenantConfig: React.FC = () => {
       ...activeTenant,
     };
     setFormData(resetData);
-    lastSavedDataRef.current = JSON.stringify(resetData);
-    setAutoSaveStatus('saved');
-    showToast('Changes discarded; restored to last saved state.');
+    showToast('Modifications annulées ; réinitialisé au dernier état enregistré.');
   };
 
   const handleSyncMoneyUsed = () => {
@@ -352,24 +332,6 @@ export const TenantConfig: React.FC = () => {
             <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
               {t('tenant.header_tag', {}, 'Configuration Espace Entreprise')}
             </span>
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
-              {autoSaveStatus === 'saving' ? (
-                <>
-                  <RefreshCw className="w-3 h-3 text-indigo-600 animate-spin" />
-                  <span className="text-indigo-700 font-medium">Auto-saving...</span>
-                </>
-              ) : autoSaveStatus === 'pending' ? (
-                <>
-                  <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
-                  <span className="text-amber-700 font-medium">Auto-save in 2s</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  <span className="text-emerald-700 font-medium">Auto-save active</span>
-                </>
-              )}
-            </span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             {t('tenant.header_title', {}, 'Configuration de l\'Entreprise & Espace Client')}
@@ -379,8 +341,19 @@ export const TenantConfig: React.FC = () => {
           </p>
         </div>
 
-        {/* Tenant Switcher & Mode Switcher */}
+        {/* Action Controls & Save Button */}
         <div className="flex flex-wrap items-center gap-3">
+          {/* Explicit Save Button */}
+          <button
+            type="button"
+            onClick={handleManualSave}
+            disabled={isSaving}
+            className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 transition-colors cursor-pointer"
+          >
+            <Save className="w-4 h-4" />
+            <span>{isSaving ? 'Enregistrement...' : t('common.save', {}, 'Enregistrer')}</span>
+          </button>
+
           {/* View Mode Toggle (SUPER_ADMIN only) */}
           {currentRole === 'SUPER_ADMIN' && (
             <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs font-semibold">
@@ -1352,25 +1325,16 @@ export const TenantConfig: React.FC = () => {
                 </button>
               )}
 
-              {/* Auto-Save Status Badge (replaces manual Save button) */}
-              <div className="flex items-center gap-2 rounded-lg bg-slate-50 border border-slate-200 px-4 py-2.5 text-sm font-medium shadow-2xs">
-                {autoSaveStatus === 'saving' ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 text-indigo-600 animate-spin" />
-                    <span className="text-indigo-700 font-semibold">Syncing auto-save to Supabase...</span>
-                  </>
-                ) : autoSaveStatus === 'pending' ? (
-                  <>
-                    <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
-                    <span className="text-amber-700 font-semibold">Auto-saving in 2s...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span className="text-emerald-700 font-semibold">Auto-saved to Supabase</span>
-                  </>
-                )}
-              </div>
+              {/* Explicit Save Button */}
+              <button
+                type="button"
+                onClick={handleManualSave}
+                disabled={isSaving}
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 transition-colors cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isSaving ? 'Enregistrement...' : t('common.save', {}, 'Enregistrer les modifications')}</span>
+              </button>
 
               <button
                 type="button"
