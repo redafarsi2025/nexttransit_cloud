@@ -16,7 +16,7 @@ import { platformAdminRouter } from './src/api/platformAdmin';
 import { platformAuthCheck } from './src/api/middleware';
 import { translateJ1939ToActiveFault } from './src/services/j1939MappingService';
 import { DecisionEngine } from './src/services/decisionEngine';
-import { supabase } from './src/lib/supabase';
+import { supabase } from './src/lib/supabaseServer';
 
 let genAIClient: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI | null {
