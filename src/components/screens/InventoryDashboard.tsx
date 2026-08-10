@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFleet } from '../../context/FleetContext';
+import { useTenant } from '../../context/TenantContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { KPIBadge } from '../common/KPIBadge';
 import {
@@ -20,6 +21,8 @@ import {
 
 export const InventoryDashboard: React.FC = () => {
   const { inventory, projectedShortfallParts } = useFleet();
+  const { activeTenant } = useTenant();
+  const currencySymbol = activeTenant?.currencySymbol || '$';
   const { t } = useLocalization();
 
   const [filterLowStock, setFilterLowStock] = useState<boolean>(false);
@@ -95,7 +98,7 @@ export const InventoryDashboard: React.FC = () => {
             <KPIBadge type="Calculated" formula="Sum of (Qty * Unit Cost)" />
           </div>
           <div className="text-3xl font-black text-slate-900">
-            ${totalStockValue.toLocaleString()}
+            {currencySymbol}{totalStockValue.toLocaleString()}
           </div>
           <p className="text-xs text-slate-500">{totalPartTypes} unique active component SKUs</p>
         </div>
@@ -268,8 +271,8 @@ export const InventoryDashboard: React.FC = () => {
                     <td className="p-3 text-center font-semibold text-slate-600">
                       {item.reorder_threshold} units
                     </td>
-                    <td className="p-3 text-right font-bold text-slate-900">
-                      ${item.unit_cost.toLocaleString()}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">
+                      {currencySymbol}{item.unit_cost.toLocaleString()}
                     </td>
                     <td className="p-3 text-center text-slate-600">{item.lead_time_days} days</td>
                     <td className="p-3">

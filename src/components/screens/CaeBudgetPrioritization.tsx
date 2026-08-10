@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useFleet } from '../../context/FleetContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTenant } from '../../context/TenantContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { recordAudit } from '../../services/auditService';
 import { KPIBadge } from '../common/KPIBadge';
@@ -19,6 +20,8 @@ import {
 
 export const CaeBudgetPrioritization: React.FC = () => {
   const { caeItems, caeAvailableBudget, setCaeAvailableBudget, caeDelayMultipliers, updateCaeDelayMultiplier, createWorkOrder } = useFleet();
+  const { activeTenant } = useTenant();
+  const currencySymbol = activeTenant?.currencySymbol || '$';
   const { changeScreen } = useAuth();
   const { t } = useLocalization();
 
@@ -167,7 +170,7 @@ export const CaeBudgetPrioritization: React.FC = () => {
           <div className="space-y-2">
             <div className="flex justify-between font-bold text-slate-800">
               <span>Available Maintenance Budget:</span>
-              <span className="text-indigo-600 font-black">${caeAvailableBudget.toLocaleString()}</span>
+              <span className="text-indigo-600 font-black">{currencySymbol}{caeAvailableBudget.toLocaleString()}</span>
             </div>
             <input
               type="range"
@@ -233,11 +236,11 @@ export const CaeBudgetPrioritization: React.FC = () => {
         <div className="flex items-center gap-6 text-xs">
           <div>
             <span className="text-slate-400 font-bold uppercase block text-[10px]">Total Repair Backlog Demand</span>
-            <span className="text-xl font-black text-slate-900">${totalRepairDemand.toLocaleString()}</span>
+            <span className="text-xl font-black text-slate-900">{currencySymbol}{totalRepairDemand.toLocaleString()}</span>
           </div>
           <div>
             <span className="text-slate-400 font-bold uppercase block text-[10px]">Approved Items</span>
-            <span className="text-xl font-black text-emerald-600">{approvedCount} Repairs (${itemsWithCumulative.filter(i => i.isWithinBudget).reduce((s, i) => s + i.repair_cost, 0).toLocaleString()})</span>
+            <span className="text-xl font-black text-emerald-600">{approvedCount} Repairs ({currencySymbol}{itemsWithCumulative.filter(i => i.isWithinBudget).reduce((s, i) => s + i.repair_cost, 0).toLocaleString()})</span>
           </div>
           <div>
             <span className="text-slate-400 font-bold uppercase block text-[10px]">Deferred Risks</span>
@@ -326,11 +329,11 @@ export const CaeBudgetPrioritization: React.FC = () => {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                 <div>
                   <span className="text-[10px] text-slate-400 font-bold uppercase block">Repair Cost</span>
-                  <span className="font-bold text-slate-900">${item.repair_cost.toLocaleString()}</span>
+                  <span className="font-bold text-slate-900">{currencySymbol}{item.repair_cost.toLocaleString()}</span>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 font-bold uppercase block">Deferral Risk Cost</span>
-                  <span className="font-bold text-amber-600">${item.deferral_cost.toLocaleString()}</span>
+                  <span className="font-bold text-amber-600">{currencySymbol}{item.deferral_cost.toLocaleString()}</span>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 font-bold uppercase block">Failure Likelihood</span>
@@ -339,7 +342,7 @@ export const CaeBudgetPrioritization: React.FC = () => {
                 <div>
                   <span className="text-[10px] text-slate-400 font-bold uppercase block">Cumulative Total</span>
                   <span className={`font-bold ${item.isWithinBudget ? 'text-emerald-700' : 'text-rose-600'}`}>
-                    ${item.cumulativeCost.toLocaleString()}
+                    {currencySymbol}{item.cumulativeCost.toLocaleString()}
                   </span>
                 </div>
               </div>

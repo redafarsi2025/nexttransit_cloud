@@ -15,6 +15,7 @@ import {
 import { SUPPORTED_LANGUAGES } from '../data/translations/dictionary';
 import { localizationService } from '../services/localizationService';
 import { aiTranslateText } from '../services/geminiTranslationService';
+import { useTenant } from './TenantContext';
 
 interface LocalizationContextType {
   currentLanguage: LanguageCode;
@@ -56,6 +57,7 @@ export const LocalizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [currentLanguage, setCurrentLanguageState] = useState<LanguageCode>('fr');
   const [dir, setDir] = useState<TextDirection>('ltr');
   const [currentLocalizationRole, setLocalizationRole] = useState<LocalizationRole>('Super Admin');
+  const { activeTenant, isTenantResolved } = useTenant();
 
   // Trigger re-renders when translations update
   const [, setTick] = useState(0);
@@ -75,9 +77,12 @@ export const LocalizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   useEffect(() => {
-    // Initial direction set
-    setLanguage('fr');
-  }, []);
+    if (activeTenant?.defaultLanguage) {
+      setLanguage(activeTenant.defaultLanguage as LanguageCode);
+    } else {
+      setLanguage('fr');
+    }
+  }, [activeTenant?.defaultLanguage]);
 
   // Translation Function
   const t = (key: string, params: Record<string, any> = {}, fallbackText?: string): string => {
@@ -90,7 +95,7 @@ export const LocalizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const formatCurrency = (amount: number, currencyCode?: string): string => {
-    return localizationService.formatCurrency(amount, currencyCode, currentLanguage);
+    return localizationService.formatCurrency(amount, currencyCode || activeTenant?.currencySymbol || 'DA', currentLanguage);
   };
 
   const formatNumber = (val: number): string => {

@@ -2,6 +2,20 @@ import { supabase } from '../lib/supabase';
 import { UserProfile, Company, Subscription, Role } from '../types';
 import { recordAudit } from './auditService';
 
+export class AuthProvisioningError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthProvisioningError';
+  }
+}
+
+export class AuthEmailConfirmationError extends Error {
+  constructor(message: string = 'Vérifiez votre boîte mail pour confirmer votre compte, puis connectez-vous.') {
+    super(message);
+    this.name = 'AuthEmailConfirmationError';
+  }
+}
+
 // Common weak passwords to reject
 const COMMON_PASSWORDS = new Set([
   'password',
@@ -218,6 +232,11 @@ export async function registerPublicCompany(payload: {
     throw new Error('Registration failed: no auth user ID returned.');
   }
 
+  // Tâche 2 : Vérifier si la confirmation d'email est requise
+  if (!authData.session) {
+    throw new AuthEmailConfirmationError();
+  }
+
   // Step 2: Call the SECURITY DEFINER function to provision company, tenant, subscription.
   // All UUIDs are generated server-side. Client cannot supply or influence them.
   const { data: rpcData, error: rpcError } = await supabase.rpc('register_new_tenant', {
@@ -351,29 +370,61 @@ export async function loginUser(email: string, password: string): Promise<{ prof
   // SECURITY GUARD: Block dashboard access when tenant is not provisioned.
   // This happens if register_new_tenant() failed after signUp(), or for a fresh
   // account that hasn't completed provisioning.
-  if (!resolvedProfile.tenant_id) {
-    throw new Error('PROVISIONING_PENDING');
+  let finalProfile = resolvedProfile;
+  if (!finalProfile.tenant_id) {
+    // Tâche 1 : Auto-réparation à la connexion
+    const metaCompanyName = authData.user?.user_metadata?.company_name;
+    const metaFullName = authData.user?.user_metadata?.full_name;
+
+    if (!metaCompanyName) {
+      throw new AuthProvisioningError('PROVISIONING_FAILED_PERMANENTLY');
+    }
+
+    // Attempt to complete the provisioning that failed previously or was delayed
+    const { error: rpcError } = await supabase.rpc('register_new_tenant', {
+      p_company_name: metaCompanyName,
+      p_full_name: metaFullName || email.split('@')[0],
+      p_email: email,
+      p_region: 'North Africa',
+    });
+
+    if (rpcError) {
+      throw new AuthProvisioningError('PROVISIONING_FAILED_PERMANENTLY');
+    }
+
+    // If RPC succeeds, refetch the profile
+    const { data: repairedProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authUserId)
+      .single();
+
+    if (!repairedProfile || !repairedProfile.tenant_id) {
+      throw new AuthProvisioningError('PROVISIONING_FAILED_PERMANENTLY');
+    }
+    
+    finalProfile = repairedProfile as UserProfile;
   }
 
-  if (resolvedProfile.tenant_id) {
+  if (finalProfile.tenant_id) {
     try {
-      localStorage.setItem('nexttransit_active_tenant_id', resolvedProfile.tenant_id);
+      localStorage.setItem('nexttransit_active_tenant_id', finalProfile.tenant_id);
     } catch (e) {}
   }
 
   // Log successful login
   await recordAudit(
     'users',
-    resolvedProfile.id,
+    finalProfile.id,
     'LOGIN_SUCCESS',
     {},
-    { email: resolvedProfile.email, role: resolvedProfile.role },
-    resolvedProfile.id,
-    resolvedProfile.role,
-    resolvedProfile.tenant_id
+    { email: finalProfile.email, role: finalProfile.role },
+    finalProfile.id,
+    finalProfile.role,
+    finalProfile.tenant_id
   );
 
-  return { profile: resolvedProfile, session: authData.session };
+  return { profile: finalProfile, session: authData.session };
 }
 
 /**

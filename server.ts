@@ -1,6 +1,10 @@
 import express from 'express';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
+import { createServer as createViteServer, loadEnv } from 'vite';
+
+// Ensure .env is loaded for the server context
+const env = loadEnv('', process.cwd(), '');
+Object.assign(process.env, env);
 import { freeTranslateText } from './src/services/freeTranslationService';
 import { z } from 'zod';
 import { GoogleGenAI, Type } from '@google/genai';

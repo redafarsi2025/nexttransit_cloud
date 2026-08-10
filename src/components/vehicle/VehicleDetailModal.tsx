@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useFleet } from '../../context/FleetContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTenant } from '../../context/TenantContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { VehicleStatus, WorkOrder, Warranty } from '../../types';
 import { warrantyService } from '../../services/warrantyService';
@@ -34,8 +35,10 @@ export const VehicleDetailModal: React.FC<VehicleDetailModalProps> = ({
   vehicleId,
   onClose,
 }) => {
-  const { vehicles, inventory, workOrders, costRecords, createWorkOrder, closeWorkOrder } = useFleet();
+  const { vehicles, workOrders, updateWorkOrder, addCostRecord, costRecords, getVehicleParts, caeItems, setCaeAvailableBudget, caeAvailableBudget, fuelLogs, inventory, createWorkOrder, closeWorkOrder } = useFleet();
   const { currentRole, changeScreen } = useAuth();
+  const { activeTenant } = useTenant();
+  const currencySymbol = activeTenant?.currencySymbol || '$';
   const { t } = useLocalization();
 
 
@@ -605,8 +608,8 @@ export const VehicleDetailModal: React.FC<VehicleDetailModalProps> = ({
                               <span className="text-slate-400">—</span>
                             )}
                           </td>
-                          <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">
-                            ${item.total_cost.toLocaleString()}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">
+                            {currencySymbol}{item.total_cost.toLocaleString()}
                           </td>
                         </tr>
                       ))}
@@ -641,16 +644,16 @@ export const VehicleDetailModal: React.FC<VehicleDetailModalProps> = ({
                   <span className="text-xs font-semibold text-slate-500 uppercase">
                     Total Actual Spend
                   </span>
-                  <div className="mt-1 text-2xl font-bold text-slate-900">
-                    ${totalActualCost.toLocaleString()}
+                  <div className="text-3xl font-black text-slate-900 mt-1">
+                    {currencySymbol}{totalActualCost.toLocaleString()}
                   </div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <span className="text-xs font-semibold text-slate-500 uppercase">
                     Period Budget
                   </span>
-                  <div className="mt-1 text-2xl font-bold text-slate-900">
-                    ${totalBudgetCost.toLocaleString()}
+                  <div className="text-xl font-bold text-slate-500 mt-2">
+                    {currencySymbol}{totalBudgetCost.toLocaleString()}
                   </div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -696,11 +699,11 @@ export const VehicleDetailModal: React.FC<VehicleDetailModalProps> = ({
                           <td className="py-3 px-4 font-bold text-slate-900">
                             {cr.category}
                           </td>
-                          <td className="py-3 px-4 text-right font-mono font-semibold">
-                            ${cr.amount.toLocaleString()}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 text-right">
+                            {currencySymbol}{cr.amount.toLocaleString()}
                           </td>
-                          <td className="py-3 px-4 text-right font-mono text-slate-600">
-                            ${cr.budget_for_category.toLocaleString()}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">
+                            {currencySymbol}{cr.budget_for_category.toLocaleString()}
                           </td>
                           <td
                             className={`py-3 px-4 text-right font-mono font-bold ${
@@ -864,7 +867,7 @@ export const VehicleDetailModal: React.FC<VehicleDetailModalProps> = ({
                           </span>
                         </div>
                         <div className="text-xs font-mono font-bold text-slate-900">
-                          ${(wo.labor_cost + wo.parts_used.reduce((s, p) => s + p.quantity * p.unit_cost, 0)).toLocaleString()}
+                          {currencySymbol}{(wo.labor_cost + wo.parts_used.reduce((s, p) => s + p.quantity * p.unit_cost, 0)).toLocaleString()}
                         </div>
                       </div>
 

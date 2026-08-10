@@ -1,6 +1,7 @@
 import React from 'react';
 import { useFleet } from '../../context/FleetContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTenant } from '../../context/TenantContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { KPIBadge } from '../common/KPIBadge';
 import {
@@ -18,6 +19,8 @@ import {
 
 export const StrategicDashboard: React.FC = () => {
   const { vehicles, costRecords, fuelLogs, caeItems, alerts, setSelectedVehicleId } = useFleet();
+  const { activeTenant } = useTenant();
+  const currencySymbol = activeTenant?.currencySymbol || '$';
   const { changeScreen, currentRole } = useAuth();
   const { t } = useLocalization();
 
@@ -168,13 +171,13 @@ export const StrategicDashboard: React.FC = () => {
                 costVariance > 0 ? 'text-rose-600' : 'text-emerald-600'
               }`}
             >
-              {costVariance > 0 ? `+$${costVariance.toLocaleString()}` : `-$${Math.abs(costVariance).toLocaleString()}`}
+              {costVariance > 0 ? `+${currencySymbol}${costVariance.toLocaleString()}` : `-${currencySymbol}${Math.abs(costVariance).toLocaleString()}`}
             </span>
             <span className="text-xs text-slate-500">vs Budget</span>
           </div>
-          <div className="flex justify-between text-xs text-slate-500">
-            <span>Spend: ${totalActualSpend.toLocaleString()}</span>
-            <span>Budget: ${totalBudget.toLocaleString()}</span>
+          <div className="flex justify-between text-[11px] mt-1 text-slate-500 font-medium">
+            <span>Spend: {currencySymbol}{totalActualSpend.toLocaleString()}</span>
+            <span>Budget: {currencySymbol}{totalBudget.toLocaleString()}</span>
           </div>
           <div className="pt-1">
             <button
@@ -198,14 +201,14 @@ export const StrategicDashboard: React.FC = () => {
             />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-amber-600">
-              ${totalCaeDeferralRisk.toLocaleString()}
-            </span>
-            <span className="text-xs text-slate-500">Risk Exposure</span>
+            <div className="text-3xl font-black text-rose-600 flex items-center gap-2">
+              <AlertTriangle className="h-6 w-6" />
+              {currencySymbol}{totalCaeDeferralRisk.toLocaleString()}
+            </div>
           </div>
-          <div className="text-xs text-slate-500 flex justify-between">
-            <span>Direct Repairs: ${totalCaeRepairCost.toLocaleString()}</span>
-            <span>Items: {caeItems.length}</span>
+          <div className="flex justify-between text-[11px] mt-1 text-slate-500 font-medium">
+            <span>Direct Repairs: {currencySymbol}{totalCaeRepairCost.toLocaleString()}</span>
+            <span>Potential Consequential Damage</span>
           </div>
           <div className="pt-1">
             <button

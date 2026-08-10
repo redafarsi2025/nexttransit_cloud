@@ -6,14 +6,14 @@ import { LocalizationProvider } from './LocalizationContext';
 
 export const AppProviders: React.FC<{ children: ReactNode }> = ({ children }) => {
   return (
-    <LocalizationProvider>
-      <AuthProvider>
-        <TenantProvider>
+    <AuthProvider>
+      <TenantProvider>
+        <LocalizationProvider>
           <FleetProvider>
             {children}
           </FleetProvider>
-        </TenantProvider>
-      </AuthProvider>
-    </LocalizationProvider>
+        </LocalizationProvider>
+      </TenantProvider>
+    </AuthProvider>
   );
 };

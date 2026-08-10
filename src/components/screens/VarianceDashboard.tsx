@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFleet } from '../../context/FleetContext';
+import { useTenant } from '../../context/TenantContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { KPIBadge } from '../common/KPIBadge';
 import {
@@ -15,6 +16,8 @@ import {
 
 export const VarianceDashboard: React.FC = () => {
   const { costRecords, fuelLogs, vehicles, workOrders, setSelectedVehicleId } = useFleet();
+  const { activeTenant } = useTenant();
+  const currencySymbol = activeTenant?.currencySymbol || '$';
   const { t } = useLocalization();
 
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -101,7 +104,7 @@ export const VarianceDashboard: React.FC = () => {
             <KPIBadge type="Calculated" formula="Sum of all work order & parts costs" />
           </div>
           <div className="text-3xl font-black text-slate-900">
-            ${totalActual.toLocaleString()}
+            {currencySymbol}{totalActual.toLocaleString()}
           </div>
           <p className="text-xs text-slate-500">{t('variance.line_items', {}, 'Across recorded line items')}</p>
         </div>
@@ -112,7 +115,7 @@ export const VarianceDashboard: React.FC = () => {
             <KPIBadge type="Configured" formula="Quarterly Budget Baseline" />
           </div>
           <div className="text-3xl font-black text-slate-900">
-            ${totalBudget.toLocaleString()}
+            {currencySymbol}{totalBudget.toLocaleString()}
           </div>
           <p className="text-xs text-slate-500">{t('finance.budget_allocated', {}, 'Q3 Fleet Maintenance Cap')}</p>
         </div>
@@ -129,11 +132,11 @@ export const VarianceDashboard: React.FC = () => {
           >
             {totalVariance > 0 ? (
               <>
-                <TrendingUp className="h-6 w-6" /> +${totalVariance.toLocaleString()}
+                <TrendingUp className="h-6 w-6" /> +{currencySymbol}{totalVariance.toLocaleString()}
               </>
             ) : (
               <>
-                <TrendingDown className="h-6 w-6" /> -${Math.abs(totalVariance).toLocaleString()}
+                <TrendingDown className="h-6 w-6" /> -{currencySymbol}{Math.abs(totalVariance).toLocaleString()}
               </>
             )}
           </div>
@@ -165,19 +168,15 @@ export const VarianceDashboard: React.FC = () => {
                     <h3 className="font-bold text-sm text-slate-900">{cat.category}</h3>
                     <p className="text-xs text-slate-500">{cat.recordCount} Expense Records</p>
                   </div>
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                      isOver ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
-                    }`}
-                  >
-                    {isOver ? `+$${cat.variance.toLocaleString()} Over` : `Within Budget`}
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isOver ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {isOver ? `+${currencySymbol}${cat.variance.toLocaleString()} Over` : `Within Budget`}
                   </span>
                 </div>
 
                 <div className="space-y-1">
-                  <div className="flex justify-between text-xs font-bold text-slate-700">
-                    <span>Spent: ${cat.actual.toLocaleString()}</span>
-                    <span>Budget: ${cat.budget.toLocaleString()} ({pct}%)</span>
+                  <div className="flex justify-between text-[11px] mt-1 text-slate-500 font-medium">
+                    <span>Spent: {currencySymbol}{cat.actual.toLocaleString()}</span>
+                    <span>Budget: {currencySymbol}{cat.budget.toLocaleString()} ({pct}%)</span>
                   </div>
                   <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
                     <div
@@ -278,7 +277,7 @@ export const VarianceDashboard: React.FC = () => {
                       {record.related_fault_code || record.work_order_id || 'Direct Entry'}
                     </td>
                     <td className="p-3 text-right font-bold text-slate-900">
-                      ${record.amount.toLocaleString()}
+                      {currencySymbol}{record.amount.toLocaleString()}
                     </td>
                     <td className="p-3 text-right">
                       <button className="text-indigo-600 hover:text-indigo-800 font-bold flex items-center justify-end gap-1 ml-auto">
