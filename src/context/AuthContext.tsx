@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setCurrentRole(role);
           
           // SECURITY GUARD: Do not navigate to dashboard when provisioning is incomplete.
-          // tenant_id = NULL means register_new_tenant() hasn't run yet (unlikely but possible
+          // tenant_id = NULL means provision_tenant() hasn't run yet (unlikely but possible
           // if the RPC call failed after signUp, or the user is brand-new).
           if (!profile.tenant_id) {
             // Stay on the login / registration page — the UI shows an appropriate message.

@@ -78,12 +78,10 @@ describe('Auth Security & Privilege Escalation Prevention', () => {
       expect(signUpCall.options.data).not.toHaveProperty('tenant_id');
 
       // Verify RPC was called to provision the tenant
-      // We also know register_new_tenant now assigns TENANT_ADMIN on the server side
-      expect(supabase.rpc).toHaveBeenCalledWith('register_new_tenant', {
+      // We also know provision_tenant now assigns TENANT_ADMIN on the server side
+      expect(supabase.rpc).toHaveBeenCalledWith('provision_tenant', {
         p_company_name: 'Test Company',
-        p_full_name: 'Test User',
         p_email: 'test@example.com',
-        p_region: 'North Africa',
       });
     });
 
@@ -149,11 +147,9 @@ describe('Auth Security & Privilege Escalation Prevention', () => {
       const { profile } = await loginUser('test@example.com', 'ValidPassword1!');
 
       // Verify RPC was called with metadata
-      expect(supabase.rpc).toHaveBeenCalledWith('register_new_tenant', {
+      expect(supabase.rpc).toHaveBeenCalledWith('provision_tenant', {
         p_company_name: 'Stuck Company',
-        p_full_name: 'Stuck User',
         p_email: 'test@example.com',
-        p_region: 'North Africa',
       });
 
       // Verify the returned profile is the repaired one

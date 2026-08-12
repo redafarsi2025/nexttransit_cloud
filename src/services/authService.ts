@@ -239,11 +239,9 @@ export async function registerPublicCompany(payload: {
 
   // Step 2: Call the SECURITY DEFINER function to provision company, tenant, subscription.
   // All UUIDs are generated server-side. Client cannot supply or influence them.
-  const { data: rpcData, error: rpcError } = await supabase.rpc('register_new_tenant', {
+  const { data: rpcData, error: rpcError } = await supabase.rpc('provision_tenant', {
     p_company_name: payload.companyName,
-    p_full_name:    payload.fullName,
     p_email:        payload.email,
-    p_region:       payload.region || 'North Africa',
   });
 
   if (rpcError) {
@@ -381,11 +379,9 @@ export async function loginUser(email: string, password: string): Promise<{ prof
     }
 
     // Attempt to complete the provisioning that failed previously or was delayed
-    const { error: rpcError } = await supabase.rpc('register_new_tenant', {
+    const { error: rpcError } = await supabase.rpc('provision_tenant', {
       p_company_name: metaCompanyName,
-      p_full_name: metaFullName || email.split('@')[0],
       p_email: email,
-      p_region: 'North Africa',
     });
 
     if (rpcError) {
