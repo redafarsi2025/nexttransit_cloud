@@ -40,6 +40,8 @@ import {
 import { DeviceMapping, TelematicsProviderType } from '../../types';
 import { fetchDeviceMappings, saveDeviceMapping } from '../../services/telematicsService';
 import { seedDemoTenant } from '../../services/demoSeedService';
+import { CompanyDossier } from '../tenant/CompanyDossier';
+import { supabase } from '../../lib/supabase';
 
 const BRAND_COLOR_PRESETS = [
   { name: 'Indigo (Default)', hex: '#4f46e5', bg: 'bg-indigo-600', ring: 'ring-indigo-500' },
@@ -253,39 +255,61 @@ export const TenantConfig: React.FC = () => {
     showToast(`Expenditure recalculated & updated to ${formData.currencySymbol}${totalCost.toLocaleString()} from ${costRecords.length} cost records.`);
   };
 
-  const handleCreateNewTenant = (e: React.FormEvent) => {
+  const handleCreateNewTenant = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTenantData.societyName.trim()) return;
 
-    const createdId = addTenantConfig(newTenantData);
-    setIsCreatingNew(false);
-    // Reset modal form defaults
-    setNewTenantData({
-      societyName: '',
-      currency: 'USD ($)',
-      currencySymbol: '$',
-      defaultLanguage: 'fr',
-      timezone: 'Africa/Algiers',
-      notificationsEnabled: true,
-      customDomain: '',
-      allocatedBudget: 500000,
-      moneyUsed: 0,
-      fiscalYear: 'FY2026',
-      operatingRegion: 'North Africa - Algiers Corridor',
-      taxRegistrationId: 'TAX-NEW-001',
-      costCenterCode: 'CC-FLEET-100',
-      defaultLaborRate: 85,
-      emergencyApprovalThreshold: 5000,
-      contactEmail: 'contact@fleet.org',
-      contactPhone: '+1 (555) 000-1122',
-      billingAddress: '100 Business Parkway, Suite 100',
-      autoSyncMoneyUsed: true,
-      primaryColor: '#4f46e5',
-      accentColor: '#059669',
-      brandTagline: 'Connected Fleet & Transit Excellence',
-      logoUrl: '',
-    });
-    showToast(`New Tenant Society registered & synced with Supabase (ID: ${createdId})!`);
+    try {
+      showToast('Création de l\'entreprise en cours sur la base de données...');
+      
+      const adminEmail = newTenantData.contactEmail || `admin_${Date.now()}@fleet.org`;
+      
+      const { data: realTenantId, error } = await supabase.rpc('provision_tenant', {
+        p_company_name: newTenantData.societyName,
+        p_admin_email: adminEmail,
+        p_admin_password: 'ChangeMe123!',
+        p_admin_username: 'admin_' + Date.now(),
+        p_country_code: 'DZ',
+        p_currency_code: newTenantData.currency.substring(0, 3) || 'DZD'
+      });
+
+      if (error) throw error;
+
+      // Force the generated UUID from Supabase into our local context
+      const createdId = addTenantConfig(newTenantData, realTenantId);
+      
+      setIsCreatingNew(false);
+      // Reset modal form defaults
+      setNewTenantData({
+        societyName: '',
+        currency: 'USD ($)',
+        currencySymbol: '$',
+        defaultLanguage: 'fr',
+        timezone: 'Africa/Algiers',
+        notificationsEnabled: true,
+        customDomain: '',
+        allocatedBudget: 500000,
+        moneyUsed: 0,
+        fiscalYear: 'FY2026',
+        operatingRegion: 'North Africa - Algiers Corridor',
+        taxRegistrationId: 'TAX-NEW-001',
+        costCenterCode: 'CC-FLEET-100',
+        defaultLaborRate: 85,
+        emergencyApprovalThreshold: 5000,
+        contactEmail: 'contact@fleet.org',
+        contactPhone: '+1 (555) 000-1122',
+        billingAddress: '100 Business Parkway, Suite 100',
+        autoSyncMoneyUsed: true,
+        primaryColor: '#4f46e5',
+        accentColor: '#059669',
+        brandTagline: 'Connected Fleet & Transit Excellence',
+        logoUrl: '',
+      });
+      showToast(`L'entreprise a été enregistrée avec succès dans Supabase (ID: ${createdId}) !`);
+    } catch (err: any) {
+      console.error('Erreur lors de la création du tenant:', err);
+      showToast(`Erreur lors de la création du tenant : ${err.message}`);
+    }
   };
 
   const handleExportJSON = () => {
@@ -312,6 +336,7 @@ export const TenantConfig: React.FC = () => {
     { id: 4, title: '4. Financials & Operation Caps', icon: CreditCard },
     { id: 5, title: '5. Contact & Supabase Review', icon: ShieldCheck },
     { id: 6, title: '6. Telematics & Devices', icon: Cpu },
+    { id: 7, title: '7. Dossier Légal', icon: FileText },
   ];
 
   return (
@@ -1300,7 +1325,21 @@ export const TenantConfig: React.FC = () => {
             </div>
           )}
 
-          {/* Action Buttons & Wizard Controls Bar */}
+          {/* STEP 7: DOSSIER LEGAL */}
+          {wizardStep === 7 && (
+            <div className="space-y-6 animate-in fade-in">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">7. Dossier Légal & Administratif</h3>
+                  <p className="text-xs text-slate-500">Gestion complète de la conformité : Fiscalité, RC, NIS, CNAS, Établissements, Banques.</p>
+                </div>
+                <FileText className="w-5 h-5 text-indigo-600" />
+              </div>
+              <CompanyDossier tenantId={activeTenant.id} />
+            </div>
+          )}
+
+        {/* Wizard Navigation Footer */}
           <div className="pt-6 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               {viewMode === 'wizard' && wizardStep > 1 && (

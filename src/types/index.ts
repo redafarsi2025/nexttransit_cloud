@@ -123,6 +123,8 @@ export interface MaintenanceHistoryItem {
   total_cost: number;
 }
 
+
+
 export interface Vehicle {
   id: string;
   plate: string;
@@ -140,6 +142,7 @@ export interface Vehicle {
   maintenance_history: MaintenanceHistoryItem[];
   assigned_driver_id?: string;
   assigned_mechanic_id?: string;
+  warranty?: Warranty | null;
   // Sub-scores (secondary / collapsible)
   fault_score: number; // 0-100 (100 = clean)
   compliance_score: number; // 0-100
@@ -180,9 +183,9 @@ export interface WorkOrder {
 }
 
 export interface Warranty {
-  id: string;
+  id?: string;
   tenant_id?: string;
-  vehicle_id: string;
+  vehicle_id?: string;
   manufacturer: string;
   expiry_date: string | null;
   expiry_mileage: number | null;
@@ -460,4 +463,4 @@ export interface AuditLogEntry {
   created_at: string;
 }
 
-
+export * from './tenant';

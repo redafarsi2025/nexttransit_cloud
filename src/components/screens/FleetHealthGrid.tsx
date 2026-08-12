@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { useFleet } from '../../context/FleetContext';
+import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { KPIBadge } from '../common/KPIBadge';
+import { AddEditVehicleModal } from '../vehicle/AddEditVehicleModal';
+import { ImportVehiclesModal } from '../vehicle/ImportVehiclesModal';
 import {
   Activity,
   Search,
@@ -15,16 +18,61 @@ import {
   ChevronUp,
   Wrench,
   ChevronRight,
+  Plus,
+  Edit2,
+  Trash2,
+  UploadCloud,
+  Shield,
 } from 'lucide-react';
 
 export const FleetHealthGrid: React.FC = () => {
-  const { vehicles, setSelectedVehicleId, logOBDFault } = useFleet();
+  const { vehicles, setSelectedVehicleId, logOBDFault, addVehicle, updateVehicle, deleteVehicle, addVehiclesBulk } = useFleet();
+  const { currentRole } = useAuth();
   const { t } = useLocalization();
 
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [classificationFilter, setClassificationFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showSubscores, setShowSubscores] = useState<Record<string, boolean>>({});
+
+  // RBAC Guards for CRUD
+  const canAdd = ['SUPER_ADMIN', 'FLEET_MANAGER', 'MAINTENANCE_MANAGER'].includes(currentRole);
+  const canEdit = ['SUPER_ADMIN', 'FLEET_MANAGER', 'MAINTENANCE_MANAGER'].includes(currentRole);
+  const canDelete = ['SUPER_ADMIN', 'FLEET_MANAGER'].includes(currentRole);
+
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState<any>(null);
+
+  const handleAdd = () => {
+    setEditingVehicle(null);
+    setModalMode('create');
+  };
+
+  const handleEdit = (v: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingVehicle(v);
+    setModalMode('edit');
+  };
+
+  const handleDelete = async (id: string, plate: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm(`Confirmer la suppression du véhicule ${plate} ?`)) {
+      const { error } = await deleteVehicle(id);
+      if (error) {
+        alert(error);
+      }
+    }
+  };
+
+  const handleSave = async (data: any) => {
+    if (modalMode === 'create') {
+      return await addVehicle(data);
+    } else if (modalMode === 'edit' && editingVehicle) {
+      return await updateVehicle(editingVehicle.id, data);
+    }
+    return { error: 'Invalid modal state' };
+  };
 
   const toggleSubscore = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -61,8 +109,27 @@ export const FleetHealthGrid: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <KPIBadge type="Calculated" formula="Fault Severity + OBD Telemetry Integration" />
+          
+          {canAdd && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                title="Importer depuis un fichier CSV"
+              >
+                <UploadCloud className="h-4 w-4" /> Importer
+              </button>
+              
+              <button
+                onClick={handleAdd}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="h-4 w-4" /> {t('common.add', {}, 'Ajouter')}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -164,22 +231,54 @@ export const FleetHealthGrid: React.FC = () => {
                     >
                       {vehicle.classification}
                     </span>
+                    {vehicle.warranty && vehicle.warranty.status !== 'expired' && (
+                      <span
+                        className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1"
+                        title={`Garantie constructeur: ${vehicle.warranty.manufacturer}`}
+                      >
+                        <Shield className="h-3 w-3" />
+                        Garantie
+                      </span>
+                    )}
                   </div>
 
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
-                      vehicle.status === 'Healthy'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : vehicle.status === 'Attention'
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-rose-100 text-rose-800'
-                    }`}
-                  >
-                    {vehicle.status === 'Healthy' && <CheckCircle2 className="h-3 w-3" />}
-                    {vehicle.status === 'Attention' && <AlertTriangle className="h-3 w-3" />}
-                    {vehicle.status === 'Critical' && <AlertCircle className="h-3 w-3" />}
-                    {vehicle.status}
-                  </span>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
+                        vehicle.status === 'Healthy'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : vehicle.status === 'Attention'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-rose-100 text-rose-800'
+                      }`}
+                    >
+                      {vehicle.status === 'Healthy' && <CheckCircle2 className="h-3 w-3" />}
+                      {vehicle.status === 'Attention' && <AlertTriangle className="h-3 w-3" />}
+                      {vehicle.status === 'Critical' && <AlertCircle className="h-3 w-3" />}
+                      {vehicle.status}
+                    </span>
+                    
+                    <div className="flex gap-1">
+                      {canEdit && (
+                        <button
+                          onClick={(e) => handleEdit(vehicle, e)}
+                          className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition cursor-pointer"
+                          title="Modifier"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          onClick={(e) => handleDelete(vehicle.id, vehicle.plate, e)}
+                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50/60 px-2.5 py-1 rounded-lg w-max">
@@ -280,6 +379,25 @@ export const FleetHealthGrid: React.FC = () => {
           );
         })}
       </div>
+      
+      {modalMode && (
+        <AddEditVehicleModal
+          vehicle={modalMode === 'edit' ? editingVehicle : null}
+          onClose={() => setModalMode(null)}
+          onSave={handleSave}
+        />
+      )}
+
+      {isImportModalOpen && (
+        <ImportVehiclesModal
+          onClose={() => setIsImportModalOpen(false)}
+          onImport={async (payload) => {
+            const res = await addVehiclesBulk(payload);
+            if (!res.error) setIsImportModalOpen(false);
+            return res;
+          }}
+        />
+      )}
     </div>
   );
 };

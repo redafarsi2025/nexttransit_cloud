@@ -11,6 +11,10 @@ import {
   syncCreateWorkOrderToSupabase,
   syncSubmitDriverIncidentToSupabase,
   syncCloseWorkOrderAtomic,
+  createVehicleInSupabase,
+  updateVehicleInSupabase,
+  deleteVehicleInSupabase,
+  createVehiclesBulkInSupabase,
 } from '../services/fleetData';
 import {
   Vehicle,
@@ -99,6 +103,10 @@ interface FleetContextType {
     odometer_km: number;
     logged_at?: string;
   }) => Promise<FuelLog>;
+  addVehicle: (input: Omit<Vehicle, 'id' | 'active_fault_codes' | 'maintenance_history'>) => Promise<{ error: string | null }>;
+  addVehiclesBulk: (inputs: Omit<Vehicle, 'id' | 'active_fault_codes' | 'maintenance_history'>[]) => Promise<{ error: string | null }>;
+  updateVehicle: (vehicleId: string, patch: Partial<Omit<Vehicle, 'id' | 'active_fault_codes' | 'maintenance_history'>>) => Promise<{ error: string | null }>;
+  deleteVehicle: (vehicleId: string) => Promise<{ error: string | null }>;
   resetSeedData: () => void;
   triggerGoldenPathAStep: (step: number) => void;
   triggerGoldenPathBStep: (step: number) => void;
@@ -921,6 +929,162 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  // -------------------------------------------------------
+  // Vehicle CRUD — addVehicle / updateVehicle / deleteVehicle
+  // -------------------------------------------------------
+
+  const addVehicle = useCallback(async (
+    input: Omit<Vehicle, 'id' | 'active_fault_codes' | 'maintenance_history'>
+  ): Promise<{ error: string | null }> => {
+    const optimisticId = `V-OPT-${Date.now()}`;
+    const optimisticVehicle: Vehicle = {
+      ...input,
+      id: optimisticId,
+      active_fault_codes: [],
+      maintenance_history: [],
+    };
+    // Optimistic insert — immediately visible in UI
+    setVehicles(prev => [optimisticVehicle, ...prev]);
+
+    const { data, error } = await createVehicleInSupabase(input, activeTenantId);
+
+    if (error || !data) {
+      // Roll back optimistic insert on error
+      setVehicles(prev => prev.filter(v => v.id !== optimisticId));
+      return { error: error || 'Unknown error creating vehicle' };
+    }
+
+    // Replace optimistic entry with real DB record
+    setVehicles(prev => prev.map(v => v.id === optimisticId ? data : v));
+
+    recordAudit(
+      'vehicle',
+      data.id,
+      'CREATE',
+      {},
+      { plate: data.plate, name: data.name, classification: data.classification },
+      currentUser?.id || 'sys',
+      currentRole,
+      activeTenantId
+    );
+
+    return { error: null };
+  }, [activeTenantId, currentUser, currentRole]);
+
+  const addVehiclesBulk = useCallback(async (
+    inputs: Omit<Vehicle, 'id' | 'active_fault_codes' | 'maintenance_history'>[]
+  ): Promise<{ error: string | null }> => {
+    if (!inputs.length) return { error: null };
+
+    // Create optimistic array
+    const optimisticVehicles = inputs.map((input, i) => ({
+      ...input,
+      id: `V-OPT-BLK-${Date.now()}-${i}`,
+      active_fault_codes: [],
+      maintenance_history: [],
+    })) as Vehicle[];
+
+    setVehicles(prev => [...optimisticVehicles, ...prev]);
+
+    const { data, error } = await createVehiclesBulkInSupabase(inputs, activeTenantId);
+
+    if (error || !data) {
+      // Rollback
+      const optimisticIds = optimisticVehicles.map(v => v.id);
+      setVehicles(prev => prev.filter(v => !optimisticIds.includes(v.id)));
+      return { error: error || 'Unknown error during bulk import' };
+    }
+
+    // Replace optimistic with real
+    const optimisticIds = optimisticVehicles.map(v => v.id);
+    setVehicles(prev => [
+      ...data,
+      ...prev.filter(v => !optimisticIds.includes(v.id))
+    ]);
+
+    recordAudit(
+      'vehicle',
+      'bulk-import',
+      'CREATE_BULK' as any,
+      {},
+      { count: data.length },
+      currentUser?.id || 'sys',
+      currentRole,
+      activeTenantId
+    );
+
+    return { error: null };
+  }, [activeTenantId, currentUser, currentRole]);
+
+  const updateVehicle = useCallback(async (
+    vehicleId: string,
+    patch: Partial<Omit<Vehicle, 'id' | 'active_fault_codes' | 'maintenance_history'>>
+  ): Promise<{ error: string | null }> => {
+    // Optimistic update
+    setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, ...patch } : v));
+
+    const { data, error } = await updateVehicleInSupabase(vehicleId, patch, activeTenantId);
+
+    if (error || !data) {
+      // On DB error, reload from source to restore truth
+      fetchVehicles(true).then(setVehicles);
+      return { error: error || 'Unknown error updating vehicle' };
+    }
+
+    // Sync with confirmed DB record
+    setVehicles(prev => prev.map(v => v.id === vehicleId ? data : v));
+
+    recordAudit(
+      'vehicle',
+      vehicleId,
+      'UPDATE',
+      {},
+      { ...patch },
+      currentUser?.id || 'sys',
+      currentRole,
+      activeTenantId
+    );
+
+    return { error: null };
+  }, [activeTenantId, currentUser, currentRole]);
+
+  const deleteVehicle = useCallback(async (
+    vehicleId: string
+  ): Promise<{ error: string | null }> => {
+    // Business guard R3: refuse deletion if open work orders linked to this vehicle
+    const hasOpenWO = workOrders.some(
+      wo => wo.vehicle_id === vehicleId && wo.status !== 'Closed'
+    );
+    if (hasOpenWO) {
+      return { error: 'Impossible de supprimer : ce véhicule a des ordres de travail ouverts.' };
+    }
+
+    const targetVehicle = vehicles.find(v => v.id === vehicleId);
+    // Optimistic removal
+    setVehicles(prev => prev.filter(v => v.id !== vehicleId));
+
+    const { error } = await deleteVehicleInSupabase(vehicleId, activeTenantId);
+
+    if (error) {
+      // Roll back on error
+      if (targetVehicle) setVehicles(prev => [...prev, targetVehicle]);
+      return { error };
+    }
+
+    recordAudit(
+      'vehicle',
+      vehicleId,
+      'DELETE' as any,
+      { plate: targetVehicle?.plate, name: targetVehicle?.name },
+      {},
+      currentUser?.id || 'sys',
+      currentRole,
+      activeTenantId
+    );
+
+    return { error: null };
+  }, [activeTenantId, currentUser, currentRole, workOrders, vehicles]);
+
   return (
     <FleetContext.Provider
       value={{
@@ -950,6 +1114,10 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         resolveConflict,
         markAlertRead,
         addFuelLog,
+        addVehicle,
+        addVehiclesBulk,
+        updateVehicle,
+        deleteVehicle,
         resetSeedData,
         triggerGoldenPathAStep,
         triggerGoldenPathBStep,

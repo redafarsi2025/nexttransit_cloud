@@ -286,12 +286,16 @@ export const TelemetryStream: React.FC = () => {
     await logOBDFault(vehicleId, {
       code: simulatedFault.code,
       name: simulatedFault.name,
-      severity: simulatedFault.severity,
+      severity: simulatedFault.severity as 'Critical' | 'Warning' | 'Info',
       required_intervention: simulatedFault.required_intervention,
     });
 
     if (severity === 'Critical') {
       addLog(`🚨 RULE R1 TRIGGERED: Critical OBD Fault P0217 injected into ${v.name}. Vehicle status forced to UNSAFE / RED.`, 'error');
+      
+      if (v.warranty && v.warranty.status === 'active') {
+        addLog(`⚠️ AVERTISSEMENT R1 (Garantie): L'intervention sur ce défaut critique doit être effectuée par un réparateur agréé ${v.warranty.manufacturer} avant ${new Date(v.warranty.expiry_date!).toLocaleDateString()} pour préserver la couverture.`, 'warn');
+      }
     } else {
       addLog(`⚠️ Warning OBD Fault P0300 injected into ${v.name}.`, 'warn');
     }

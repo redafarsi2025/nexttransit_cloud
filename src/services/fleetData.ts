@@ -130,7 +130,7 @@ export async function fetchVehicles(bypassCache: boolean = false): Promise<Vehic
   return fetchWithCache(cacheKey, async () => {
     const { data, error } = await supabase
       .from('vehicles')
-      .select('*')
+      .select('*, warranties(*)')
       .eq('tenant_id', tenantId);
     
     if (error) {
@@ -139,7 +139,12 @@ export async function fetchVehicles(bypassCache: boolean = false): Promise<Vehic
       return [];
     }
     
-    return (data || []) as Vehicle[];
+    return (data || []).map((v: any) => {
+      const wList = v.warranties || [];
+      const activeWarranty = wList.length > 0 ? wList[0] : null;
+      delete v.warranties;
+      return { ...v, warranty: activeWarranty } as Vehicle;
+    });
   });
 }
 
@@ -796,4 +801,181 @@ export async function syncCloseWorkOrderAtomic(
     return false;
   }
 }
+
+// ==========================================
+// Vehicle CRUD — Supabase Write Operations
+// ==========================================
+
+/**
+ * Insert a new vehicle record for the given tenant.
+ * Clears the vehicles cache on success so the next fetchVehicles returns fresh data.
+ */
+export async function createVehicleInSupabase(
+  vehicle: Omit<Vehicle, 'id' | 'active_fault_codes' | 'maintenance_history'>,
+  tenantId: string
+): Promise<{ data: Vehicle | null; error: string | null }> {
+  const tenantUuid = getTenantUuid(tenantId);
+  const { warranty, ...vehiclePayload } = vehicle;
+  const payload = {
+    ...vehiclePayload,
+    tenant_id: tenantUuid,
+    active_fault_codes: [],
+    maintenance_history: [],
+  };
+
+  const { data, error } = await supabase
+    .from('vehicles')
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('createVehicleInSupabase:', error.message);
+    return { data: null, error: error.message };
+  }
+
+  const resultVehicle = data as Vehicle;
+
+  // Insert warranty if provided
+  if (warranty) {
+    const warrantyPayload = {
+      ...warranty,
+      tenant_id: tenantUuid,
+      vehicle_id: resultVehicle.id,
+    };
+    delete warrantyPayload.id; // ensure ID is auto-generated
+    
+    const { data: wData, error: wError } = await supabase
+      .from('warranties')
+      .insert(warrantyPayload)
+      .select()
+      .single();
+      
+    if (!wError && wData) {
+      resultVehicle.warranty = wData;
+    }
+  }
+
+  clearFleetCache(`vehicles_${tenantUuid}`);
+  return { data: resultVehicle, error: null };
+}
+
+/**
+ * Update an existing vehicle record (partial patch).
+ * Clears the vehicles cache on success.
+ */
+export async function updateVehicleInSupabase(
+  vehicleId: string,
+  patch: Partial<Omit<Vehicle, 'id' | 'active_fault_codes' | 'maintenance_history'>>,
+  tenantId: string
+): Promise<{ data: Vehicle | null; error: string | null }> {
+  const tenantUuid = getTenantUuid(tenantId);
+  
+  const { warranty, ...vehiclePatch } = patch;
+
+  const { data, error } = await supabase
+    .from('vehicles')
+    .update(vehiclePatch)
+    .eq('id', vehicleId)
+    .eq('tenant_id', tenantUuid)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('updateVehicleInSupabase:', error.message);
+    return { data: null, error: error.message };
+  }
+
+  const resultVehicle = data as Vehicle;
+
+  // Update warranty if provided in patch
+  if (warranty !== undefined) {
+    if (warranty === null) {
+      // User requested to remove warranty
+      await supabase
+        .from('warranties')
+        .delete()
+        .eq('vehicle_id', vehicleId)
+        .eq('tenant_id', tenantUuid);
+    } else {
+      // Upsert warranty
+      const warrantyPayload = {
+        ...warranty,
+        tenant_id: tenantUuid,
+        vehicle_id: vehicleId,
+      };
+      const { data: wData, error: wError } = await supabase
+        .from('warranties')
+        .upsert(warrantyPayload, { onConflict: 'vehicle_id' })
+        .select()
+        .single();
+        
+      if (!wError && wData) {
+        resultVehicle.warranty = wData;
+      }
+    }
+  }
+
+  clearFleetCache(`vehicles_${tenantUuid}`);
+  return { data: resultVehicle, error: null };
+}
+
+/**
+ * Delete a vehicle record by id.
+ * Guard: the caller must verify no open work orders exist before calling.
+ * Clears the vehicles cache on success.
+ */
+export async function deleteVehicleInSupabase(
+  vehicleId: string,
+  tenantId: string
+): Promise<{ error: string | null }> {
+  const tenantUuid = getTenantUuid(tenantId);
+
+  const { error } = await supabase
+    .from('vehicles')
+    .delete()
+    .eq('id', vehicleId)
+    .eq('tenant_id', tenantUuid);
+
+  if (error) {
+    console.error('deleteVehicleInSupabase:', error.message);
+    return { error: error.message };
+  }
+
+  clearFleetCache(`vehicles_${tenantUuid}`);
+  return { error: null };
+}
+
+/**
+ * Insert multiple vehicle records for the given tenant (Bulk Import).
+ * Clears the vehicles cache on success.
+ */
+export async function createVehiclesBulkInSupabase(
+  vehiclesList: Omit<Vehicle, 'id' | 'active_fault_codes' | 'maintenance_history'>[],
+  tenantId: string
+): Promise<{ data: Vehicle[] | null; error: string | null }> {
+  if (!vehiclesList.length) return { data: [], error: null };
+
+  const tenantUuid = getTenantUuid(tenantId);
+  const payload = vehiclesList.map(v => ({
+    ...v,
+    tenant_id: tenantUuid,
+    active_fault_codes: [],
+    maintenance_history: [],
+  }));
+
+  const { data, error } = await supabase
+    .from('vehicles')
+    .insert(payload)
+    .select();
+
+  if (error) {
+    console.error('createVehiclesBulkInSupabase:', error.message);
+    return { data: null, error: error.message };
+  }
+
+  clearFleetCache(`vehicles_${tenantUuid}`);
+  return { data: data as Vehicle[], error: null };
+}
+
 

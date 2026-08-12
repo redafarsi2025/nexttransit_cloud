@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
+import Papa from 'papaparse';
 import { useFleet } from '../../context/FleetContext';
 import { useTenant } from '../../context/TenantContext';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -15,6 +16,7 @@ import {
   DollarSign,
   Droplet,
   History,
+  Upload,
 } from 'lucide-react';
 
 export const FuelModule: React.FC = () => {
@@ -40,6 +42,61 @@ export const FuelModule: React.FC = () => {
   } | null>(null);
 
   const currencySymbol = activeTenant?.currencySymbol || '$';
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsSubmitting(true);
+    setSubmitFeedback(null);
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const row of results.data as any[]) {
+          try {
+            const vehicleId = row.VehicleId || row.vehicle_id || row.Vehicle;
+            const liters = parseFloat(row.Liters || row.liters);
+            const cost = parseFloat(row.Cost || row.cost);
+            const odometer = parseInt(row.Odometer || row.odometer, 10);
+            const date = row.Date || row.date;
+
+            if (vehicleId && !isNaN(liters) && !isNaN(cost) && !isNaN(odometer)) {
+              await addFuelLog({
+                vehicle_id: vehicleId,
+                liters,
+                cost,
+                odometer_km: odometer,
+                logged_at: date ? new Date(date).toISOString() : new Date().toISOString(),
+              });
+              successCount++;
+            } else {
+              errorCount++;
+            }
+          } catch (err) {
+            errorCount++;
+          }
+        }
+
+        setSubmitFeedback({
+          type: errorCount === 0 ? 'success' : 'anomaly',
+          message: `Import CSV terminé : ${successCount} succès, ${errorCount} erreurs.`,
+        });
+        setIsSubmitting(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      },
+      error: () => {
+        setSubmitFeedback({ type: 'error', message: 'Erreur lors de la lecture du fichier CSV.' });
+        setIsSubmitting(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    });
+  };
 
   // Evaluate all fuel logs with consumption and anomaly detection
   const evaluatedLogs: CalculatedFuelLog[] = useMemo(() => {
@@ -215,9 +272,27 @@ export const FuelModule: React.FC = () => {
               <PlusCircle className="h-5 w-5 text-indigo-600" />
               {t('fuel.log_entry_title', {}, 'Record Refuel Entry')}
             </h2>
-            <span className="text-xs bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded">
-              Rule R7
-            </span>
+            <div className="flex gap-2">
+              <input 
+                type="file" 
+                accept=".csv" 
+                className="hidden" 
+                ref={fileInputRef} 
+                onChange={handleFileUpload} 
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isSubmitting}
+                className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg border border-slate-200 flex items-center gap-1 transition cursor-pointer"
+              >
+                <Upload className="h-3 w-3" />
+                Import Excel (CSV)
+              </button>
+              <span className="text-xs bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-lg flex items-center">
+                Rule R7
+              </span>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">

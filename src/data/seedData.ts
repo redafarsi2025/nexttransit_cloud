@@ -84,6 +84,7 @@ export const ROLES_CONFIG: RoleInfo[] = [
 export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   LANDING_PAGE: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'full',
     FLEET_MANAGER: 'full',
     MAINTENANCE_MANAGER: 'full',
@@ -94,6 +95,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   STRATEGIC_DASHBOARD: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'full',
     FLEET_MANAGER: 'view',
     MAINTENANCE_MANAGER: 'view',
@@ -104,6 +106,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   VARIANCE_DASHBOARD: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'view',
     FLEET_MANAGER: 'none',
     MAINTENANCE_MANAGER: 'view',
@@ -114,6 +117,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   FLEET_HEALTH_GRID: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'view',
     FLEET_MANAGER: 'full',
     MAINTENANCE_MANAGER: 'full',
@@ -124,6 +128,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   INVENTORY_DASHBOARD: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'view',
     FLEET_MANAGER: 'view',
     MAINTENANCE_MANAGER: 'view',
@@ -134,6 +139,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   WORK_ORDER_QUEUE: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'none',
     FLEET_MANAGER: 'full',
     MAINTENANCE_MANAGER: 'full',
@@ -144,6 +150,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   PM_SCHEDULES: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'view',
     FLEET_MANAGER: 'full',
     MAINTENANCE_MANAGER: 'full',
@@ -154,6 +161,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   EDI_SUPPLIERS: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'view',
     FLEET_MANAGER: 'view',
     MAINTENANCE_MANAGER: 'full',
@@ -164,6 +172,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   CONFLICT_ALERTS: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'none',
     FLEET_MANAGER: 'resolve',
     MAINTENANCE_MANAGER: 'view',
@@ -174,6 +183,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   CAE_BUDGET_PRIORITIZATION: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'view',
     FLEET_MANAGER: 'full',
     MAINTENANCE_MANAGER: 'view',
@@ -184,6 +194,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   INCIDENT_REPORTS: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'none',
     FLEET_MANAGER: 'view',
     MAINTENANCE_MANAGER: 'view',
@@ -194,6 +205,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   MECHANIC_MOBILE_QUEUE: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'none',
     FLEET_MANAGER: 'view',
     MAINTENANCE_MANAGER: 'view',
@@ -204,6 +216,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   DRIVER_MOBILE_VIEW: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'none',
     FLEET_MANAGER: 'view',
     MAINTENANCE_MANAGER: 'none',
@@ -214,6 +227,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   TENANT_CONFIG: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'full',
     FLEET_MANAGER: 'view',
     MAINTENANCE_MANAGER: 'view',
@@ -224,6 +238,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   TRANSLATION_CENTER: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'full',
     FLEET_MANAGER: 'full',
     MAINTENANCE_MANAGER: 'view',
@@ -234,6 +249,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   SAFETY_PERFORMANCE: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'full',
     FLEET_MANAGER: 'full',
     MAINTENANCE_MANAGER: 'view',
@@ -244,6 +260,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   FUEL_LOGS: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'view',
     FLEET_MANAGER: 'full',
     MAINTENANCE_MANAGER: 'full',
@@ -254,6 +271,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   TELEMETRY_STREAM: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'full',
     FLEET_MANAGER: 'full',
     MAINTENANCE_MANAGER: 'full',
@@ -264,6 +282,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   AUDIT_LOG: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'full',
     FLEET_MANAGER: 'full',
     MAINTENANCE_MANAGER: 'none',
@@ -274,6 +293,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   INVITATIONS: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'full',
     FLEET_MANAGER: 'none',
     MAINTENANCE_MANAGER: 'none',
@@ -284,6 +304,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   BILLING: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'none',
     FLEET_MANAGER: 'none',
     MAINTENANCE_MANAGER: 'none',
@@ -292,8 +313,20 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
     MECHANIC: 'none',
     DRIVER: 'none',
   },
+  FUEL_MANAGEMENT: {
+    SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
+    DIRECTOR: 'view',
+    FLEET_MANAGER: 'full',
+    MAINTENANCE_MANAGER: 'none',
+    FINANCE: 'full',
+    OPERATIONS: 'full',
+    MECHANIC: 'none',
+    DRIVER: 'none',
+  },
   API_DOCS: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'full',
     FLEET_MANAGER: 'full',
     MAINTENANCE_MANAGER: 'full',
@@ -304,6 +337,7 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
   },
   FORBIDDEN_403: {
     SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
     DIRECTOR: 'full',
     FLEET_MANAGER: 'full',
     MAINTENANCE_MANAGER: 'full',

@@ -27,7 +27,7 @@ interface TenantContextType {
   isTenantResolved: boolean; // true once userProfile has been loaded (or no auth)
   updateTenantConfig: (id: string, updated: Partial<TenantConfig>) => void;
   setActiveTenantId: (id: string) => void;
-  addTenantConfig: (newTenant: Omit<TenantConfig, 'id' | 'lastUpdated'>) => string;
+  addTenantConfig: (newTenant: Omit<TenantConfig, 'id' | 'lastUpdated'>, forceId?: string) => string;
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
@@ -151,8 +151,8 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setActiveTenantIdState(id);
   };
 
-  const addTenantConfig = (newTenant: Omit<TenantConfig, 'id' | 'lastUpdated'>) => {
-    const id = crypto.randomUUID();
+  const addTenantConfig = (newTenant: Omit<TenantConfig, 'id' | 'lastUpdated'>, forceId?: string) => {
+    const id = forceId || crypto.randomUUID();
     const newConfig: TenantConfig = {
       ...newTenant,
       id,
