@@ -131,6 +131,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, initialTab = 'log
       if (err.name === 'AuthEmailConfirmationError') {
         setSuccessMsg(err.message);
         setTab('login');
+      } else if (err.name === 'AuthProvisioningError' || err.message?.includes('PROVISIONING_FAILED')) {
+        setProvisionFailed(true);
       } else {
         setErrorMsg(err.message || 'Registration error');
       }

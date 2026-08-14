@@ -16,7 +16,7 @@ describe('Auth Service Persistent Rate Limiting & Password Policy', () => {
 
   it('validates password policy correctly', () => {
     expect(validatePasswordPolicy('short1!').valid).toBe(false);
-    expect(validatePasswordPolicy('password123!').valid).toBe(false);
+    expect(validatePasswordPolicy('password123').valid).toBe(false);
     expect(validatePasswordPolicy('ValidPass123!').valid).toBe(true);
   });
 

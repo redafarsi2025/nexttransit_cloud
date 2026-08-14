@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { supabase } from '../../lib/supabase';
-import { registerPublicCompany, loginUser, AuthEmailConfirmationError, AuthProvisioningError } from '../authService';
+import { registerPublicCompany, loginUser, AuthEmailConfirmationError, AuthProvisioningError, ensureTenantProvisioned } from '../authService';
 import { acceptInvitation } from '../invitationService';
 import { recordAudit } from '../auditService';
 
@@ -34,11 +34,9 @@ describe('Auth Security & Privilege Escalation Prevention', () => {
 
   describe('registerPublicCompany (Public Registration)', () => {
     it('should NOT include role or tenant_id in signUp metadata', async () => {
-      // The trigger handle_new_user defaults to DRIVER + NULL tenant.
-      // If we pass role or tenant_id here, it would be a privilege escalation vector.
       const mockAuthUser = { id: 'auth-123', email: 'test@example.com' };
       (supabase.auth.signUp as any).mockResolvedValue({
-        data: { user: mockAuthUser },
+        data: { user: mockAuthUser, session: { access_token: 'fake-token' } },
         error: null,
       });
 
@@ -51,6 +49,18 @@ describe('Auth Security & Privilege Escalation Prevention', () => {
         error: null,
       });
 
+      (supabase.from as any).mockImplementation((table: string) => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockImplementation(() => {
+          if (table === 'profiles') return Promise.resolve({ data: { id: 'auth-123', tenant_id: 't-123', company_id: 'c-123', email: 'test@example.com' }, error: null });
+          if (table === 'tenants') return Promise.resolve({ data: { id: 't-123', company_id: 'c-123' }, error: null });
+          if (table === 'companies') return Promise.resolve({ data: { id: 'c-123', name: 'Test Company' }, error: null });
+          if (table === 'subscriptions') return Promise.resolve({ data: { id: 's-123', tenant_id: 't-123', company_id: 'c-123', plan: 'enterprise_trial', status: 'trial' }, error: null });
+          return Promise.resolve({ data: null, error: null });
+        })
+      }));
+
       const payload = {
         email: 'test@example.com',
         password: 'ValidPassword1!',
@@ -60,14 +70,12 @@ describe('Auth Security & Privilege Escalation Prevention', () => {
 
       await registerPublicCompany(payload);
 
-      // Verify signUp was called without role/tenant_id
       expect(supabase.auth.signUp).toHaveBeenCalledWith(
         expect.objectContaining({
           options: expect.objectContaining({
             data: {
               full_name: 'Test User',
               company_name: 'Test Company',
-              // Assert absence of role and tenant_id
             },
           }),
         })
@@ -77,8 +85,6 @@ describe('Auth Security & Privilege Escalation Prevention', () => {
       expect(signUpCall.options.data).not.toHaveProperty('role');
       expect(signUpCall.options.data).not.toHaveProperty('tenant_id');
 
-      // Verify RPC was called to provision the tenant
-      // We also know provision_tenant now assigns TENANT_ADMIN on the server side
       expect(supabase.rpc).toHaveBeenCalledWith('provision_tenant', {
         p_company_name: 'Test Company',
         p_email: 'test@example.com',
@@ -86,7 +92,6 @@ describe('Auth Security & Privilege Escalation Prevention', () => {
     });
 
     it('should throw AuthEmailConfirmationError and skip RPC if session is missing (email confirmation required)', async () => {
-      // Mock signUp returning no session
       (supabase.auth.signUp as any).mockResolvedValue({
         data: { user: { id: 'auth-123' }, session: null },
         error: null,
@@ -101,14 +106,12 @@ describe('Auth Security & Privilege Escalation Prevention', () => {
 
       await expect(registerPublicCompany(payload)).rejects.toThrow(AuthEmailConfirmationError);
       
-      // Verify RPC was NOT called since provisioning cannot happen without session
       expect(supabase.rpc).not.toHaveBeenCalled();
     });
   });
 
   describe('loginUser (Auto-repair Mechanism)', () => {
     it('should complete provisioning if tenant_id is null but company_name exists in metadata', async () => {
-      // 1. signInWithPassword succeeds
       (supabase.auth.signInWithPassword as any).mockResolvedValue({
         data: { 
           user: { 
@@ -120,41 +123,39 @@ describe('Auth Security & Privilege Escalation Prevention', () => {
         error: null,
       });
 
-      // 2. Fetch profile returns a profile with null tenant_id
-      const selectMock = vi.fn().mockReturnThis();
-      const eqMock = vi.fn().mockReturnThis();
-      const singleMock = vi.fn().mockResolvedValueOnce({
-        data: { id: 'usr-123', auth_user_id: 'auth-123', tenant_id: null, role: 'DRIVER', email: 'test@example.com' },
-        error: null
-      }).mockResolvedValueOnce({
-        // Second call (refetch after repair)
-        data: { id: 'usr-123', auth_user_id: 'auth-123', tenant_id: 't-repaired', role: 'FLEET_MANAGER', email: 'test@example.com' },
-        error: null
-      });
+      let profileCallCount = 0;
+      (supabase.from as any).mockImplementation((table: string) => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockImplementation(() => {
+          if (table === 'profiles') {
+            profileCallCount++;
+            if (profileCallCount <= 2) {
+              return Promise.resolve({ data: { id: 'auth-123', auth_user_id: 'auth-123', tenant_id: null, company_id: null, role: 'DRIVER', email: 'test@example.com' }, error: null });
+            }
+            return Promise.resolve({ data: { id: 'auth-123', auth_user_id: 'auth-123', tenant_id: 't-repaired', company_id: 'c-repaired', role: 'TENANT_ADMIN', email: 'test@example.com' }, error: null });
+          }
+          if (table === 'tenants') return Promise.resolve({ data: { id: 't-repaired', company_id: 'c-repaired' }, error: null });
+          if (table === 'companies') return Promise.resolve({ data: { id: 'c-repaired', name: 'Stuck Company' }, error: null });
+          if (table === 'subscriptions') return Promise.resolve({ data: { id: 's-repaired', tenant_id: 't-repaired', company_id: 'c-repaired', plan: 'enterprise_trial', status: 'trial' }, error: null });
+          return Promise.resolve({ data: null, error: null });
+        })
+      }));
 
-      (supabase.from as any).mockReturnValue({
-        select: selectMock,
-        eq: eqMock,
-        single: singleMock,
-      });
-
-      // 3. RPC call succeeds for auto-repair
       (supabase.rpc as any).mockResolvedValue({
-        data: null,
+        data: { tenant_id: 't-repaired', company_id: 'c-repaired', subscription_id: 's-repaired', slug: 'stuck-company' },
         error: null,
       });
 
       const { profile } = await loginUser('test@example.com', 'ValidPassword1!');
 
-      // Verify RPC was called with metadata
       expect(supabase.rpc).toHaveBeenCalledWith('provision_tenant', {
         p_company_name: 'Stuck Company',
         p_email: 'test@example.com',
       });
 
-      // Verify the returned profile is the repaired one
       expect(profile.tenant_id).toBe('t-repaired');
-      expect(profile.role).toBe('FLEET_MANAGER');
+      expect(profile.role).toBe('TENANT_ADMIN');
     });
 
     it('should throw AuthProvisioningError if tenant_id is null and metadata is missing', async () => {
@@ -254,6 +255,113 @@ describe('Auth Security & Privilege Escalation Prevention', () => {
       // Verify returned profile has the securely resolved role
       expect(result.role).toBe('FINANCE');
       expect(result.tenant_id).toBe('t-invite');
+    });
+  });
+
+  describe('ensureTenantProvisioned (Integrity & Idempotence)', () => {
+    it('Test G: auth.users exists but profile missing should return NEEDS_PROVISIONING', async () => {
+      const singleMock = vi.fn().mockResolvedValue({ data: null, error: new Error('Not found') });
+      (supabase.from as any).mockReturnValue({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: singleMock });
+      
+      const status = await ensureTenantProvisioned('auth-123', 'test@test.com', {});
+      expect(status).toBe('NEEDS_PROVISIONING');
+    });
+
+    it('Test H1: profile.tenant_id pointe vers un tenant inexistant => INCONSISTENT (via rpc exception and PROVISIONING_FAILED in ensureTenantProvisioned)', async () => {
+      const singleProfileMock = vi.fn().mockResolvedValue({ data: { id: 'auth-123', tenant_id: 't-1', company_id: 'c-1', email: 'test@test.com' }, error: null });
+      const singleTenantMock = vi.fn().mockResolvedValue({ data: null, error: new Error('Tenant missing') });
+      
+      (supabase.from as any).mockImplementation((table: string) => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: table === 'profiles' ? singleProfileMock : singleTenantMock
+      }));
+
+      const status = await ensureTenantProvisioned('auth-123');
+      expect(status).toBe('INCONSISTENT');
+    });
+
+    it('Test H2: profile.company_id != tenants.company_id => INCONSISTENT', async () => {
+      const singleProfileMock = vi.fn().mockResolvedValue({ data: { id: 'auth-123', tenant_id: 't-1', company_id: 'c-1', email: 'test@test.com' }, error: null });
+      const singleTenantMock = vi.fn().mockResolvedValue({ data: { id: 't-1', company_id: 'c-DIFFERENT' }, error: null });
+      
+      (supabase.from as any).mockImplementation((table: string) => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: table === 'profiles' ? singleProfileMock : singleTenantMock
+      }));
+
+      const status = await ensureTenantProvisioned('auth-123');
+      expect(status).toBe('INCONSISTENT');
+    });
+
+    it('Test H3: company n\'existe pas => INCONSISTENT', async () => {
+      const singleProfileMock = vi.fn().mockResolvedValue({ data: { id: 'auth-123', tenant_id: 't-1', company_id: 'c-1', email: 'test@test.com' }, error: null });
+      const singleTenantMock = vi.fn().mockResolvedValue({ data: { id: 't-1', company_id: 'c-1' }, error: null });
+      const singleCompanyMock = vi.fn().mockResolvedValue({ data: null, error: new Error('Company missing') });
+      
+      (supabase.from as any).mockImplementation((table: string) => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: table === 'profiles' ? singleProfileMock : table === 'tenants' ? singleTenantMock : singleCompanyMock
+      }));
+
+      const status = await ensureTenantProvisioned('auth-123');
+      expect(status).toBe('INCONSISTENT');
+    });
+
+    it('Test H4: subscription existe mais mauvais company_id => INCONSISTENT via tentative réparation échouée', async () => {
+      const singleProfileMock = vi.fn().mockResolvedValue({ data: { id: 'auth-123', tenant_id: 't-1', company_id: 'c-1', email: 'test@test.com' }, error: null });
+      const singleTenantMock = vi.fn().mockResolvedValue({ data: { id: 't-1', company_id: 'c-1' }, error: null });
+      const singleCompanyMock = vi.fn().mockResolvedValue({ data: { id: 'c-1', name: 'Acme' }, error: null });
+      const singleSubMock = vi.fn().mockResolvedValue({ data: { id: 'sub-1', tenant_id: 't-1', company_id: 'c-WRONG', plan: 'enterprise_trial', status: 'trial' }, error: null });
+      
+      (supabase.from as any).mockImplementation((table: string) => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: table === 'profiles' ? singleProfileMock : table === 'tenants' ? singleTenantMock : table === 'companies' ? singleCompanyMock : singleSubMock
+      }));
+      (supabase.rpc as any).mockResolvedValue({ error: new Error('INCONSISTENT: subscription liée à une mauvaise company') });
+
+      const status = await ensureTenantProvisioned('auth-123');
+      expect(status).toBe('PROVISIONING_FAILED'); // Puisque ensureTenantProvisioned essaie de réparer mais que rpc échoue, il retourne PROVISIONING_FAILED (qui bloque).
+    });
+
+    it('Test H5: subscription absente => création => READY', async () => {
+      const singleProfileMock = vi.fn().mockResolvedValue({ data: { id: 'auth-123', tenant_id: 't-1', company_id: 'c-1', email: 'test@test.com' }, error: null });
+      const singleTenantMock = vi.fn().mockResolvedValue({ data: { id: 't-1', company_id: 'c-1' }, error: null });
+      const singleCompanyMock = vi.fn().mockResolvedValue({ data: { id: 'c-1', name: 'Acme' }, error: null });
+      // Première passe: absente. Seconde passe (après RPC): présente.
+      const singleSubMock = vi.fn()
+        .mockResolvedValueOnce({ data: null, error: new Error('Missing') })
+        .mockResolvedValueOnce({ data: { id: 'sub-new', tenant_id: 't-1', company_id: 'c-1', plan: 'enterprise_trial', status: 'trial' }, error: null });
+      
+      (supabase.from as any).mockImplementation((table: string) => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: table === 'profiles' ? singleProfileMock : table === 'tenants' ? singleTenantMock : table === 'companies' ? singleCompanyMock : singleSubMock
+      }));
+      (supabase.rpc as any).mockResolvedValue({ data: {}, error: null }); // RPC succès
+
+      const status = await ensureTenantProvisioned('auth-123');
+      expect(status).toBe('READY');
+      expect(supabase.rpc).toHaveBeenCalledWith('provision_tenant', expect.any(Object));
+    });
+
+    it('Test J: Should return READY if all FK and constraints match', async () => {
+      const singleProfileMock = vi.fn().mockResolvedValue({ data: { id: 'auth-123', tenant_id: 't-1', company_id: 'c-1', email: 'test@test.com' }, error: null });
+      const singleTenantMock = vi.fn().mockResolvedValue({ data: { id: 't-1', company_id: 'c-1' }, error: null });
+      const singleCompanyMock = vi.fn().mockResolvedValue({ data: { id: 'c-1', name: 'Acme' }, error: null });
+      const singleSubMock = vi.fn().mockResolvedValue({ data: { id: 'sub-1', tenant_id: 't-1', company_id: 'c-1', plan: 'enterprise_trial', status: 'trial' }, error: null });
+      
+      (supabase.from as any).mockImplementation((table: string) => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: table === 'profiles' ? singleProfileMock : table === 'tenants' ? singleTenantMock : table === 'companies' ? singleCompanyMock : singleSubMock
+      }));
+
+      const status = await ensureTenantProvisioned('auth-123');
+      expect(status).toBe('READY');
     });
   });
 });

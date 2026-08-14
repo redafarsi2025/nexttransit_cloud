@@ -68,6 +68,7 @@ export function getTenantUuid(tenantId: string | null | undefined): string {
   
   // Map legacy string identifiers to the respective seeded UUIDs
   switch (tenantId) {
+    case 'demo':
     case 'TNT-NEXTR-001':
       return 'c0a80101-0000-0000-0000-000000000001';
     case 'TNT-EUR-002':

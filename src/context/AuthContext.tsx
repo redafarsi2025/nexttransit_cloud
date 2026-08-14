@@ -3,6 +3,7 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { Role, ScreenId, UserProfile, Subscription } from '../types';
 import { screenToRouteMap, getRoleDefaultRoute } from '../routes/routeMap';
+import { ensureTenantProvisioned } from '../services/authService';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -71,12 +72,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setCurrentRole(role);
           
           // SECURITY GUARD: Do not navigate to dashboard when provisioning is incomplete.
-          // tenant_id = NULL means provision_tenant() hasn't run yet (unlikely but possible
-          // if the RPC call failed after signUp, or the user is brand-new).
-          if (!profile.tenant_id) {
-            // Stay on the login / registration page — the UI shows an appropriate message.
-            // Do not set syncStatus to error — this is not a network problem.
-            console.warn('[AuthContext] Profile has no tenant_id — provisioning pending.');
+          // We call ensureTenantProvisioned to assert state. If it returns anything
+          // other than READY, the workspace is INCONSISTENT or NEEDS_PROVISIONING.
+          const provStatus = await ensureTenantProvisioned(
+            session.user.id,
+            session.user.email,
+            session.user.user_metadata
+          );
+
+          if (provStatus !== 'READY') {
+            console.warn(`[AuthContext] Provisioning state is ${provStatus} — navigation blocked.`);
             return;
           }
           // Check if user is a platform admin

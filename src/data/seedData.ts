@@ -313,17 +313,6 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
     MECHANIC: 'none',
     DRIVER: 'none',
   },
-  FUEL_MANAGEMENT: {
-    SUPER_ADMIN: 'full',
-    TENANT_ADMIN: 'full',
-    DIRECTOR: 'view',
-    FLEET_MANAGER: 'full',
-    MAINTENANCE_MANAGER: 'none',
-    FINANCE: 'full',
-    OPERATIONS: 'full',
-    MECHANIC: 'none',
-    DRIVER: 'none',
-  },
   API_DOCS: {
     SUPER_ADMIN: 'full',
     TENANT_ADMIN: 'full',

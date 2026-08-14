@@ -9,6 +9,8 @@ export class AuthProvisioningError extends Error {
   }
 }
 
+export type ProvisioningStatus = 'READY' | 'NEEDS_PROVISIONING' | 'INCONSISTENT' | 'PROVISIONING_FAILED';
+
 export class AuthEmailConfirmationError extends Error {
   constructor(message: string = 'Vérifiez votre boîte mail pour confirmer votre compte, puis connectez-vous.') {
     super(message);
@@ -188,12 +190,82 @@ export function clearRateLimit(email: string) {
 }
 
 /**
+ * Vérifie et répare l'état complet du provisionnement d'un tenant.
+ */
+export async function ensureTenantProvisioned(
+  authUserId: string,
+  authUserEmail?: string,
+  authUserMetadata?: any
+): Promise<ProvisioningStatus> {
+  try {
+    // 1. Vérifier si le profil existe
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authUserId)
+      .single();
+
+    if (profileError || !profile) {
+      return 'NEEDS_PROVISIONING';
+    }
+
+    // 2. Vérifier si l'utilisateur est "orphelin" (tenant_id ou company_id manquant)
+    if (!profile.tenant_id || !profile.company_id) {
+      const companyName = authUserMetadata?.company_name;
+      if (!companyName) return 'PROVISIONING_FAILED'; // Impossible de réparer sans le nom
+      
+      const { error: rpcError } = await supabase.rpc('provision_tenant', {
+        p_company_name: companyName,
+        p_email: authUserEmail || profile.email
+      });
+
+      if (rpcError) return 'PROVISIONING_FAILED';
+      
+      // Re-vérifier l'état après tentative de réparation
+      const { data: repairedProfile } = await supabase.from('profiles').select('*').eq('id', authUserId).single();
+      if (!repairedProfile || !repairedProfile.tenant_id || !repairedProfile.company_id) {
+        return 'PROVISIONING_FAILED';
+      }
+      // Continue la vérification avec le profil réparé
+      Object.assign(profile, repairedProfile);
+    }
+
+    // 3. Vérifier le tenant et l'intégrité de la FK company_id
+    const { data: tenant } = await supabase.from('tenants').select('*').eq('id', profile.tenant_id).single();
+    if (!tenant || tenant.company_id !== profile.company_id) return 'INCONSISTENT';
+
+    // 4. Vérifier la compagnie
+    const { data: company } = await supabase.from('companies').select('*').eq('id', profile.company_id).single();
+    if (!company) return 'INCONSISTENT';
+
+    // 5. Vérifier la souscription et son intégrité FK vers company_id ET tenant_id
+    const { data: subscription } = await supabase.from('subscriptions').select('*').eq('tenant_id', tenant.id).single();
+    if (!subscription || subscription.company_id !== company.id || !['enterprise_trial', 'professional', 'enterprise'].includes(subscription.plan) || !['trial', 'active', 'past_due', 'cancelled'].includes(subscription.status)) {
+       // Incohérence. Appel à l'idempotence pour tenter une réparation
+       const { error: rpcError } = await supabase.rpc('provision_tenant', {
+        p_company_name: company.name,
+        p_email: authUserEmail || profile.email
+       });
+       
+       if (rpcError) return 'PROVISIONING_FAILED';
+       
+       // Vérification ultime
+       const { data: repairedSub } = await supabase.from('subscriptions').select('*').eq('tenant_id', tenant.id).single();
+       if (!repairedSub || repairedSub.company_id !== company.id) return 'INCONSISTENT';
+    }
+
+    return 'READY';
+  } catch (err) {
+    return 'PROVISIONING_FAILED';
+  }
+}
+
+/**
  * Public Self-Registration:
  * 1. Creates Supabase Auth User (trigger sets profile to DRIVER + NULL tenant)
- * 2. Calls register_new_tenant() SECURITY DEFINER to:
- *    - Create company, tenant (fresh server-side UUID), subscription
+ * 2. Calls provision_tenant() SECURITY DEFINER to:
+ *    - Create company, tenant, subscription transactionally
  *    - Promote profile to TENANT_ADMIN for the new tenant
- * The client CANNOT influence tenant_id or role — those are set server-side.
  */
 export async function registerPublicCompany(payload: {
   email: string;
@@ -207,9 +279,7 @@ export async function registerPublicCompany(payload: {
     throw new Error(passCheck.error);
   }
 
-  // Step 1: Create the Supabase Auth user.
-  // The trigger handle_new_user() creates profiles(role='DRIVER', tenant_id=NULL).
-  // We pass ONLY display metadata (full_name, company_name) — NEVER role or tenant_id.
+  // L'appel crée le Auth User (et donc le Profile orphelin via trigger)
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: payload.email,
     password: payload.password,
@@ -217,8 +287,6 @@ export async function registerPublicCompany(payload: {
       data: {
         full_name:    payload.fullName,
         company_name: payload.companyName,
-        // SECURITY: Do NOT pass role or tenant_id here.
-        // The SECURITY DEFINER function sets them server-side.
       },
     },
   });
@@ -237,9 +305,8 @@ export async function registerPublicCompany(payload: {
     throw new AuthEmailConfirmationError();
   }
 
-  // Step 2: Call the SECURITY DEFINER function to provision company, tenant, subscription.
-  // All UUIDs are generated server-side. Client cannot supply or influence them.
-  const { data: rpcData, error: rpcError } = await supabase.rpc('provision_tenant', {
+  // Provisioning canonique
+  const { error: rpcError } = await supabase.rpc('provision_tenant', {
     p_company_name: payload.companyName,
     p_email:        payload.email,
   });
@@ -248,53 +315,37 @@ export async function registerPublicCompany(payload: {
     throw new Error(`Workspace provisioning failed: ${rpcError.message}`);
   }
 
-  const tenantId  = (rpcData as any)?.tenant_id  || '';
-  const companyId = (rpcData as any)?.company_id || '';
+  // Tâche 3 : Valider formellement la cohérence de TOUT le workspace
+  const status = await ensureTenantProvisioned(authUserId, payload.email, { company_name: payload.companyName });
+  if (status !== 'READY') {
+    throw new Error(`Incomplete provisioning state: ${status}`);
+  }
+
+  // Récupération des données réelles depuis la base (pas de simulation !)
+  const { data: finalProfile, error: profileError } = await supabase.from('profiles').select('*').eq('id', authUserId).single();
+  const { data: finalCompany, error: compError } = await supabase.from('companies').select('*').eq('id', finalProfile.company_id).single();
+  const { data: finalSub, error: subError } = await supabase.from('subscriptions').select('*').eq('tenant_id', finalProfile.tenant_id).single();
+
+  if (profileError || compError || subError) {
+    throw new Error('Error fetching provisioned resources.');
+  }
 
   try {
-    localStorage.setItem('nexttransit_active_tenant_id', tenantId);
+    localStorage.setItem('nexttransit_active_tenant_id', finalProfile.tenant_id);
   } catch (e) {}
-
-  // Build return objects from server-confirmed values
-  const company: Company = {
-    id:         companyId,
-    name:       payload.companyName,
-    created_at: new Date().toISOString(),
-  };
-
-  const subscription: Subscription = {
-    id:                  (rpcData as any)?.subscription_id || '',
-    company_id:          companyId,
-    plan:                'enterprise_trial',
-    status:              'trial',
-    current_period_end:  new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
-    created_at:          new Date().toISOString(),
-  };
-
-  const userProfile: UserProfile = {
-    id:          authUserId,
-    auth_user_id: authUserId,
-    company_id:  companyId,
-    tenant_id:   tenantId,
-    full_name:   payload.fullName,
-    email:       payload.email,
-    role:        'TENANT_ADMIN',
-    status:      'active',
-    created_at:  new Date().toISOString(),
-  };
 
   await recordAudit(
     'users',
-    userProfile.id,
+    finalProfile.id,
     'ACCOUNT_CREATE',
     {},
-    { email: userProfile.email, role: 'TENANT_ADMIN', company_id: companyId, tenant_id: tenantId },
-    userProfile.id,
+    { email: finalProfile.email, role: 'TENANT_ADMIN', company_id: finalCompany.id, tenant_id: finalProfile.tenant_id },
+    finalProfile.id,
     'TENANT_ADMIN',
-    tenantId
+    finalProfile.tenant_id
   );
 
-  return { user: userProfile, company, subscription };
+  return { user: finalProfile as UserProfile, company: finalCompany as Company, subscription: finalSub as Subscription };
 }
 
 /**
@@ -366,41 +417,24 @@ export async function loginUser(email: string, password: string): Promise<{ prof
   }
 
   // SECURITY GUARD: Block dashboard access when tenant is not provisioned.
-  // This happens if register_new_tenant() failed after signUp(), or for a fresh
-  // account that hasn't completed provisioning.
-  let finalProfile = resolvedProfile;
-  if (!finalProfile.tenant_id) {
-    // Tâche 1 : Auto-réparation à la connexion
-    const metaCompanyName = authData.user?.user_metadata?.company_name;
-    const metaFullName = authData.user?.user_metadata?.full_name;
+  const provStatus = await ensureTenantProvisioned(
+    authUserId || '',
+    email,
+    authData.user?.user_metadata
+  );
 
-    if (!metaCompanyName) {
-      throw new AuthProvisioningError('PROVISIONING_FAILED_PERMANENTLY');
-    }
-
-    // Attempt to complete the provisioning that failed previously or was delayed
-    const { error: rpcError } = await supabase.rpc('provision_tenant', {
-      p_company_name: metaCompanyName,
-      p_email: email,
-    });
-
-    if (rpcError) {
-      throw new AuthProvisioningError('PROVISIONING_FAILED_PERMANENTLY');
-    }
-
-    // If RPC succeeds, refetch the profile
-    const { data: repairedProfile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', authUserId)
-      .single();
-
-    if (!repairedProfile || !repairedProfile.tenant_id) {
-      throw new AuthProvisioningError('PROVISIONING_FAILED_PERMANENTLY');
-    }
-    
-    finalProfile = repairedProfile as UserProfile;
+  if (provStatus !== 'READY') {
+    throw new AuthProvisioningError(`State is ${provStatus}. PROVISIONING_FAILED_PERMANENTLY`);
   }
+
+  // If we reach here, we must refetch the profile because it might have been repaired
+  const { data: finalProfileData } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', authUserId)
+    .single();
+
+  const finalProfile = finalProfileData as UserProfile;
 
   if (finalProfile.tenant_id) {
     try {

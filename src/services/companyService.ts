@@ -2,8 +2,9 @@ import { supabase } from '../lib/supabase';
 import { Company, TenantConfig } from '../types';
 
 /**
- * Creates a company with its initial tenant workspace.
- * A company can own one or more tenants (supporting multi-site enterprise fleets).
+ * @deprecated THIS FUNCTION IS DEPRECATED AND MUST NOT BE USED IN PRODUCTION.
+ * Legacy non-transactional provisioning bypass. All tenant/company provisioning
+ * MUST use the transactional SECURITY DEFINER RPC `provision_tenant`.
  */
 export async function createCompanyWithFirstTenant(
   companyName: string,

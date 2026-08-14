@@ -35,7 +35,7 @@ export const VehicleDetailModal: React.FC<VehicleDetailModalProps> = ({
   vehicleId,
   onClose,
 }) => {
-  const { vehicles, workOrders, updateWorkOrder, addCostRecord, costRecords, getVehicleParts, caeItems, setCaeAvailableBudget, caeAvailableBudget, fuelLogs, inventory, createWorkOrder, closeWorkOrder } = useFleet();
+  const { vehicles, workOrders, costRecords, caeItems, setCaeAvailableBudget, caeAvailableBudget, fuelLogs, inventory, createWorkOrder, closeWorkOrder } = useFleet();
   const { currentRole, changeScreen } = useAuth();
   const { activeTenant } = useTenant();
   const currencySymbol = activeTenant?.currencySymbol || '$';
