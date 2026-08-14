@@ -1,6 +1,6 @@
 import {
   TelematicsProvider,
-  TelematicsProviderType,
+  TelematicsAdapterType,
   DeviceMapping,
   ActiveFaultCode,
   Position,
@@ -22,28 +22,43 @@ import { getCurrentTenantId } from './fleetData';
  * 3. FlespiWialonAdapter: Middleware stub for Flespi/Wialon telematics streaming platform.
  */
 
-// Initial Seed Mappings for Demo & Offline Fallback
-export const INITIAL_SEED_DEVICE_MAPPINGS: DeviceMapping[] = [
+/**
+ * DEV/TEST FIXTURES ONLY — Not for production use.
+ * In production, device mappings are created via the tenant provisioning workflow
+ * (Vehicle -> Tracker -> Provider -> IMEI) and persisted in Supabase device_mappings.
+ *
+ * These fixtures exist solely to allow offline/demo development and unit tests
+ * to exercise the telematics pipeline without a live Supabase connection.
+ * No real vehicle registrations, IMEIs, or device models should appear here.
+ */
+export const DEV_FIXTURE_DEVICE_MAPPINGS: DeviceMapping[] = [
   {
-    id: 'DM-001',
+    id: 'DM-FIXTURE-001',
     tenant_id: 'c0a80101-0000-0000-0000-000000000001',
     vehicle_id: 'V-024',
     provider: 'manual',
-    external_device_id: 'MAN-V024-ALGIERS',
+    external_device_id: 'MAN-V024-DEV-FIXTURE',
+    is_active: true,
   },
   {
-    id: 'DM-002',
+    id: 'DM-FIXTURE-002',
     tenant_id: 'c0a80101-0000-0000-0000-000000000001',
     vehicle_id: 'V-018',
-    provider: 'teltonika',
-    external_device_id: 'TEL-864201049281002',
+    provider: 'direct',
+    protocol: 'teltonika',
+    external_device_id: 'DEV-FIXTURE-IMEI-001',
+    is_active: true,
+    capabilities: { gps: true, ignition: true, speed: true, obd2: false, eobd: false, j1939: true, dtc: true, odometer: false, fuelLevel: false, engineRpm: false, engineTemperature: false, j1708: false, canBus: true, harshDriving: false, batteryVoltage: true, digitalInputs: 2, analogInputs: 1 },
   },
   {
-    id: 'DM-003',
+    id: 'DM-FIXTURE-003',
     tenant_id: 'c0a80101-0000-0000-0000-000000000001',
     vehicle_id: 'V-007',
-    provider: 'flespi_wialon',
-    external_device_id: 'WIA-UNIT-908123',
+    provider: 'flespi',
+    protocol: 'teltonika',
+    external_device_id: 'DEV-FIXTURE-UNIT-001',
+    is_active: true,
+    capabilities: { gps: true, ignition: true, speed: true, obd2: true, eobd: true, j1939: false, dtc: true, odometer: true, fuelLevel: false, engineRpm: true, engineTemperature: true, j1708: false, canBus: true, harshDriving: true, batteryVoltage: true, digitalInputs: 4, analogInputs: 2 },
   },
 ];
 
@@ -51,7 +66,7 @@ export const INITIAL_SEED_DEVICE_MAPPINGS: DeviceMapping[] = [
 // 1. MANUAL ENTRY PROVIDER (DECLARATIVE)
 // ==========================================
 export class ManualEntryProvider implements TelematicsProvider {
-  public readonly providerName: TelematicsProviderType = 'manual';
+  public readonly providerName: TelematicsAdapterType = 'manual';
   public readonly isConnected: boolean = true;
 
   private listeners: Map<
@@ -125,7 +140,7 @@ export class ManualEntryProvider implements TelematicsProvider {
 // 2. NEXTTRANSIT PROPRIETARY IOT GATEWAY ADAPTER (PHASE 2 CAN-BUS STREAM)
 // ==========================================
 export class NextTransitIoTGatewayAdapter implements TelematicsProvider {
-  public readonly providerName: TelematicsProviderType = 'nexttransit_gateway';
+  public readonly providerName: TelematicsAdapterType = 'nexttransit_gateway';
   public readonly isConnected: boolean = true;
 
   private listeners: Map<
@@ -209,7 +224,7 @@ export class NextTransitIoTGatewayAdapter implements TelematicsProvider {
 // 3. TELTONIKA ADAPTER (HARDWARE STUB)
 // ==========================================
 export class TeltonikaAdapter implements TelematicsProvider {
-  public readonly providerName: TelematicsProviderType = 'teltonika';
+  public readonly providerName: TelematicsAdapterType = 'teltonika_direct';
   public readonly isConnected: boolean = false; // Phase 2 connection pending
 
   constructor(public readonly externalDeviceId: string) {}
@@ -242,7 +257,7 @@ export class TeltonikaAdapter implements TelematicsProvider {
 // 3. FLESPI / WIALON ADAPTER (REAL REST & STREAM CLIENT)
 // ==========================================
 export class FlespiWialonAdapter implements TelematicsProvider {
-  public readonly providerName: TelematicsProviderType = 'flespi_wialon';
+  public readonly providerName: TelematicsAdapterType = 'flespi_wialon';
 
   private get apiToken(): string | null {
     const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env || {} : {};
@@ -366,7 +381,7 @@ export class FlespiWialonAdapter implements TelematicsProvider {
 // 4. DEVICE MAPPING DATA SERVICE & FACTORY
 // ==========================================
 
-let memoryDeviceMappings: DeviceMapping[] = [...INITIAL_SEED_DEVICE_MAPPINGS];
+let memoryDeviceMappings: DeviceMapping[] = [...DEV_FIXTURE_DEVICE_MAPPINGS];
 
 /**
  * Fetch device mappings for current tenant with seed fallback
@@ -470,16 +485,16 @@ export function getProviderForVehicle(
     return new ManualEntryProvider(vehiclesList);
   }
 
-  if (mapping.provider === 'nexttransit_gateway') {
-    return new NextTransitIoTGatewayAdapter(mapping.external_device_id, vehiclesList);
-  }
-
-  if (mapping.provider === 'teltonika') {
-    return new TeltonikaAdapter(mapping.external_device_id);
-  }
-
-  if (mapping.provider === 'flespi_wialon') {
+  if (mapping.provider === 'flespi' || mapping.provider === 'wialon' || mapping.provider === 'http') {
     return new FlespiWialonAdapter(mapping.external_device_id);
+  }
+
+  if (mapping.provider === 'direct' || mapping.provider === 'mqtt') {
+    // For direct/MQTT with Teltonika protocol, use TeltonikaAdapter
+    if (!mapping.protocol || mapping.protocol === 'teltonika') {
+      return new TeltonikaAdapter(mapping.external_device_id);
+    }
+    return new TeltonikaAdapter(mapping.external_device_id);
   }
 
   return new ManualEntryProvider(vehiclesList);

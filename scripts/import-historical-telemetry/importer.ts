@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { translateJ1939ToActiveFault } from '../../src/services/j1939MappingService';
+import { translateJ1939ToActiveFault } from '../../src/services/faultCodeMappingService';
 import { ActiveFaultCode, Position } from '../../src/types';
 
 export interface TelemetryImportRow {

@@ -370,21 +370,24 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       id: 'DM-TRK-001',
       tenant_id: tenantId,
       vehicle_id: 'TRK-001',
-      provider: 'teltonika',
+      provider: 'direct',
+      protocol: 'teltonika',
       external_device_id: 'TEL-864201049281001',
     },
     {
       id: 'DM-TRK-002',
       tenant_id: tenantId,
       vehicle_id: 'TRK-002',
-      provider: 'flespi_wialon',
+      provider: 'flespi',
+      protocol: 'wialon',
       external_device_id: 'WIA-UNIT-882102',
     },
     {
       id: 'DM-TRK-003',
       tenant_id: tenantId,
       vehicle_id: 'TRK-003',
-      provider: 'teltonika',
+      provider: 'direct',
+      protocol: 'teltonika',
       external_device_id: 'TEL-864201049281003',
     },
     {
@@ -398,14 +401,16 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       id: 'DM-TRK-005',
       tenant_id: tenantId,
       vehicle_id: 'TRK-005',
-      provider: 'teltonika',
+      provider: 'direct',
+      protocol: 'teltonika',
       external_device_id: 'TEL-864201049281005',
     },
     {
       id: 'DM-TRK-006',
       tenant_id: tenantId,
       vehicle_id: 'TRK-006',
-      provider: 'flespi_wialon',
+      provider: 'flespi',
+      protocol: 'wialon',
       external_device_id: 'WIA-UNIT-901112',
     }
   );
@@ -498,12 +503,14 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
     });
 
     // Telematics device mapping
-    const providers: ('teltonika' | 'flespi_wialon' | 'manual')[] = ['teltonika', 'flespi_wialon', 'manual'];
+    const providers: ('direct' | 'flespi' | 'manual')[] = ['direct', 'flespi', 'manual'];
+    const protocols: ('teltonika' | 'wialon' | undefined)[] = ['teltonika', 'wialon', undefined];
     deviceMappings.push({
       id: `DM-${id}`,
       tenant_id: tenantId,
       vehicle_id: id,
       provider: providers[i % 3],
+      protocol: protocols[i % 3],
       external_device_id: `DEV-NUMILOG-${i.toString().padStart(4, '0')}`,
     });
   }

@@ -1,5 +1,5 @@
 import { DecisionEngine } from '../../src/services/decisionEngine';
-import { translateJ1939ToActiveFault } from '../../src/services/j1939MappingService';
+import { translateJ1939ToActiveFault } from '../../src/services/faultCodeMappingService';
 import { ActiveFaultCode } from '../../src/types';
 import { TelemetryImportRow } from './importer';
 

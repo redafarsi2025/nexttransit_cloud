@@ -110,6 +110,8 @@ export interface ActiveFaultCode {
   logged_date: string;
   required_part_id?: string;
   required_intervention: string;
+  // Optional: which diagnostic standard produced this code
+  standard?: FaultStandard;
 }
 
 export interface MaintenanceHistoryItem {
@@ -394,7 +396,110 @@ export interface AuditLog {
 // VENDOR-AGNOSTIC TELEMATICS INGESTION LAYER
 // ==========================================
 
-export type TelematicsProviderType = 'nexttransit_gateway' | 'teltonika' | 'flespi_wialon' | 'manual';
+// ── Cloud/middleware provider (where data arrives from) ──────────────────────
+// These are the platforms that receive data from the physical device.
+// They are independent of the device model or vehicle type.
+export type TelematicsProviderType =
+  | 'flespi'       // Flespi.io — primary Phase 2 middleware
+  | 'wialon'       // Wialon / Gurtam platform
+  | 'direct'       // Direct TCP / UDP connection (no middleware)
+  | 'mqtt'         // Generic MQTT broker
+  | 'http'         // Generic HTTP push / REST
+  | 'manual'       // Declarative/manual entry (always available, no IoT)
+  | 'other';       // Future extensibility
+
+// ── Device encoding protocol (how the device frames its data) ────────────────
+// Independent of the cloud provider. A Flespi provider can receive
+// Teltonika codec payloads, just as a direct TCP server can.
+export type TelematicsProtocol =
+  | 'teltonika'    // Teltonika Codec 8 / 8 Extended / 16 (FMBxxx, FMCxxx, TATxxx)
+  | 'wialon'       // Wialon IPS protocol
+  | 'mqtt'         // Standard MQTT framing
+  | 'http'         // HTTP/REST push framing
+  | 'tcp'          // Raw TCP framing
+  | 'udp'          // Raw UDP framing
+  | 'other';       // OEM / future extensibility
+
+// ── Diagnostic fault standard (what code format the vehicle speaks) ──────────
+// Completely independent of provider, protocol, and vehicle make/model.
+export type FaultStandard =
+  | 'OBDII'        // SAE J1979 / ISO 15031-6 — P/C/B/U codes (light & medium vehicles)
+  | 'EOBD'         // European OBD (functionally identical to OBD-II for our purposes)
+  | 'J1939'        // SAE J1939 — SPN/FMI (heavy trucks, buses, construction equipment)
+  | 'J1708'        // SAE J1708/J1587 — legacy heavy vehicle protocol (pre-J1939)
+  | 'UDS'          // ISO 14229 — Unified Diagnostic Services (OEM extended diagnostics)
+  | 'OEM'          // Manufacturer-specific codes (P1xxx-P3xxx, B/C/U 1xxx-3xxx)
+  | 'UNKNOWN';     // Standard could not be determined
+
+// ── Fault definition: standard meaning (separate from NextTransit policy) ────
+// A FaultDefinition describes what a code means according to the diagnostic
+// standard. NextTransit's operational severity is applied separately via
+// the SeverityPolicy in faultCodeMappingService.ts.
+export interface FaultDefinition {
+  code: string;
+  standard: FaultStandard;
+  name: string;
+  description: string;
+  system: 'Engine' | 'Transmission' | 'Electrical' | 'Brakes' | 'Chassis' | 'Fuel' | 'Exhaust' | 'Other';
+  // Standard meaning only — not the NextTransit operational severity
+  standardSeverity: 'critical' | 'high' | 'medium' | 'low' | 'info';
+}
+
+// ── Telematics capabilities declared by or observed from a device ─────────────
+// Two uses:
+//   1. On TelematicsDevice — theoretical capabilities of the device model.
+//   2. On DeviceMapping.capabilities — actual capabilities confirmed for this
+//      specific installation on this vehicle. Overrides the device model defaults.
+export interface TelematicsCapabilities {
+  gps: boolean;
+  ignition: boolean;
+  speed: boolean;
+  odometer: boolean;
+  fuelLevel: boolean;
+  engineRpm: boolean;
+  engineTemperature: boolean;
+  obd2: boolean;               // OBD-II / EOBD support
+  eobd: boolean;               // EOBD (EU variant — usually same as obd2)
+  j1939: boolean;              // SAE J1939 CAN-Bus support (heavy vehicles)
+  j1708: boolean;              // Legacy heavy vehicle protocol
+  canBus: boolean;             // Generic CAN-Bus reading
+  dtc: boolean;                // Diagnostic Trouble Codes retrieval
+  harshDriving: boolean;       // Harsh braking / acceleration detection
+  batteryVoltage: boolean;
+  digitalInputs: number;       // Number of digital inputs (0 if none)
+  analogInputs: number;        // Number of analog inputs (0 if none)
+}
+
+// ── Physical telematics device (tracker) ─────────────────────────────────────
+// Represents the hardware tracker entity, completely independent of the vehicle
+// it is installed on or the cloud provider it reports to.
+export interface TelematicsDevice {
+  id: string;
+  tenant_id: string;
+  // Device identification — informational only, not used in business logic
+  imei?: string;               // Primary identifier for GSM/LTE trackers
+  external_id: string;         // Provider-side unit ID (may differ from IMEI)
+  manufacturer?: string;       // e.g. 'Teltonika' — data, not a code condition
+  model?: string;              // e.g. 'FMB140' — data, not a code condition
+  serial_number?: string;
+  firmware_version?: string;
+  // Connectivity
+  provider: TelematicsProviderType;
+  protocol: TelematicsProtocol;
+  // Theoretical capabilities of this device model.
+  // Actual available capabilities per installation are in DeviceMapping.capabilities.
+  capabilities: TelematicsCapabilities;
+  // Status
+  status: 'online' | 'offline' | 'pending' | 'error';
+  last_heartbeat?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ── Adapter type — internal identifier for which TelematicsProvider class ─────
+// Kept separate from TelematicsProviderType (the cloud platform) to avoid
+// conflation. The adapter routes calls; the provider type describes infrastructure.
+export type TelematicsAdapterType = 'nexttransit_gateway' | 'flespi_wialon' | 'teltonika_direct' | 'manual';
 
 export interface PredictiveAiResult {
   vehicle_id: string;
@@ -419,9 +524,35 @@ export interface DeviceMapping {
   id: string;
   tenant_id: string;
   vehicle_id: string;
+
+  // FK to TelematicsDevice (optional — Phase 1 may use external_device_id only)
+  device_id?: string;
+
+  // Cloud provider receiving data from the physical device
   provider: TelematicsProviderType;
+  // Device encoding protocol (set during provisioning)
+  protocol?: TelematicsProtocol;
+  // Raw device identifier on the provider side (IMEI, unit_id, etc.)
   external_device_id: string;
+
+  // Informational metadata — never used in business logic conditions
+  device_model?: string;
+  manufacturer?: string;
+
+  // Actual capabilities confirmed for THIS installation on THIS vehicle.
+  // Overrides the theoretical device-level capabilities.
+  // e.g. a device supporting fuelLevel may not have it wired on a specific vehicle.
+  capabilities?: Partial<TelematicsCapabilities>;
+
+  // Device-vehicle association lifecycle (enables history tracking)
+  connection_status?: 'active' | 'inactive' | 'pending';
+  is_active?: boolean;
+  installed_at?: string;   // When this device was installed on this vehicle
+  removed_at?: string;     // When this device was removed (null = currently installed)
+  metadata?: Record<string, unknown>;
+
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface Position {
@@ -438,9 +569,10 @@ export type Unsubscribe = () => void;
 /**
  * Stable internal contract for vendor-agnostic telematics ingestion.
  * Decouples R1-R7 Decision Engine rules from hardware/vendor-specific payload formats.
+ * providerName identifies the adapter class (not the cloud provider platform).
  */
 export interface TelematicsProvider {
-  providerName: TelematicsProviderType;
+  providerName: TelematicsAdapterType;
   isConnected: boolean;
   getFaultCodes(vehicleId: string): Promise<ActiveFaultCode[]>;
   getPosition(vehicleId: string): Promise<Position | null>;
@@ -449,6 +581,109 @@ export interface TelematicsProvider {
     onUpdate: (data: { faultCodes?: ActiveFaultCode[]; position?: Position | null }) => void
   ): Unsubscribe;
 }
+
+// ── Normalized Telemetry Event — output of TelemetryNormalizer ───────────────
+// This is the canonical internal representation of any telemetry frame,
+// regardless of provider, protocol, device type, or vehicle make/model.
+export interface NormalizedTelemetryEvent {
+  tenant_id: string;
+  vehicle_id: string;
+  device_id?: string;          // FK to TelematicsDevice if known
+  external_device_id: string;  // Raw IMEI / unit_id from payload
+
+  timestamp: string;
+
+  // GPS / position data — absent if device lacks GPS or no fix
+  position?: {
+    latitude: number;
+    longitude: number;
+    altitude?: number;
+    speed?: number;            // km/h
+    heading?: number;          // degrees
+    satellites?: number;
+  };
+
+  // Vehicle state snapshot — absent fields = not reported by this device
+  vehicleState?: {
+    ignition?: boolean;
+    engineRpm?: number;
+    engineTemperature?: number;  // °C
+    fuelLevel?: number;          // % 0-100
+    odometer?: number;           // km
+    batteryVoltage?: number;     // V
+  };
+
+  // Resolved fault codes — processed through FaultCodeResolver + SeverityPolicy
+  faults: ActiveFaultCode[];
+
+  // Raw DTC data preserved for audit trail — never used in business logic
+  raw_dtc?: Array<{
+    code: string;
+    standard: FaultStandard;
+    spn?: number;    // J1939 only
+    fmi?: number;    // J1939 only
+  }>;
+
+  // Actual capabilities available for this event (from DeviceMapping overlay)
+  capabilities?: Partial<TelematicsCapabilities>;
+
+  data_source: 'live_telematics';
+}
+
+// ── Telemetry Event Hierarchy — for future event-driven extensions ────────────
+// DiagnosticEvent feeds FaultCodeResolver → ActiveFaultCode → Decision Engine R1.
+// Other event types feed their respective R2-R7 handlers.
+export type TelemetryEventType =
+  | 'position'       // GPS position update
+  | 'vehicle_state'  // Ignition, RPM, temperature, fuel, battery, odometer
+  | 'diagnostic'     // DTC / fault codes (feeds FaultCodeResolver)
+  | 'driving'        // Harsh braking, harsh acceleration, overspeed
+  | 'geofence'       // Geofence enter/exit
+  | 'system';        // Device heartbeat, low battery, connection state
+
+export interface BaseTelemetryEvent {
+  type: TelemetryEventType;
+  tenant_id: string;
+  vehicle_id: string;
+  external_device_id: string;
+  timestamp: string;
+}
+
+export interface DiagnosticEvent extends BaseTelemetryEvent {
+  type: 'diagnostic';
+  dtc: Array<{ code: string; standard: FaultStandard; spn?: number; fmi?: number }>;
+}
+
+export interface PositionEvent extends BaseTelemetryEvent {
+  type: 'position';
+  latitude: number;
+  longitude: number;
+  altitude?: number;
+  speed?: number;
+  heading?: number;
+}
+
+export interface VehicleStateEvent extends BaseTelemetryEvent {
+  type: 'vehicle_state';
+  ignition?: boolean;
+  engineRpm?: number;
+  engineTemperature?: number;
+  fuelLevel?: number;
+  odometer?: number;
+  batteryVoltage?: number;
+}
+
+export interface DrivingEvent extends BaseTelemetryEvent {
+  type: 'driving';
+  eventSubType: 'harsh_braking' | 'harsh_acceleration' | 'overspeed' | 'sharp_turn';
+  value?: number;
+}
+
+export type TelemetryEvent =
+  | DiagnosticEvent
+  | PositionEvent
+  | VehicleStateEvent
+  | DrivingEvent;
 
 export interface AuditLogEntry {
   id: string;
