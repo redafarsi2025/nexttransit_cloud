@@ -94,8 +94,14 @@ export interface Establishment {
   address_line_1?: string;
   address_line_2?: string;
   district?: string;
+  /** Code ou identifiant texte libre (ex: "16" pour Alger) */
   wilaya_id?: string;
+  /** Label texte libre (ex: "16 - Alger") — colonne ajoutée migration 20260815 */
+  wilaya_name?: string;
+  /** Code ou identifiant texte libre (ex: "Rouiba") */
   commune_id?: string;
+  /** Label texte libre — colonne ajoutée migration 20260815 */
+  commune_name?: string;
   postal_code?: string;
   phone?: string;
   email?: string;

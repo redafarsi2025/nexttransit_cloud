@@ -235,4 +235,50 @@ export class TenantLegalIdentityService {
     const { error } = await supabase.from('legal_representatives').delete().eq('id', id);
     if (error) throw error;
   }
+
+  // ==========================================
+  // UPDATE METHODS FOR INLINE-EDITABLE TABS
+  // ==========================================
+
+  /** Patch the core tenant row (table: tenants) */
+  static async updateTenantCore(tenantId: string, updates: Partial<TenantCore>): Promise<void> {
+    const { error } = await supabase
+      .from('tenants')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', tenantId);
+    if (error) throw error;
+  }
+
+  /** Upsert commercial registration (table: commercial_registrations) */
+  static async upsertCommercialRegistration(
+    tenantId: string,
+    data: Partial<CommercialRegistration>
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('commercial_registrations')
+      .upsert({ ...data, tenant_id: tenantId, updated_at: new Date().toISOString() }, { onConflict: 'tenant_id' });
+    if (error) throw error;
+  }
+
+  /** Upsert statistical profile / NIS (table: statistical_profiles) */
+  static async upsertStatisticalProfile(
+    tenantId: string,
+    data: Partial<StatisticalProfile>
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('statistical_profiles')
+      .upsert({ ...data, tenant_id: tenantId, updated_at: new Date().toISOString() }, { onConflict: 'tenant_id' });
+    if (error) throw error;
+  }
+
+  /** Upsert tax profile (table: tax_profiles) */
+  static async upsertTaxProfile(
+    tenantId: string,
+    data: Partial<TaxProfile>
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('tax_profiles')
+      .upsert({ ...data, tenant_id: tenantId, updated_at: new Date().toISOString() }, { onConflict: 'tenant_id' });
+    if (error) throw error;
+  }
 }

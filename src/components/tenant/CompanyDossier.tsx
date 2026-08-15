@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TenantLegalIdentityService } from '../../services/tenantLegalIdentityService';
-import { TenantDossier } from '../../types';
+import { TenantDossier, TenantCore, CommercialRegistration, StatisticalProfile, TaxProfile } from '../../types';
 import {
   Building2,
   Briefcase,
@@ -50,6 +50,55 @@ export const CompanyDossier: React.FC<{ tenantId: string }> = ({ tenantId }) => 
       fetchDossier();
     }
   }, [tenantId]);
+
+  // ── Handler : Identité (table tenants) ──────────────────────────────────────
+  const handleUpdateIdentity = useCallback(async (updates: Partial<TenantCore>) => {
+    if (!dossier) return;
+    // Optimistic update
+    setDossier(prev => prev ? { ...prev, core: { ...prev.core, ...updates } } : prev);
+    try {
+      await TenantLegalIdentityService.updateTenantCore(tenantId, updates);
+    } catch (err) {
+      console.error('Erreur sauvegarde Identité:', err);
+      // Revert on failure
+      setDossier(prev => prev ? { ...prev, core: dossier.core } : prev);
+    }
+  }, [tenantId, dossier]);
+
+  // ── Handler : Registre de Commerce ──────────────────────────────────────────
+  const handleUpdateRC = useCallback(async (updates: Partial<CommercialRegistration>) => {
+    if (!dossier) return;
+    setDossier(prev => prev ? { ...prev, commercialRegistration: { ...(prev.commercialRegistration ?? {}), ...updates } as CommercialRegistration } : prev);
+    try {
+      await TenantLegalIdentityService.upsertCommercialRegistration(tenantId, updates);
+    } catch (err) {
+      console.error('Erreur sauvegarde RC:', err);
+    }
+  }, [tenantId, dossier]);
+
+  // ── Handler : NIS statistique ────────────────────────────────────────────────
+  const handleUpdateNIS = useCallback(async (updates: Partial<StatisticalProfile>) => {
+    if (!dossier) return;
+    setDossier(prev => prev ? { ...prev, statisticalProfile: { ...(prev.statisticalProfile ?? {}), ...updates } as StatisticalProfile } : prev);
+    try {
+      await TenantLegalIdentityService.upsertStatisticalProfile(tenantId, updates);
+    } catch (err) {
+      console.error('Erreur sauvegarde NIS:', err);
+    }
+  }, [tenantId, dossier]);
+
+  // ── Handler : Profil Fiscal ──────────────────────────────────────────────────
+  const handleUpdateTax = useCallback(async (updates: Partial<TaxProfile>) => {
+    if (!dossier) return;
+    setDossier(prev => prev ? { ...prev, taxProfile: { ...(prev.taxProfile ?? {}), ...updates } as TaxProfile } : prev);
+    try {
+      await TenantLegalIdentityService.upsertTaxProfile(tenantId, updates);
+    } catch (err) {
+      console.error('Erreur sauvegarde Fiscalité:', err);
+    }
+  }, [tenantId, dossier]);
+
+
 
   const handleInitializeDossier = async () => {
     try {
@@ -123,21 +172,21 @@ export const CompanyDossier: React.FC<{ tenantId: string }> = ({ tenantId }) => 
         {activeTab === 'IDENTITY' && (
           <CompanyIdentityTab 
             data={dossier.core} 
-            onUpdate={() => {}} 
+            onUpdate={handleUpdateIdentity} 
           />
         )}
         {activeTab === 'COMMERCIAL' && (
           <CommercialActivityTab 
             rcData={dossier.commercialRegistration} 
             nisData={dossier.statisticalProfile} 
-            onUpdateRC={() => {}} 
-            onUpdateNIS={() => {}} 
+            onUpdateRC={handleUpdateRC} 
+            onUpdateNIS={handleUpdateNIS} 
           />
         )}
         {activeTab === 'TAX' && (
           <TaxProfileTab 
             data={dossier.taxProfile} 
-            onUpdate={() => {}} 
+            onUpdate={handleUpdateTax} 
           />
         )}
         {activeTab === 'ESTABLISHMENTS' && (
