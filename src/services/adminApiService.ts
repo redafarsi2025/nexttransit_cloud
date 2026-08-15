@@ -70,5 +70,13 @@ export const adminApiService = {
   },
 
   // Health
-  getSystemHealth: () => fetchWithAuth('/health')
+  getSystemHealth: () => fetchWithAuth('/health'),
+
+  // Platform Admins
+  getAllPlatformAdmins: () => fetchWithAuth('/admins'),
+  addPlatformAdmin: (email: string) => fetchWithAuth('/admins', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  }),
+  removePlatformAdmin: (id: string) => fetchWithAuth(`/admins/${id}`, { method: 'DELETE' }),
 };

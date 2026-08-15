@@ -892,3 +892,5 @@ over-engineered
 The objective is not to make the demo look complete.
 
 The objective is to make NextTransit structurally capable of becoming a production SaaS platform.
+
+"L'architecture actuelle est vehicle-agnostic (fournisseur). Une généralisation vers un modèle asset-agnostic (device→asset→tenant) pour des verticales hors flotte est une vision Phase 3+, non implémentée, à confirmer explicitement avant tout développement."

@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { platformAdminService } from '../services/platformAdminService.server';
@@ -205,5 +206,51 @@ platformAdminRouter.get('/health', requirePlatformAdmin, async (req: Authenticat
     res.json(health);
   } catch (e: any) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// 8. Platform Admins CRUD
+const AddAdminSchema = z.object({ email: z.string().email('Invalid email format') });
+
+platformAdminRouter.get('/admins', requirePlatformAdmin, async (req: AuthenticatedPlatformRequest, res: Response) => {
+  try {
+    const result = await platformAdminService.getAllPlatformAdmins();
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+platformAdminRouter.post('/admins', requirePlatformAdmin, async (req: AuthenticatedPlatformRequest, res: Response) => {
+  const parseResult = AddAdminSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: 'Invalid input', details: parseResult.error.format() });
+  }
+  try {
+    const result = await platformAdminService.addPlatformAdmin(
+      parseResult.data.email,
+      req.platformAdmin!.id,
+      req.platformAdmin!.email
+    );
+    res.json(result);
+  } catch (e: any) {
+    // Return 400 for business rule errors (user not found, already admin)
+    const status = e.message.includes('No authenticated user') || e.message.includes('already a platform admin') ? 400 : 500;
+    res.status(status).json({ error: e.message });
+  }
+});
+
+platformAdminRouter.delete('/admins/:id', requirePlatformAdmin, async (req: AuthenticatedPlatformRequest, res: Response) => {
+  try {
+    const result = await platformAdminService.removePlatformAdmin(
+      req.params.id,
+      req.platformAdmin!.id,
+      req.platformAdmin!.email
+    );
+    res.json(result);
+  } catch (e: any) {
+    // 409 Conflict for guard violations (last admin, self-removal)
+    const status = e.message.includes('GUARD') ? 409 : 500;
+    res.status(status).json({ error: e.message });
   }
 });

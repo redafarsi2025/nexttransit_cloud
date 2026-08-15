@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, Settings, Terminal, Activity, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Settings, Terminal, Activity, ArrowLeft, Shield } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const AdminSidebar: React.FC = () => {
@@ -11,6 +11,7 @@ export const AdminSidebar: React.FC = () => {
     { to: '/admin/tenants', icon: Users, label: 'Tenants & Workspaces' },
     { to: '/admin/users', icon: Users, label: 'Global Users' },
     { to: '/admin/billing', icon: CreditCard, label: 'Subscription Plans' },
+    { to: '/admin/admins', icon: Shield, label: 'Platform Admins' },
     { to: '/admin/system', icon: Activity, label: 'System Health' },
     { to: '/admin/audit', icon: Activity, label: 'Audit Logs' },
     { to: '/admin/settings', icon: Settings, label: 'Global Config' },

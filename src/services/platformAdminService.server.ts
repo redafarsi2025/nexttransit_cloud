@@ -268,10 +268,81 @@ export const platformAdminService = {
     };
   },
 
+  // ---------------------------------------------------------
+  // PLATFORM ADMINS CRUD
+  // ---------------------------------------------------------
+  async getAllPlatformAdmins() {
+    const { data, error } = await supabaseAdmin
+      .from('platform_admins')
+      .select('id, email, created_at')
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return { data: (data as any[]) || [] };
+  },
+
+  async addPlatformAdmin(email: string, actorId: string, actorEmail: string) {
+    // Resolve user from auth by email (via admin API — no direct table access to auth.users without service role)
+    const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    if (listError) throw new Error('Failed to list users: ' + listError.message);
+
+    const targetUser = users.find((u) => u.email === email);
+    if (!targetUser) {
+      throw new Error(`No authenticated user found with email: ${email}. User must sign up first.`);
+    }
+
+    // Check if already a platform admin
+    const { data: existing } = await supabaseAdmin
+      .from('platform_admins')
+      .select('id')
+      .eq('id', targetUser.id)
+      .single();
+
+    if (existing) {
+      throw new Error(`User ${email} is already a platform admin.`);
+    }
+
+    const newAdminPayload: any = { id: targetUser.id, email };
+    const { error } = await supabaseAdmin.from('platform_admins').insert([newAdminPayload as never]);
+    if (error) throw error;
+
+    await this.logAction(actorId, actorEmail, null, 'PLATFORM_ADMIN_ADDED', targetUser.id, { email });
+    return { success: true, userId: targetUser.id };
+  },
+
+  async removePlatformAdmin(adminId: string, actorId: string, actorEmail: string) {
+    // Guard: never remove if it's the last admin
+    const { count, error: countError } = await supabaseAdmin
+      .from('platform_admins')
+      .select('*', { count: 'exact', head: true });
+
+    if (countError) throw countError;
+    if ((count ?? 0) <= 1) {
+      throw new Error('LAST_ADMIN_GUARD: Cannot remove the last platform admin. Add another admin first.');
+    }
+
+    // Guard: cannot remove yourself
+    if (adminId === actorId) {
+      throw new Error('SELF_REMOVAL_GUARD: A platform admin cannot remove themselves.');
+    }
+
+    const { error } = await supabaseAdmin
+      .from('platform_admins')
+      .delete()
+      .eq('id', adminId);
+    if (error) throw error;
+
+    await this.logAction(actorId, actorEmail, null, 'PLATFORM_ADMIN_REMOVED', adminId, { removedAdminId: adminId });
+    return { success: true };
+  },
+
   // Internal helper for logging platform actions
   async logAction(actorId: string, actorEmail: string, tenantId: string | null, action: string, entityId: string | null, metadata: any) {
     const logEntry = {
-      tenant_id: tenantId || 'c0a80101-0000-0000-0000-000000000001', // Fallback to core if null required by schema
+      // tenantId is null for platform-level actions (cross-tenant). We use a special sentinel value
+      // only if the audit_logs schema enforces NOT NULL on tenant_id. Otherwise use null.
+      // NOTE: This fallback UUID ('00000000-0000-0000-0000-000000000000') represents 'Platform Global'
+      // and MUST be handled in the audit log UI display. Do NOT use a real tenant's UUID here.
+      tenant_id: tenantId || '00000000-0000-0000-0000-000000000000',
       actor_id: actorId,
       user_email: actorEmail,
       user_role: 'SUPER_ADMIN',
@@ -280,8 +351,10 @@ export const platformAdminService = {
       new_value: JSON.stringify(metadata)
     };
 
-    const { error } = await supabaseAdmin.from('audit_logs').insert([logEntry]);
+    const payload = logEntry as any;
+    const { error } = await supabaseAdmin.from('audit_logs').insert([payload as never]);
     if (error) {
+      // Non-blocking: don't let audit log failure break the primary action
       console.error('Failed to write platform audit log:', error);
     }
   }

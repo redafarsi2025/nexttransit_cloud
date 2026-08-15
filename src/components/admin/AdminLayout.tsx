@@ -8,9 +8,9 @@ import { TenantManagement } from './TenantManagement';
 import { SubscriptionPlans } from './SubscriptionPlans';
 import { SystemHealth } from './SystemHealth';
 import { GlobalSettings } from './GlobalSettings';
-
 import { UsersManagement } from './UsersManagement';
 import { PlatformAuditLog } from './PlatformAuditLog';
+import { PlatformAdminsManagement } from './PlatformAdminsManagement';
 
 export const AdminLayout: React.FC = () => {
   return (
@@ -26,6 +26,8 @@ export const AdminLayout: React.FC = () => {
                 <Route path="tenants" element={<TenantManagement />} />
                 <Route path="users" element={<UsersManagement />} />
                 <Route path="billing" element={<SubscriptionPlans />} />
+                {/* Platform Admins management — AGENTS.md Section 6/21 */}
+                <Route path="admins" element={<PlatformAdminsManagement />} />
                 <Route path="system" element={<SystemHealth />} />
                 <Route path="audit" element={<PlatformAuditLog />} />
                 <Route path="settings" element={<GlobalSettings />} />

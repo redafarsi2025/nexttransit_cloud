@@ -84,21 +84,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.warn(`[AuthContext] Provisioning state is ${provStatus} — navigation blocked.`);
             return;
           }
-          // Check if user is a platform admin
+          // ── STEP 1: Detect platform admin status BEFORE any navigation ──
+          // NOTE (AGENTS.md §4/SuperAdminGuard): This client-side check is for UX only
+          // (redirect + nav visibility). The real authorization barrier is requirePlatformAdmin
+          // on the Express API. A bypass here will still yield 403 from the API.
+          let isAdmin = false;
           try {
             const { data: pAdmin } = await supabase
               .from('platform_admins')
               .select('id')
               .eq('id', profile.id)
               .single();
-            setIsPlatformAdmin(!!pAdmin);
+            isAdmin = !!pAdmin;
+            setIsPlatformAdmin(isAdmin);
           } catch (e) {
             setIsPlatformAdmin(false);
           }
-          
-          // Check if onboarding is complete, redirect accordingly
+
+          // ── STEP 2: Navigate based on platform admin status or role ──
           if (navigateRef.current && (window.location.pathname === '/' || window.location.pathname === '/dashboard')) {
-            if (profile.tenant_id && profile.tenant_id !== 'c0a80101-0000-0000-0000-000000000001') {
+            if (isAdmin) {
+              // Platform admins always land on the platform admin panel
+              navigateRef.current('/admin');
+            } else if (profile.tenant_id && profile.tenant_id !== 'c0a80101-0000-0000-0000-000000000001') {
               // Query tenant to check onboarding / workspace configuration status
               const { data: tenant } = await supabase
                 .from('tenants')
