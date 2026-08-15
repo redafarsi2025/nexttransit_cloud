@@ -209,6 +209,16 @@ platformAdminRouter.get('/health', requirePlatformAdmin, async (req: Authenticat
   }
 });
 
+// 7b. System Metrics — real data only (AGENTS.md §23, no Math.random)
+platformAdminRouter.get('/system-metrics', requirePlatformAdmin, async (req: AuthenticatedPlatformRequest, res: Response) => {
+  try {
+    const metrics = await platformAdminService.getSystemMetrics();
+    res.json(metrics);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // 8. Platform Admins CRUD
 const AddAdminSchema = z.object({ email: z.string().email('Invalid email format') });
 

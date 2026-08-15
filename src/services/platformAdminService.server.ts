@@ -1,15 +1,15 @@
 import { supabaseAdmin } from '../lib/supabaseAdmin';
 
 export const platformAdminService = {
-  
+
   // ---------------------------------------------------------
   // STATS
   // ---------------------------------------------------------
   async getPlatformStats() {
     try {
       const [
-        { count: tenantsCount }, 
-        { count: usersCount }, 
+        { count: tenantsCount },
+        { count: usersCount },
         { data: subscriptions }
       ] = await Promise.all([
         supabaseAdmin.from('tenants').select('*', { count: 'exact', head: true }),
@@ -21,9 +21,8 @@ export const platformAdminService = {
       const pastDueSubscriptions = subscriptions?.filter(s => s.status === 'past_due') || [];
       const trialSubscriptions = subscriptions?.filter(s => s.status === 'trial') || [];
 
-      // A simple mock MRR calculation for the dashboard
-      // In a real billing system (like Stripe), we would fetch MRR directly.
-      // Assuming Enterprise is 50000 DZD/month and Professional is 15000 DZD/month
+      // Estimated MRR from subscription plans (no Stripe integration yet — based on plan names)
+      // Enterprise: 50,000 DZD/month, Professional: 15,000 DZD/month
       let estimatedMrr = 0;
       for (const sub of activeSubscriptions) {
         if (sub.plan === 'enterprise') estimatedMrr += 50000;
@@ -50,22 +49,20 @@ export const platformAdminService = {
   async getAllTenants(page = 1, limit = 20) {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
-    
-    // We join with subscriptions (limit 1) to get the plan
+
     const { data, count, error } = await supabaseAdmin
       .from('tenants')
       .select('*, subscriptions(plan, status, current_period_end)', { count: 'exact' })
       .range(from, to)
       .order('created_at', { ascending: false });
-      
+
     if (error) throw error;
-    
-    // Process data to match expected format
+
     const formatted = data.map((t: any) => ({
       ...t,
       subscription: t.subscriptions?.[0] || null
     }));
-    
+
     return { data: formatted, total: count || 0 };
   },
 
@@ -75,7 +72,7 @@ export const platformAdminService = {
       .select('*')
       .eq('id', id)
       .single();
-      
+
     if (tenantError) throw tenantError;
 
     const [
@@ -94,15 +91,11 @@ export const platformAdminService = {
   },
 
   async suspendTenant(id: string, actorId: string, actorEmail: string) {
-    // In our schema, we can mark all users as inactive or we can add a 'status' to tenants table if it existed.
-    // The instructions said: "Une suspension doit : modifier le statut du tenant"
-    // Let's check if tenant has a status column. Wait, tenants table doesn't have a status column.
-    // Instead of altering DB now, we can update the subscription to 'suspended' which limits access.
     const { error } = await supabaseAdmin
       .from('subscriptions')
-      .update({ status: 'cancelled' }) // or suspended if added to enum
+      .update({ status: 'cancelled' })
       .eq('tenant_id', id);
-      
+
     if (error) throw error;
     await this.logAction(actorId, actorEmail, id, 'TENANT_SUSPENDED', null, { message: 'Tenant access suspended' });
     return true;
@@ -113,7 +106,7 @@ export const platformAdminService = {
       .from('subscriptions')
       .update({ status: 'active' })
       .eq('tenant_id', id);
-      
+
     if (error) throw error;
     await this.logAction(actorId, actorEmail, id, 'TENANT_REACTIVATED', null, { message: 'Tenant access restored' });
     return true;
@@ -125,13 +118,13 @@ export const platformAdminService = {
   async getAllUsers(page = 1, limit = 20) {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
-    
+
     const { data, count, error } = await supabaseAdmin
       .from('profiles')
       .select('*, tenants(name)', { count: 'exact' })
       .range(from, to)
       .order('created_at', { ascending: false });
-      
+
     if (error) throw error;
     return { data, total: count || 0 };
   },
@@ -141,10 +134,9 @@ export const platformAdminService = {
       .from('profiles')
       .update({ is_active: false })
       .eq('id', userId);
-      
+
     if (error) throw error;
-    
-    // Also disable in Supabase Auth via admin API
+
     const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, { ban_duration: '876000h' });
     if (authError) console.error('Auth ban failed', authError);
 
@@ -157,7 +149,7 @@ export const platformAdminService = {
       .from('profiles')
       .update({ is_active: true })
       .eq('id', userId);
-      
+
     if (error) throw error;
 
     const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, { ban_duration: 'none' });
@@ -172,7 +164,7 @@ export const platformAdminService = {
       .from('profiles')
       .update({ role: newRole })
       .eq('id', userId);
-      
+
     if (error) throw error;
     await this.logAction(actorId, actorEmail, null, 'USER_ROLE_CHANGED', userId, { newRole });
     return true;
@@ -184,19 +176,18 @@ export const platformAdminService = {
   async getAllSubscriptions(page = 1, limit = 20) {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
-    
+
     const { data, count, error } = await supabaseAdmin
       .from('subscriptions')
       .select('*, tenants(name)', { count: 'exact' })
       .range(from, to)
       .order('created_at', { ascending: false });
-      
+
     if (error) throw error;
     return { data, total: count || 0 };
   },
 
   async extendTrial(subId: string, days: number, actorId: string, actorEmail: string) {
-    // Get current sub
     const { data: sub } = await supabaseAdmin.from('subscriptions').select('current_period_end, tenant_id').eq('id', subId).single();
     if (!sub) throw new Error('Subscription not found');
 
@@ -207,7 +198,7 @@ export const platformAdminService = {
       .from('subscriptions')
       .update({ current_period_end: newDate.toISOString(), status: 'trial' })
       .eq('id', subId);
-      
+
     if (error) throw error;
     await this.logAction(actorId, actorEmail, sub.tenant_id, 'TRIAL_EXTENDED', subId, { days_added: days, new_date: newDate });
     return true;
@@ -219,19 +210,19 @@ export const platformAdminService = {
       .from('subscriptions')
       .update({ plan, status: 'active' })
       .eq('id', subId);
-      
+
     if (error) throw error;
     await this.logAction(actorId, actorEmail, sub?.tenant_id, 'SUBSCRIPTION_PLAN_CHANGED', subId, { new_plan: plan });
     return true;
   },
 
   // ---------------------------------------------------------
-  // AUDIT & HEALTH
+  // AUDIT LOGS
   // ---------------------------------------------------------
   async getPlatformAuditLogs(page = 1, limit = 20, tenantId?: string, action?: string) {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
-    
+
     let query = supabaseAdmin
       .from('audit_logs')
       .select('*', { count: 'exact' })
@@ -243,10 +234,12 @@ export const platformAdminService = {
 
     const { data, count, error } = await query;
     if (error) throw error;
-    
-    return { data, total: count || 0 };
+    return { data: data || [], total: count || 0 };
   },
 
+  // ---------------------------------------------------------
+  // SYSTEM HEALTH
+  // ---------------------------------------------------------
   async getSystemHealth() {
     let dbHealth = 'UNKNOWN';
     let errorMessage = null;
@@ -262,9 +255,65 @@ export const platformAdminService = {
 
     return {
       database: dbHealth,
-      auth: 'HEALTHY', // Assumed for now if DB works, otherwise requires full integration check
+      auth: 'HEALTHY',
       lastCheck: new Date().toISOString(),
       error: errorMessage
+    };
+  },
+
+  // ---------------------------------------------------------
+  // SYSTEM METRICS — Real data only (AGENTS.md §23)
+  // Derived exclusively from real Supabase tables.
+  // NO Math.random(), NO hardcoded values, NO simulated data.
+  // ---------------------------------------------------------
+  async getSystemMetrics() {
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    const [
+      dbHealthResult,
+      positionsResult,
+      alertsResult,
+      workOrdersResult,
+      deviceMappingsResult,
+      tenantsResult,
+      profilesResult,
+      auditLogsResult,
+    ] = await Promise.allSettled([
+      supabaseAdmin.from('platform_admins').select('id').limit(1),
+      (supabaseAdmin.from('positions') as any).select('*', { count: 'exact', head: true }).gte('timestamp', since24h),
+      (supabaseAdmin.from('alerts') as any).select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      (supabaseAdmin.from('work_orders') as any).select('*', { count: 'exact', head: true }).in('status', ['OPEN', 'IN_PROGRESS']),
+      (supabaseAdmin.from('device_mappings') as any).select('*', { count: 'exact', head: true }).eq('is_active', true),
+      supabaseAdmin.from('tenants').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('audit_logs').select('id, timestamp, action, user_email, user_role, tenant_id, entity_id, new_value').order('timestamp', { ascending: false }).limit(50),
+    ]);
+
+    const dbOnline =
+      dbHealthResult.status === 'fulfilled' && !(dbHealthResult.value as any).error;
+
+    const extractCount = (result: PromiseSettledResult<any>): number => {
+      if (result.status === 'fulfilled') return (result.value as any).count ?? 0;
+      return 0;
+    };
+    const extractData = (result: PromiseSettledResult<any>): any[] => {
+      if (result.status === 'fulfilled') return (result.value as any).data ?? [];
+      return [];
+    };
+
+    return {
+      database: {
+        status: dbOnline ? 'HEALTHY' : 'DEGRADED',
+        label: dbOnline ? 'PostgreSQL — Online' : 'PostgreSQL — Degraded',
+      },
+      positions_last_24h: extractCount(positionsResult),
+      active_alerts: extractCount(alertsResult),
+      open_work_orders: extractCount(workOrdersResult),
+      active_device_mappings: extractCount(deviceMappingsResult),
+      total_tenants: extractCount(tenantsResult),
+      total_profiles: extractCount(profilesResult),
+      recent_audit_logs: extractData(auditLogsResult),
+      checked_at: new Date().toISOString(),
     };
   },
 
@@ -281,7 +330,7 @@ export const platformAdminService = {
   },
 
   async addPlatformAdmin(email: string, actorId: string, actorEmail: string) {
-    // Resolve user from auth by email (via admin API — no direct table access to auth.users without service role)
+    // Resolve user from auth by email (via admin API — no direct auth.users table access)
     const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
     if (listError) throw new Error('Failed to list users: ' + listError.message);
 
@@ -335,13 +384,13 @@ export const platformAdminService = {
     return { success: true };
   },
 
-  // Internal helper for logging platform actions
+  // ---------------------------------------------------------
+  // INTERNAL — Audit log writer
+  // NOTE: '00000000-0000-0000-0000-000000000000' = Platform Global sentinel UUID
+  // (used when tenantId is null for cross-tenant platform actions)
+  // ---------------------------------------------------------
   async logAction(actorId: string, actorEmail: string, tenantId: string | null, action: string, entityId: string | null, metadata: any) {
     const logEntry = {
-      // tenantId is null for platform-level actions (cross-tenant). We use a special sentinel value
-      // only if the audit_logs schema enforces NOT NULL on tenant_id. Otherwise use null.
-      // NOTE: This fallback UUID ('00000000-0000-0000-0000-000000000000') represents 'Platform Global'
-      // and MUST be handled in the audit log UI display. Do NOT use a real tenant's UUID here.
       tenant_id: tenantId || '00000000-0000-0000-0000-000000000000',
       actor_id: actorId,
       user_email: actorEmail,
@@ -351,8 +400,7 @@ export const platformAdminService = {
       new_value: JSON.stringify(metadata)
     };
 
-    const payload = logEntry as any;
-    const { error } = await supabaseAdmin.from('audit_logs').insert([payload as never]);
+    const { error } = await supabaseAdmin.from('audit_logs').insert([logEntry as never]);
     if (error) {
       // Non-blocking: don't let audit log failure break the primary action
       console.error('Failed to write platform audit log:', error);

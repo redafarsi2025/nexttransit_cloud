@@ -72,6 +72,9 @@ export const adminApiService = {
   // Health
   getSystemHealth: () => fetchWithAuth('/health'),
 
+  // System Metrics — real data only (positions/24h, active alerts, open WOs, device mappings)
+  getSystemMetrics: () => fetchWithAuth('/system-metrics'),
+
   // Platform Admins
   getAllPlatformAdmins: () => fetchWithAuth('/admins'),
   addPlatformAdmin: (email: string) => fetchWithAuth('/admins', {
