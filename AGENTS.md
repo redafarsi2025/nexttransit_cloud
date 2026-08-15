@@ -1,9 +1,9 @@
-# AGENTS.md — NextTransit Engineering Rules
-## v3.0 — Production SaaS + Vehicle-Agnostic Telematics
+# AGENTS.md — NextTransit AI Development Contract
+### v4.0
 
 ---
 
-# 1. PROJECT IDENTITY
+# 1. PROJECT IDENTITY & TELEMATICS PROVIDER AGNOSTIC PRINCIPLE
 
 NextTransit is a multi-tenant SaaS platform for fleet operations, maintenance decision support, telemetry reconciliation, predictive maintenance and cost control.
 
@@ -27,16 +27,44 @@ Management Arbitration
         ↓
 SCF / Financial Traceability
 
-Telemetry is an input source.
+**NON-NEGOTIABLE RULE: Telemetry Provider ≠ Business Logic.**
+NEXTTRANSIT NE DOIT JAMAIS ÊTRE DÉPENDANT D'UN FOURNISSEUR TÉLÉMATIQUE PARTICULIER.
 
-Telemetry MUST NEVER become a hard dependency of the business engine.
+Flespi, Traccar, Teltonika, Wialon or any other provider must be considered as INTERCHANGEABLE TELEMETRY SOURCES.
 
-The platform must continue to operate when:
+The NextTransit business engine must operate:
+1. without telematics,
+2. with declarative telematics,
+3. with Traccar,
+4. with Flespi,
+5. with Teltonika directly,
+6. with Wialon,
+7. with a future provider,
+8. with an in-house IoT connector.
 
-- no GPS device is connected;
-- no telemetry provider is configured;
-- telemetry is temporarily unavailable;
-- a customer uses manual declarations.
+No R1-R7 business logic shall depend directly on a proprietary payload or API.
+
+The mandatory pipeline must follow:
+DEVICE
+→ PROVIDER / GATEWAY
+→ PROVIDER ADAPTER
+→ CANONICAL TELEMETRY EVENT
+→ TELEMETRY INGESTION
+→ RULE ENGINE
+→ DECISION ENGINE R1-R7
+→ ALERT / WORK ORDER / INVENTORY / COST / BUDGET
+→ UI
+
+Business components must never directly import:
+- Flespi SDK/API
+- Traccar API
+- Teltonika payload structures
+- Wialon payload structures
+- MQTT vendor-specific payloads
+- TCP AVL frames
+- GPS tracker proprietary formats
+
+They must only consume `CanonicalTelemetryEvent`.
 
 ---
 
@@ -44,32 +72,14 @@ The platform must continue to operate when:
 
 The active engineering roadmap is:
 
-PHASE 0
-Architecture and schema audit
+PHASE 0: Architecture and schema audit
+PHASE 1: Production SaaS / authentication / multi-tenancy / RBAC
+PHASE SUPER_ADMIN: Platform administration
+PHASE 2A: Telemetry backend foundation
+PHASE 2B: Provider integrations
+PHASE 2C: Predictive decision engine
 
-PHASE 1
-Production SaaS / authentication / multi-tenancy / RBAC
-
-PHASE SUPER_ADMIN
-Platform administration
-
-PHASE 2A
-Telemetry backend foundation
-
-PHASE 2B
-Provider integrations
-
-PHASE 2C
-Predictive decision engine
-
-Future phases may include:
-
-- advanced BI
-- offline-first PWA
-- EDI
-- RFID
-- SCF/CNAS exports
-- advanced integrations
+Future phases may include advanced BI, offline-first PWA, EDI, RFID, SCF/CNAS exports, advanced integrations.
 
 Do NOT interrupt the active roadmap to implement unrelated roadmap features unless explicitly requested.
 
@@ -78,7 +88,6 @@ Do NOT interrupt the active roadmap to implement unrelated roadmap features unle
 # 3. NON-NEGOTIABLE ARCHITECTURE
 
 NextTransit is:
-
 - multi-tenant;
 - backend-driven for privileged operations;
 - vehicle-agnostic;
@@ -89,808 +98,391 @@ NextTransit is:
 - Express backend.
 
 The database is the source of truth.
-
-Never create fake persistence layers.
-
-Never create JSON files pretending to be a database.
-
-Never introduce mock data into production execution paths.
+Never create fake persistence layers or mock databases in production execution paths.
 
 ---
 
-# 4. MULTI-TENANCY
+# 4. PROVIDER ABSTRACTION
 
-Tenant isolation is mandatory.
+AGENTS.md defines a standard abstraction:
+`TelematicsProviderAdapter`
 
-Every tenant-owned business record must have either:
+Each provider must implement an interface equivalent to:
+- `canHandle()`
+- `validate()`
+- `parse()`
+- `normalize()`
+- `healthCheck()`
 
-1. an explicit tenant_id;
+Possible providers include:
+- `ManualEntryProvider`
+- `TraccarAdapter`
+- `FlespiAdapter`
+- `TeltonikaAdapter`
+- `WialonAdapter`
+- `FutureProviderAdapter`
 
-OR
-
-2. a secure and unambiguous tenant relationship through trusted foreign keys.
-
-Example:
-
-device_mapping
-    ↓
-vehicle
-    ↓
-tenant
-
-The system MUST NEVER trust tenant_id coming directly from an untrusted telemetry payload.
-
-Tenant resolution must happen server-side.
-
-Typical trusted chain:
-
-provider
-    ↓
-external device
-    ↓
-device_mapping
-    ↓
-vehicle
-    ↓
-tenant
+It must be possible to swap Flespi → Traccar, or Traccar → Teltonika direct, without modifying:
+R1-R7, Work Orders, Inventory, Warranty, Fuel, Cost Engine, Budget Engine, SCF, or business dashboards.
+Only the adapter/provider should change.
 
 ---
 
-# 5. RLS POLICY
+# 5. TRACCAR
 
-RLS is mandatory for tenant-facing database access.
+Traccar is considered a STRATEGIC OPTION.
 
-Frontend Supabase access MUST remain RLS-protected.
+Traccar is considered as:
+OPEN-SOURCE TELEMATICS PLATFORM / DEVICE MANAGEMENT & INGESTION LAYER
 
-However, privileged backend operations MAY use:
+NextTransit can use:
+Teltonika GPS → Traccar → TraccarAdapter → CanonicalTelemetryEvent → NextTransit
 
-SUPABASE_SERVICE_ROLE_KEY
-
-under the following conditions:
-
-- backend only;
-- never imported by React;
-- never included in Vite bundles;
-- never exposed to browser;
-- never stored in localStorage/sessionStorage;
-- never logged;
-- only used by explicitly authorized server-side services.
-
-Service Role does NOT remove authorization requirements.
-
-Before executing privileged queries, backend code must verify:
-
-- authenticated user;
-- required role;
-- platform authorization;
-- tenant authorization where applicable.
+Traccar must however NEVER become a business dependency.
+It must be possible to remove Traccar and connect Flespi or a Teltonika TCP server without rewriting the NextTransit engine.
 
 ---
 
-# 6. SUPER_ADMIN ARCHITECTURE
+# 6. FLESPI
 
-SUPER_ADMIN operations use:
-
-Browser
- ↓ JWT
-Express API
- ↓
-platform authorization
- ↓
-platform_admins
- ↓
-supabaseAdmin
- ↓
-PostgreSQL
-
-Never expose Service Role to the frontend.
-
-Never implement development bypasses.
-
-Never accept:
-
-x-dev-bypass
-mock admin tokens
-hardcoded admin emails
-
-in production code.
-
----
-
-# 7. TELEMETRY ARCHITECTURE
-
-Telemetry is provider-agnostic.
-
-The business engine MUST NOT consume:
-
-Teltonika payloads
-Flespi payloads
-Wialon payloads
-vendor-specific CAN payloads
-
-directly.
-
-All providers must normalize into:
-
-CanonicalTelemetryEvent
+Flespi must remain supported as an OPTIONAL provider/middleware.
 
 Architecture:
+Teltonika → Flespi → FlespiAdapter → CanonicalTelemetryEvent → NextTransit
+OR:
+Teltonika → Traccar → TraccarAdapter → CanonicalTelemetryEvent → NextTransit
+OR FUTURE:
+Teltonika → NextTransit TCP Gateway → TeltonikaAdapter → CanonicalTelemetryEvent → NextTransit
 
-Provider
- ↓
-Adapter
- ↓
-parse
- ↓
-validate
- ↓
-normalize
- ↓
-CanonicalTelemetryEvent
- ↓
-TelemetryIngestionService
- ↓
-Rule Engine
- ↓
-Persistence / Decision Engine
+No implementation must assume that Flespi is mandatory.
 
 ---
 
-# 8. TELEMETRY PROVIDER ADAPTER
+# 7. CANONICAL TELEMETRY EVENT
 
-The canonical provider interface is:
+`CanonicalTelemetryEvent` becomes the central contract.
+It must be provider-agnostic.
 
-TelemetryProviderAdapter
+It must be able to represent notably:
+tenantId, vehicleId, deviceId, provider, eventId, timestamp, latitude, longitude, speed, heading, odometer, engineHours, ignition, fuelLevel, engineTemperature, batteryVoltage, diagnosticCodes, harshEvents, inputs, outputs, rawMetadata, receivedAt.
 
-It must support:
-
-canHandle()
-parse()
-validate()
-normalize()
-
-Provider-specific implementations may include:
-
-TeltonikaAdapter
-FlespiAdapter
-WialonAdapter
-ManualEntryAdapter
-
-Do NOT put provider-specific logic inside:
-
-- Rule Engine
-- Work Order logic
-- FleetContext
-- React components
-- business domain services
+Fields must remain generic.
+NEVER add to the business model fields exclusively linked to Flespi, Traccar, Teltonika, or Wialon.
+Proprietary data must remain in an adapter/raw metadata layer.
 
 ---
 
-# 9. CANONICAL TELEMETRY EVENT
+# 8. DEVICE REGISTRY & MULTI-TENANCY
 
-The internal telemetry contract must be provider-independent.
+The `device_mappings` registry is the source of truth for:
+provider + external_device_id → vehicle → tenant
 
-Conceptually:
-
-CanonicalTelemetryEvent {
-
-  eventId
-  tenantId
-  vehicleId
-  deviceId
-  provider
-  timestamp
-
-  position {
-    latitude
-    longitude
-    altitude
-    speed
-    heading
-  }
-
-  engine {
-    rpm
-    coolantTemperature
-    oilTemperature
-    oilPressure
-    fuelLevel
-    batteryVoltage
-  }
-
-  diagnostics {
-    dtcCodes
-  }
-
-  rawMetadata
-}
-
-Do not add vendor-specific fields to the canonical contract.
-
-Vendor-specific information belongs in:
-
-rawMetadata
-
-or provider-specific structures.
-
----
-
-# 10. DEVICE REGISTRY
-
-Device resolution is a trust boundary.
-
-A telemetry event must resolve:
-
-device
- ↓
-device_mapping
- ↓
-vehicle
- ↓
-tenant
+An incoming webhook must NEVER freely provide the tenantId as a trusted source.
+The backend must resolve:
+external device identity → device mapping → vehicle → tenant
+before any business writing.
 
 Unknown devices MUST be rejected.
+Inactive mappings MUST be rejected.
+Cross-tenant mappings MUST be impossible.
 
-Inactive devices MUST be rejected.
-
-Cross-tenant mappings MUST be rejected.
-
-The system must never trust vehicle_id or tenant_id supplied by an external device.
-
----
-
-# 11. TELEMETRY IDEMPOTENCE
-
-Webhook ingestion MUST be idempotent.
-
-Repeated delivery of the same event must NOT create:
-
-- duplicate positions;
-- duplicate alerts;
-- duplicate AI analyses;
-- duplicate work orders.
-
-Preferred identity:
-
-provider
-device
-external event/message ID
-
-If no reliable event ID exists:
-
-use a deterministic event fingerprint.
+Every tenant-owned business record must have either an explicit `tenant_id` or a secure and unambiguous tenant relationship through trusted foreign keys.
+Tenant resolution must happen server-side.
 
 ---
 
-# 12. POSITION DATA
+# 9. SECURITY & RLS POLICY
 
-Separate:
+Mandatory rules:
+- `service_role` ONLY backend side
+- never in React
+- never in Vite
+- never in logs
+- never in Git
+- never in frontend payloads
 
-1. historical positions;
-2. latest vehicle telemetry state;
-3. realtime delivery.
+Webhooks must use:
+- secret/token/signature
+- provider validation
+- device validation
+- tenant validation
+- idempotency
+- replay protection if possible
+- rate limiting
 
-Historical telemetry may be stored in:
+No dev bypass, mock authentication, fake token, or hardcoded provider identity must be accepted in production.
 
-positions
-
-Latest state may be stored on:
-
-vehicles
-
-Realtime delivery must NOT depend on querying the entire positions history.
-
-Do NOT automatically enable:
-
-REPLICA IDENTITY FULL
-
-Do NOT automatically enable:
-
-postgres_changes
-
-for high-frequency GPS position streams.
+RLS is mandatory for tenant-facing database access. Service Role does NOT remove authorization requirements.
 
 ---
 
-# 13. REALTIME
+# 10. IDEMPOTENCE
 
-The frontend is a consumer of NextTransit realtime events.
+Any external telemetry must be treated as potentially duplicated.
+Each event must have an idempotency strategy based on:
+provider + external_device_id + external_event_id / timestamp / hash
 
-Architecture:
-
-Telemetry ingestion
- ↓
-Database/state update
- ↓
-Realtime publication
- ↓
-React
-
-The browser MUST NOT directly depend on:
-
-Teltonika TCP
-Flespi protocol
-Wialon IPS
-CAN bus frames
-
-For high-frequency telemetry, prefer:
-
-Broadcast
-WebSocket
-SSE
-
-over high-frequency postgres_changes.
-
-Business events such as:
-
-- fleet alerts;
-- work orders;
-- vehicle state changes
-
-may use Supabase Realtime where appropriate.
+The same event must not generate multiple positions, alerts, work orders, AI calls, or notifications.
 
 ---
 
-# 14. TELEMETRY RULE ENGINE
+# 11. REAL-TIME
 
-TelemetryRuleEngine is deterministic.
+Never use PostgreSQL Realtime to naively broadcast every high-frequency GPS point.
 
-It consumes:
+Preferred architecture:
+Telemetry ingestion → latest vehicle state → live transport channel
 
-CanonicalTelemetryEvent
-
-It produces:
-
-TelemetryAnomalyEvent
-
-The Rule Engine must NOT directly call Gemini.
-
-Examples:
-
-- critical coolant temperature;
-- abnormal oil pressure;
-- abnormal battery voltage;
-- critical DTC;
-- persistent thermal anomaly.
+Historical positions must be persisted according to an adapted strategy.
+Real-time should favor SSE, WebSocket, Supabase Broadcast, or another appropriate real-time channel depending on the deployment context.
+Consolidated business alerts and changes can use Supabase Realtime.
 
 ---
 
-# 15. PREDICTIVE AI
+# 12. AI ARCHITECTURE
 
-AI execution belongs to the backend.
+Predictive AI must NEVER depend on the frontend.
+FORBIDDEN: React → Gemini → Work Order
 
-React MUST NOT be the primary trigger for predictive AI.
+Mandatory architecture:
+Telemetry → Rule Engine → anomaly → predictive AI service → validated decision → Work Order / Alert
 
-Correct flow:
+The frontend only presents the result.
+Gemini/AI must be considered as an analysis engine and not as the source of business truth.
+Critical decisions must be validated by NextTransit business rules.
 
-Telemetry
- ↓
-Rule Engine
- ↓
-Anomaly
- ↓
-AI Decision Service
- ↓
-PredictiveAiResult
- ↓
-Business Decision
- ↓
-Alert / Work Order
-
-Gemini must not directly create Work Orders.
+Provide: cooldown, deduplication, confidence threshold, audit trail, explainability, failure fallback.
+If Gemini is unavailable, NextTransit must continue to function with deterministic rules.
 
 ---
 
-# 16. AI COOLDOWN
+# 13. R1-R7
 
-Never call Gemini for every telemetry packet.
+R1-R7 remain totally independent of the telematics provider.
 
-AI execution requires:
+Example:
+Teltonika → Traccar → CanonicalTelemetryEvent
+and
+Teltonika → Flespi → CanonicalTelemetryEvent
+must produce exactly the same business behavior if the canonical data is equivalent.
 
-- anomaly fingerprint;
-- vehicle identity;
-- cooldown;
-- deduplication.
+R1-R7 rules must never contain `if provider === "flespi"` or `if provider === "traccar"` or `if teltonika_payload...`
 
-The cooldown must be configurable.
+R1: Critical fault → Unsafe/Red → emergency maintenance → remove from dispatch.
+R2: Vehicle departure within 3 days + open maintenance WO → operational conflict.
+R3: WO creation → reserve parts. WO closure → consume stock. Low stock → purchase requisition.
+R4: Total Work Order Cost = Labor Hours × Hourly Rate + SUM(Part Quantity × Part Unit Cost)
+R5: Priority Score = Critical Severity Factor × 40% + Days Until Route × 30% + ROI / Cost Ratio × 30%
+R6: Driver incident without matching electronic fault → investigation WO.
+R7: Actual maintenance expenditure vs projected budget. Variance > 10% → accounting audit flag.
 
-Repeated anomalies during the cooldown must not create duplicate AI analyses.
-
----
-
-# 17. WORK ORDER GENERATION
-
-AI proposes a decision.
-
-Business logic validates it.
-
-Correct flow:
-
-AI
- ↓
-PredictiveAiResult
- ↓
-Decision Service
- ↓
-Existing Work Order check
- ↓
-Create Work Order if required
-
-Never allow AI to bypass business rules.
-
-Never create duplicate preventive Work Orders for the same active anomaly.
+Do not silently alter these rules. If business rules need to change, explicitly identify the change.
 
 ---
 
-# 18. R1-R7 BUSINESS RULES
+# 14. TELEMATICS IS NOT A HARD DEPENDENCY
 
-The existing R1-R7 decision engine remains authoritative.
+NextTransit must remain fully functional without IoT.
 
-R1:
-Critical fault → Unsafe/Red → emergency maintenance → remove from dispatch.
+Supported modes:
+MODE 1 — MANUAL: ManualEntryProvider
+MODE 2 — DECLARATIVE: User input / inspections / incidents
+MODE 3 — TELEMATICS: Traccar / Flespi / Teltonika / Wialon
+MODE 4 — HYBRID: Manual + IoT
 
-R2:
-Vehicle departure within 3 days + open maintenance WO → operational conflict.
-
-R3:
-WO creation → reserve parts.
-WO closure → consume stock.
-Low stock → purchase requisition.
-
-R4:
-Total Work Order Cost =
-Labor Hours × Hourly Rate
-+
-SUM(Part Quantity × Part Unit Cost)
-
-R5:
-Priority Score =
-Critical Severity Factor × 40%
-+
-Days Until Route × 30%
-+
-ROI / Cost Ratio × 30%
-
-R6:
-Driver incident without matching electronic fault → investigation WO.
-
-R7:
-Actual maintenance expenditure vs projected budget.
-Variance > 10% → accounting audit flag.
-
-Do not silently alter these rules.
-
-If business rules need to change, explicitly identify the change.
+This allows deploying NextTransit at a client before hardware installation or integration.
 
 ---
 
-# 19. WARRANTY
+# 15. FUTURE IoT VISION
+
+AGENTS.md must integrate the following strategic vision:
+NextTransit must not limit IoT to GPS.
+
+The architecture must progressively allow:
+GPS, OBD-II, CAN Bus, J1939, J1708, FMS, TPMS, temperature, pressure, fuel sensors, tachograph, camera/ADAS, driver behavior, door sensors, reefer sensors, asset sensors, workshop IoT, industrial equipment, construction equipment, generators, forklifts, trailers, containers.
+
+The goal is to transform NextTransit into a:
+FLEET + ASSET + INDUSTRIAL IoT DECISION PLATFORM
+and not simply a GPS TRACKING SOFTWARE.
+
+---
+
+# 16. OTHER BUSINESS VERTICALS
+
+The IoT layer must be generic.
+It must eventually be able to feed:
+Transport / Fleet, Construction / BTP, Logistics, Warehousing, Cold Chain, Industry, Mining, Agriculture, Energy, Municipal fleets, Equipment rental.
+
+Example:
+CAN Bus excavator → IoT Adapter → Canonical Event → Maintenance Rule Engine → Work Order
+
+Same architecture for: truck, bus, excavator, generator, forklift, reefer, trailer.
+The business engine must not depend on the hardware type.
+
+---
+
+# 17. SOVEREIGNTY / DEPLOYMENT
+
+NextTransit must be designed to support multiple models:
+A. Supabase Cloud
+B. Self-hosted Supabase
+C. Algeria / On-Premise
+D. Sovereign/local cloud
+E. Hybrid
+
+No external SaaS dependency must be structurally mandatory.
+
+The architecture must allow:
+Frontend + Node/Express + PostgreSQL/Supabase + Telemetry Gateway + AI services in a local infrastructure.
+Flespi can remain used in a hybrid architecture, but must not be mandatory if a client requires total sovereignty.
+
+---
+
+# 18. OFFLINE / RESILIENCE
+
+The temporary loss of:
+Internet, telematics provider, Gemini, Realtime, external cloud
+must not render the business engine unusable.
+
+Provide progressively:
+queue, retry, dead-letter handling, local buffering, event replay, idempotent ingestion.
+
+---
+
+# 19. OBSERVABILITY
+
+Each provider must be able to be diagnosed independently.
+
+Provide:
+provider health, device connectivity, last event, last successful ingestion, ingestion latency, parse errors, authentication failures, unknown devices, duplicate events, dropped events.
+
+The system must allow answering: "Is the problem coming from the hardware, provider, adapter, ingestion, Supabase, or business engine?"
+
+---
+
+# 20. NO MOCK TELEMATICS & NO DEV BYPASSES
+
+Permanently forbid in production:
+Math.random(), simulated GPS, setInterval simulating a vehicle, fake telemetry, fake device IDs, fake GPS stream, fake AI alerts, fake work orders.
+
+Tests must explicitly use:
+fixtures, deterministic test payloads, simulators identified as such, test providers.
+A simulator must never be confused with a production provider.
+
+Never introduce mock authentication, hardcoded users, development JWT bypass unless explicitly isolated inside a test-only environment.
+
+---
+
+# 21. TESTABILITY
+
+Each provider must be able to be tested with the same canonical fixtures.
+
+Example:
+Flespi payload → expected CanonicalTelemetryEvent
+Traccar payload → expected CanonicalTelemetryEvent
+Teltonika payload → expected CanonicalTelemetryEvent
+
+Then verify:
+CanonicalTelemetryEvent → R1-R7
+
+Business tests must not depend on Flespi or Traccar.
+
+---
+
+# 22. NO VENDOR LOCK-IN
+
+**NO VENDOR LOCK-IN**
+
+No architectural decision must make mandatory:
+Flespi, Traccar, Teltonika, Wialon, Supabase Cloud, Gemini.
+Each is replaceable.
+
+---
+
+# 23. SUPER_ADMIN
+
+The SUPER_ADMIN module must remain totally separated from the telematics pipeline.
+
+It must manage:
+tenants, users, subscriptions, platform audit, platform health, provider configuration, device registry, telemetry provider status.
+
+Cross-tenant SUPER_ADMIN operations pass exclusively through the secure backend.
+No service_role on the frontend side.
+
+---
+
+# 24. AUDIT
+
+Trace critical operations:
+device mapping creation/modification, device activation/deactivation, provider configuration, tenant suspension, AI decision, predictive work order, R1 override, manual telemetry correction.
+
+Immutable audit.
+
+---
+
+# 25. WARRANTY
 
 Warranty is a domain extension of R1.
-
-Warranty-aware maintenance must consider:
-
-- manufacturer;
-- expiry date;
-- mileage limit;
-- covered systems;
-- potentially warranty-invalidating actions.
-
+Warranty-aware maintenance must consider: manufacturer, expiry date, mileage limit, covered systems, potentially warranty-invalidating actions.
 Do not implement warranty logic inside telemetry adapters.
 
 ---
 
-# 20. AUDIT TRAIL
-
-Tenant-owned business mutations must be auditable.
-
-Examples:
-
-- vehicle mutation;
-- work order mutation;
-- R1-R7 override;
-- budget approval;
-- administrative action.
-
-Audit records must include:
-
-actor
-tenant_id
-action
-before
-after
-timestamp
-
-Audit records must not be deletable from normal UI.
-
----
-
-# 21. RBAC
-
-Canonical roles:
-
-SUPER_ADMIN
-DIRECTOR
-FLEET_MANAGER
-MAINTENANCE_MANAGER
-FINANCE
-OPERATIONS
-MECHANIC
-DRIVER
-
-Database/RLS is authoritative if this document conflicts with the database.
-
-Never invent additional roles without explicit approval.
-
----
-
-# 22. FRONTEND
-
-Frontend:
-
-React + Vite + TypeScript.
-
-Frontend responsibilities:
-
-- presentation;
-- user interaction;
-- realtime consumption;
-- user-scoped API requests.
-
-Frontend MUST NOT contain:
-
-- Service Role credentials;
-- provider TCP parsing;
-- provider-specific business logic;
-- authoritative tenant resolution;
-- authoritative predictive AI orchestration.
-
----
-
-# 23. TELEMETRY UI
-
-TelemetryStream and FleetContext must consume normalized application events.
-
-They must NOT generate fake GPS data in production.
-
-Forbidden production simulation:
-
-Math.random()
-setInterval() for fake GPS
-fake coordinates
-fake telemetry packets
-
-Development test generators are allowed only if explicitly isolated from production execution.
-
----
-
-# 24. DATA INTEGRITY
+# 26. DATABASE MIGRATIONS & DATA INTEGRITY
 
 Never solve migration problems by silently deleting data.
-
-Before destructive migration:
-
-- inspect;
-- report;
-- backup/archive where appropriate;
-- obtain explicit approval.
-
-Never use:
-
-DELETE
-
-as a hidden migration repair mechanism.
-
-Never use:
-
-DROP TABLE
-DROP COLUMN
-
-unless explicitly approved.
-
----
-
-# 25. DATABASE MIGRATIONS
-
+Before destructive migration: inspect, report, backup/archive where appropriate, obtain explicit approval.
 Every schema change must be represented by a migration.
-
-Migrations must:
-
-- be ordered;
-- preserve existing data;
-- maintain RLS;
-- maintain tenant isolation;
-- avoid unsafe defaults;
-- avoid hardcoded tenant IDs;
-- avoid destructive cleanup without explicit approval.
-
-Never create a database structure manually in a way that bypasses versioned migrations.
+Migrations must be ordered, preserve existing data, maintain RLS, maintain tenant isolation.
 
 ---
 
-# 26. NO MOCK DATABASE
+# 27. DEVELOPMENT RULE
 
-Never introduce:
+Before any code modification:
+1. inspect real repo
+2. inspect migrations
+3. inspect Supabase types
+4. inspect existing services
+5. identify dependencies
+6. do not invent tables or columns
+7. do not assume a provider is available
+8. do not create a mock to hide a missing feature
 
-platform_db.json
-fake JSON persistence
-local JSON database
-fake subscription store
-fake tenant store
-
-Production data must come from PostgreSQL/Supabase.
-
----
-
-# 27. NO DEV BYPASSES
-
-Never introduce:
-
-mock authentication
-hardcoded users
-hardcoded admin emails
-development JWT bypass
-custom bypass headers
-
-unless explicitly isolated inside a test-only environment and impossible to execute in production.
-
----
-
-# 28. TYPESCRIPT
-
-Strict TypeScript is required.
-
-Every change must aim for:
-
+After modification:
+npm test
+npm run build
 tsc --noEmit
 
-with zero new errors.
-
-Avoid:
-
-any
-
-unless technically justified.
+Errors must be fixed at the source.
+No `any`, `@ts-ignore`, or `@ts-expect-error` must be introduced to hide an architectural or typing error.
 
 ---
 
-# 29. TESTING
+# 28. NO FALSE COMPLETION
 
-Before declaring a feature complete:
+A task must NEVER be declared "completed", "production-ready", "100% functional" or "secure" if:
+tests fail, tsc fails, build fails, migration not applied, endpoint not tested, provider not tested, credentials missing, or functionality only simulated.
 
-- typecheck;
-- lint if available;
-- relevant tests;
-- integration test where applicable;
-- security test for authorization-sensitive code.
-
-Never report PASS for tests that were not executed.
-
-Use:
-
-PASS
-FAIL
-NOT TESTED
-
-accurately.
+Final report must distinguish:
+IMPLEMENTED, VERIFIED, NOT VERIFIED, BLOCKED, MOCK / SIMULATION.
 
 ---
 
-# 30. NO FALSE COMPLETION
+# 29. PRIORITY
 
-Never claim:
+Architectural priority order:
+1. Data integrity
+2. Multi-tenancy
+3. Security
+4. Provider abstraction
+5. Canonical telemetry
+6. Deterministic rule engine
+7. Work order / maintenance decision
+8. AI augmentation
+9. Real-time
+10. UX / visual polish
 
-"production-ready"
-"fully functional"
-"secure"
-"complete"
-
-unless the relevant functionality has actually been tested.
-
-If environment limitations prevent testing:
-
-mark:
-
-BLOCKED
-or
-NOT TESTED
-
-and explain why.
-
----
-
-# 31. I18N
-
-French is the default language.
-
-English and Arabic must remain supported.
-
-Arabic must use proper RTL layout.
-
-Do not implement RTL as a superficial CSS mirror.
-
-New user-facing features must not be permanently French-only.
-
----
-
-# 32. UI
-
-Use:
-
-Tailwind CSS
-lucide-react
-
-Maintain:
-
-- accessibility;
-- responsive layout;
-- consistent spacing;
-- readable typography;
-- clear state feedback.
-
-Do not introduce unnecessary visual redesigns while implementing backend functionality.
-
----
-
-# 33. NO UNSOLICITED FEATURES
-
-Implement precisely the requested scope.
-
-Do not:
-
-- redesign unrelated modules;
-- change database architecture unnecessarily;
-- replace Supabase;
-- introduce new infrastructure;
-- change R1-R7;
-- add new providers without request.
-
-If an architectural problem blocks the requested feature:
-
-STOP
-→ explain
-→ propose the minimal safe solution.
-
----
-
-# 34. ARCHITECTURAL STOP CONDITIONS
-
-STOP and request approval if implementation requires:
-
-- disabling RLS;
-- exposing Service Role to frontend;
-- trusting tenant_id from external payload;
-- destructive migration;
-- silent data deletion;
-- bypassing RBAC;
-- introducing vendor-specific business logic into the core;
-- creating duplicate persistence systems;
-- modifying core R1-R7 rules;
-- changing authentication architecture.
-
----
-
-# 35. DEVELOPMENT PRINCIPLE
-
-Prefer:
-
-simple
-explicit
-testable
-secure
-provider-agnostic
-tenant-safe
-
-over:
-
-clever
-implicit
-mocked
-vendor-specific
-over-engineered
-
-The objective is not to make the demo look complete.
-
-The objective is to make NextTransit structurally capable of becoming a production SaaS platform.
-
-"L'architecture actuelle est vehicle-agnostic (fournisseur). Une généralisation vers un modèle asset-agnostic (device→asset→tenant) pour des verticales hors flotte est une vision Phase 3+, non implémentée, à confirmer explicitement avant tout développement."
+Telematics is a data source.
+The real NextTransit product remains the operational and financial decision engine.
