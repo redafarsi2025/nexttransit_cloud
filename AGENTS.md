@@ -1,64 +1,894 @@
-# AGENTS.md — Custom System Instructions for NextTransit AI Studio
-### v2.0 — aligné sur le Blueprint Stratégique FlotteAkram/NextTransit
-
-## Project Overview
-NextTransit is a mission-critical Fleet Operations, Telemetry Reconciliation, and Maintenance Decision Engine. It provides role-based access control (RBAC), real-time OBD-II diagnostic fault tracking, automated work order lifecycle management, inventory reservation, and strategic cost variance modeling.
-
-**Strategic framing (do not lose this when generating code):** the defensible product is the R1-R7 decision engine, not the telematics layer. Every new feature must strengthen the chain alert → work order → parts → real cost → budget arbitration → SCF compliance. Telemetry ingestion is a pluggable input to that chain, never a hard dependency — the engine must keep working on declarative/manual data entry when no live feed is connected (this is what makes the Numilog pilot possible before Phase 2 IoT streaming ships).
+# AGENTS.md — NextTransit Engineering Rules
+## v3.0 — Production SaaS + Vehicle-Agnostic Telematics
 
 ---
 
-## Core Domain Rules & Business Logic
+# 1. PROJECT IDENTITY
 
-### 1. Decision Engine Rules (R1 – R7) — unchanged, immutable
-* **Rule R1 (Emergency Stop / Red Alert):** Any active OBD fault categorized as `Critical` must immediately mark the vehicle status as `Unsafe / Red`, issue an emergency maintenance dispatch, and remove the vehicle from dispatch assignment.
-* **Rule R2 (Schedule Conflict Prevention):** A vehicle scheduled for route departure within `3 days` that has open maintenance work orders triggers an operational conflict warning.
-* **Rule R3 (Inventory Reservation System):** Creating a Work Order automatically reserves linked parts from inventory. Closing a Work Order permanently deducts stock. Low-stock thresholds trigger automated purchase order requisitions.
-* **Rule R4 (Total Cost of Repair Formula):** `Total Work Order Cost = (Labor Hours × Hourly Rate) + SUM(Part Quantity × Part Unit Cost)`.
-* **Rule R5 (CAE Budget Prioritization Metric):** `Priority Score = (Critical Severity Factor × 40%) + (Days Until Route × 30%) + (ROI / Cost Ratio × 30%)`.
-* **Rule R6 (Telemetry Reconciliation / Driver Incident Audit):** Any driver-reported incident without a matching electronic OBD-II fault code automatically generates an **R6 Investigation Work Order** to catch non-electronic mechanical issues.
-* **Rule R7 (Strategic Fleet Health Variance Analysis):** Compare actual maintenance expenditure against projected budget across engine, electrical, brake, and chassis systems. Variance > 10% triggers an accounting audit flag.
+NextTransit is a multi-tenant SaaS platform for fleet operations, maintenance decision support, telemetry reconciliation, predictive maintenance and cost control.
 
-### 2. New domain modules to add (Blueprint gap analysis — priority order)
-* **Warranty module (R1 extension):** vehicles carry a `warranty_status` (manufacturer, expiry date/mileage, covered systems). R1 must check warranty status when raising an alert and flag any maintenance action that risks voiding it — this is the primary Numilog pilot selling point, build it before anything else new.
-* **Fuel module:** fuel logs (liters, cost, odometer), consumption per vehicle/route, anomaly detection (sudden consumption spike vs. fleet baseline). Feeds R7 variance analysis as a new cost category.
-* **Tenant-scoped audit trail:** every mutation to a vehicle, work order, R1-R7 rule override, or CAE budget approval must write an immutable audit record (`actor`, `tenant_id`, `action`, `before/after`, `timestamp`). No UI deletes of audit records, ever.
+The core business value is the decision engine:
 
----
+Telemetry / Manual Input
+        ↓
+Detection
+        ↓
+Alert
+        ↓
+Work Order
+        ↓
+Parts / Labor
+        ↓
+Actual Cost
+        ↓
+Budget
+        ↓
+Management Arbitration
+        ↓
+SCF / Financial Traceability
 
-## Technical Stack & Architecture Guidelines
-* **Frontend Framework:** React 18+ with Vite and TypeScript (strict typing required).
-* **Styling:** Tailwind CSS with modern neutral palettes, high-contrast dark and light surface layouts, generous spacing, and refined typography pairings.
-* **Backend & Persistence:** Supabase (`@supabase/supabase-js`) for cloud synchronization, along with client-side reactive React context (`FleetContext`).
-* **Multi-tenancy (Phase 1 — non-negotiable before any external demo):** every table (`vehicles`, `work_orders`, `inventory_items`, `alerts`, `warranties`, `fuel_logs`) must carry `tenant_id` and be protected by a Supabase Row-Level Security policy scoped to the `tenant_id` encoded in the user's JWT. No query path may bypass RLS, including admin tooling.
-* **Telemetry ingestion abstraction:** define a single `TelematicsProvider` interface (`getFaultCodes`, `getPosition`, `subscribe`) with concrete adapters for Teltonika, Flespi/Wialon, and a `ManualEntryProvider` fallback. R1-R7 logic must consume this interface only, never a vendor-specific payload directly — this is what lets a pilot run on a client's existing GPS boxes without a new hardware rollout.
-* **Iconography:** Strictly use `lucide-react` icons.
-* **i18n:** French is default; English and Arabic (with native RTL layout, not a mirrored CSS hack) must remain fully supported for every new screen — this is a stated market differentiator, do not ship a feature in French-only.
+Telemetry is an input source.
 
----
+Telemetry MUST NEVER become a hard dependency of the business engine.
 
-## User Roles & Navigation Controls (RBAC)
-Ensure that all UI elements respect the following role permissions:
-1. **SUPER_ADMIN:** Administrateur plateforme SaaS.
-2. **DIRECTOR:** Direction générale & arbitrage budgétaire.
-3. **FLEET_MANAGER:** Supervision opérationnelle de la flotte.
-4. **MAINTENANCE_MANAGER:** Direction technique & dispatch atelier.
-5. **FINANCE:** Contrôle de gestion & conformité comptable SCF.
-6. **OPERATIONS:** Gestionnaire logistique & approvisionnement stock R3.
-7. **MECHANIC:** Technicien d'intervention atelier.
-8. **DRIVER:** Chauffeur & inspections pré-trajet DVIR.
+The platform must continue to operate when:
+
+- no GPS device is connected;
+- no telemetry provider is configured;
+- telemetry is temporarily unavailable;
+- a customer uses manual declarations.
 
 ---
 
-## Demo / Pilot Data Requirements (new)
-When asked to generate seed or demo data, default to a realistic large-fleet scenario (hundreds of heavy trucks, tri-temperature logistics, several regional platforms) instead of a small generic fleet — the product must always demo convincingly at the scale of a target enterprise client, not a toy dataset. Vehicle records should support a warranty window and at least one linked fuel log so the Warranty and Fuel modules are always demonstrable end-to-end.
+# 2. CURRENT DEVELOPMENT PRIORITY
+
+The active engineering roadmap is:
+
+PHASE 0
+Architecture and schema audit
+
+PHASE 1
+Production SaaS / authentication / multi-tenancy / RBAC
+
+PHASE SUPER_ADMIN
+Platform administration
+
+PHASE 2A
+Telemetry backend foundation
+
+PHASE 2B
+Provider integrations
+
+PHASE 2C
+Predictive decision engine
+
+Future phases may include:
+
+- advanced BI
+- offline-first PWA
+- EDI
+- RFID
+- SCF/CNAS exports
+- advanced integrations
+
+Do NOT interrupt the active roadmap to implement unrelated roadmap features unless explicitly requested.
 
 ---
 
-## Developer Principles
-* **RBAC Source of Truth:** RBAC role names are the single source of truth in the RLS policies under supabase/migrations — if this file and the database disagree, the database wins; update this file, never assume this file is current.
-* **No Unsolicited Features:** Build precisely what is requested. Keep the layout focused, clean, and scannable.
-* **Zero Broken Handlers:** Ensure all interactive elements, modal toggles, and form actions are fully wired with active state logic.
-* **Type Safety:** Always run linter checks and ensure zero TypeScript errors (`tsc --noEmit`).
-* **RLS-first:** any new table or query added while building a feature must ship with its RLS policy in the same change — never as a follow-up.
-* **Roadmap tagging:** when a request maps to a Blueprint phase beyond Phase 1-2 (EDI, RFID, SCF/CNAS accounting export, offline-first PWA), say so explicitly instead of silently building a partial version — flag it as "Phase 3+ — confirm before building" rather than shipping a half feature.
+# 3. NON-NEGOTIABLE ARCHITECTURE
+
+NextTransit is:
+
+- multi-tenant;
+- backend-driven for privileged operations;
+- vehicle-agnostic;
+- telemetry-provider-agnostic;
+- PostgreSQL/Supabase backed;
+- TypeScript strict;
+- React/Vite frontend;
+- Express backend.
+
+The database is the source of truth.
+
+Never create fake persistence layers.
+
+Never create JSON files pretending to be a database.
+
+Never introduce mock data into production execution paths.
+
+---
+
+# 4. MULTI-TENANCY
+
+Tenant isolation is mandatory.
+
+Every tenant-owned business record must have either:
+
+1. an explicit tenant_id;
+
+OR
+
+2. a secure and unambiguous tenant relationship through trusted foreign keys.
+
+Example:
+
+device_mapping
+    ↓
+vehicle
+    ↓
+tenant
+
+The system MUST NEVER trust tenant_id coming directly from an untrusted telemetry payload.
+
+Tenant resolution must happen server-side.
+
+Typical trusted chain:
+
+provider
+    ↓
+external device
+    ↓
+device_mapping
+    ↓
+vehicle
+    ↓
+tenant
+
+---
+
+# 5. RLS POLICY
+
+RLS is mandatory for tenant-facing database access.
+
+Frontend Supabase access MUST remain RLS-protected.
+
+However, privileged backend operations MAY use:
+
+SUPABASE_SERVICE_ROLE_KEY
+
+under the following conditions:
+
+- backend only;
+- never imported by React;
+- never included in Vite bundles;
+- never exposed to browser;
+- never stored in localStorage/sessionStorage;
+- never logged;
+- only used by explicitly authorized server-side services.
+
+Service Role does NOT remove authorization requirements.
+
+Before executing privileged queries, backend code must verify:
+
+- authenticated user;
+- required role;
+- platform authorization;
+- tenant authorization where applicable.
+
+---
+
+# 6. SUPER_ADMIN ARCHITECTURE
+
+SUPER_ADMIN operations use:
+
+Browser
+ ↓ JWT
+Express API
+ ↓
+platform authorization
+ ↓
+platform_admins
+ ↓
+supabaseAdmin
+ ↓
+PostgreSQL
+
+Never expose Service Role to the frontend.
+
+Never implement development bypasses.
+
+Never accept:
+
+x-dev-bypass
+mock admin tokens
+hardcoded admin emails
+
+in production code.
+
+---
+
+# 7. TELEMETRY ARCHITECTURE
+
+Telemetry is provider-agnostic.
+
+The business engine MUST NOT consume:
+
+Teltonika payloads
+Flespi payloads
+Wialon payloads
+vendor-specific CAN payloads
+
+directly.
+
+All providers must normalize into:
+
+CanonicalTelemetryEvent
+
+Architecture:
+
+Provider
+ ↓
+Adapter
+ ↓
+parse
+ ↓
+validate
+ ↓
+normalize
+ ↓
+CanonicalTelemetryEvent
+ ↓
+TelemetryIngestionService
+ ↓
+Rule Engine
+ ↓
+Persistence / Decision Engine
+
+---
+
+# 8. TELEMETRY PROVIDER ADAPTER
+
+The canonical provider interface is:
+
+TelemetryProviderAdapter
+
+It must support:
+
+canHandle()
+parse()
+validate()
+normalize()
+
+Provider-specific implementations may include:
+
+TeltonikaAdapter
+FlespiAdapter
+WialonAdapter
+ManualEntryAdapter
+
+Do NOT put provider-specific logic inside:
+
+- Rule Engine
+- Work Order logic
+- FleetContext
+- React components
+- business domain services
+
+---
+
+# 9. CANONICAL TELEMETRY EVENT
+
+The internal telemetry contract must be provider-independent.
+
+Conceptually:
+
+CanonicalTelemetryEvent {
+
+  eventId
+  tenantId
+  vehicleId
+  deviceId
+  provider
+  timestamp
+
+  position {
+    latitude
+    longitude
+    altitude
+    speed
+    heading
+  }
+
+  engine {
+    rpm
+    coolantTemperature
+    oilTemperature
+    oilPressure
+    fuelLevel
+    batteryVoltage
+  }
+
+  diagnostics {
+    dtcCodes
+  }
+
+  rawMetadata
+}
+
+Do not add vendor-specific fields to the canonical contract.
+
+Vendor-specific information belongs in:
+
+rawMetadata
+
+or provider-specific structures.
+
+---
+
+# 10. DEVICE REGISTRY
+
+Device resolution is a trust boundary.
+
+A telemetry event must resolve:
+
+device
+ ↓
+device_mapping
+ ↓
+vehicle
+ ↓
+tenant
+
+Unknown devices MUST be rejected.
+
+Inactive devices MUST be rejected.
+
+Cross-tenant mappings MUST be rejected.
+
+The system must never trust vehicle_id or tenant_id supplied by an external device.
+
+---
+
+# 11. TELEMETRY IDEMPOTENCE
+
+Webhook ingestion MUST be idempotent.
+
+Repeated delivery of the same event must NOT create:
+
+- duplicate positions;
+- duplicate alerts;
+- duplicate AI analyses;
+- duplicate work orders.
+
+Preferred identity:
+
+provider
+device
+external event/message ID
+
+If no reliable event ID exists:
+
+use a deterministic event fingerprint.
+
+---
+
+# 12. POSITION DATA
+
+Separate:
+
+1. historical positions;
+2. latest vehicle telemetry state;
+3. realtime delivery.
+
+Historical telemetry may be stored in:
+
+positions
+
+Latest state may be stored on:
+
+vehicles
+
+Realtime delivery must NOT depend on querying the entire positions history.
+
+Do NOT automatically enable:
+
+REPLICA IDENTITY FULL
+
+Do NOT automatically enable:
+
+postgres_changes
+
+for high-frequency GPS position streams.
+
+---
+
+# 13. REALTIME
+
+The frontend is a consumer of NextTransit realtime events.
+
+Architecture:
+
+Telemetry ingestion
+ ↓
+Database/state update
+ ↓
+Realtime publication
+ ↓
+React
+
+The browser MUST NOT directly depend on:
+
+Teltonika TCP
+Flespi protocol
+Wialon IPS
+CAN bus frames
+
+For high-frequency telemetry, prefer:
+
+Broadcast
+WebSocket
+SSE
+
+over high-frequency postgres_changes.
+
+Business events such as:
+
+- fleet alerts;
+- work orders;
+- vehicle state changes
+
+may use Supabase Realtime where appropriate.
+
+---
+
+# 14. TELEMETRY RULE ENGINE
+
+TelemetryRuleEngine is deterministic.
+
+It consumes:
+
+CanonicalTelemetryEvent
+
+It produces:
+
+TelemetryAnomalyEvent
+
+The Rule Engine must NOT directly call Gemini.
+
+Examples:
+
+- critical coolant temperature;
+- abnormal oil pressure;
+- abnormal battery voltage;
+- critical DTC;
+- persistent thermal anomaly.
+
+---
+
+# 15. PREDICTIVE AI
+
+AI execution belongs to the backend.
+
+React MUST NOT be the primary trigger for predictive AI.
+
+Correct flow:
+
+Telemetry
+ ↓
+Rule Engine
+ ↓
+Anomaly
+ ↓
+AI Decision Service
+ ↓
+PredictiveAiResult
+ ↓
+Business Decision
+ ↓
+Alert / Work Order
+
+Gemini must not directly create Work Orders.
+
+---
+
+# 16. AI COOLDOWN
+
+Never call Gemini for every telemetry packet.
+
+AI execution requires:
+
+- anomaly fingerprint;
+- vehicle identity;
+- cooldown;
+- deduplication.
+
+The cooldown must be configurable.
+
+Repeated anomalies during the cooldown must not create duplicate AI analyses.
+
+---
+
+# 17. WORK ORDER GENERATION
+
+AI proposes a decision.
+
+Business logic validates it.
+
+Correct flow:
+
+AI
+ ↓
+PredictiveAiResult
+ ↓
+Decision Service
+ ↓
+Existing Work Order check
+ ↓
+Create Work Order if required
+
+Never allow AI to bypass business rules.
+
+Never create duplicate preventive Work Orders for the same active anomaly.
+
+---
+
+# 18. R1-R7 BUSINESS RULES
+
+The existing R1-R7 decision engine remains authoritative.
+
+R1:
+Critical fault → Unsafe/Red → emergency maintenance → remove from dispatch.
+
+R2:
+Vehicle departure within 3 days + open maintenance WO → operational conflict.
+
+R3:
+WO creation → reserve parts.
+WO closure → consume stock.
+Low stock → purchase requisition.
+
+R4:
+Total Work Order Cost =
+Labor Hours × Hourly Rate
++
+SUM(Part Quantity × Part Unit Cost)
+
+R5:
+Priority Score =
+Critical Severity Factor × 40%
++
+Days Until Route × 30%
++
+ROI / Cost Ratio × 30%
+
+R6:
+Driver incident without matching electronic fault → investigation WO.
+
+R7:
+Actual maintenance expenditure vs projected budget.
+Variance > 10% → accounting audit flag.
+
+Do not silently alter these rules.
+
+If business rules need to change, explicitly identify the change.
+
+---
+
+# 19. WARRANTY
+
+Warranty is a domain extension of R1.
+
+Warranty-aware maintenance must consider:
+
+- manufacturer;
+- expiry date;
+- mileage limit;
+- covered systems;
+- potentially warranty-invalidating actions.
+
+Do not implement warranty logic inside telemetry adapters.
+
+---
+
+# 20. AUDIT TRAIL
+
+Tenant-owned business mutations must be auditable.
+
+Examples:
+
+- vehicle mutation;
+- work order mutation;
+- R1-R7 override;
+- budget approval;
+- administrative action.
+
+Audit records must include:
+
+actor
+tenant_id
+action
+before
+after
+timestamp
+
+Audit records must not be deletable from normal UI.
+
+---
+
+# 21. RBAC
+
+Canonical roles:
+
+SUPER_ADMIN
+DIRECTOR
+FLEET_MANAGER
+MAINTENANCE_MANAGER
+FINANCE
+OPERATIONS
+MECHANIC
+DRIVER
+
+Database/RLS is authoritative if this document conflicts with the database.
+
+Never invent additional roles without explicit approval.
+
+---
+
+# 22. FRONTEND
+
+Frontend:
+
+React + Vite + TypeScript.
+
+Frontend responsibilities:
+
+- presentation;
+- user interaction;
+- realtime consumption;
+- user-scoped API requests.
+
+Frontend MUST NOT contain:
+
+- Service Role credentials;
+- provider TCP parsing;
+- provider-specific business logic;
+- authoritative tenant resolution;
+- authoritative predictive AI orchestration.
+
+---
+
+# 23. TELEMETRY UI
+
+TelemetryStream and FleetContext must consume normalized application events.
+
+They must NOT generate fake GPS data in production.
+
+Forbidden production simulation:
+
+Math.random()
+setInterval() for fake GPS
+fake coordinates
+fake telemetry packets
+
+Development test generators are allowed only if explicitly isolated from production execution.
+
+---
+
+# 24. DATA INTEGRITY
+
+Never solve migration problems by silently deleting data.
+
+Before destructive migration:
+
+- inspect;
+- report;
+- backup/archive where appropriate;
+- obtain explicit approval.
+
+Never use:
+
+DELETE
+
+as a hidden migration repair mechanism.
+
+Never use:
+
+DROP TABLE
+DROP COLUMN
+
+unless explicitly approved.
+
+---
+
+# 25. DATABASE MIGRATIONS
+
+Every schema change must be represented by a migration.
+
+Migrations must:
+
+- be ordered;
+- preserve existing data;
+- maintain RLS;
+- maintain tenant isolation;
+- avoid unsafe defaults;
+- avoid hardcoded tenant IDs;
+- avoid destructive cleanup without explicit approval.
+
+Never create a database structure manually in a way that bypasses versioned migrations.
+
+---
+
+# 26. NO MOCK DATABASE
+
+Never introduce:
+
+platform_db.json
+fake JSON persistence
+local JSON database
+fake subscription store
+fake tenant store
+
+Production data must come from PostgreSQL/Supabase.
+
+---
+
+# 27. NO DEV BYPASSES
+
+Never introduce:
+
+mock authentication
+hardcoded users
+hardcoded admin emails
+development JWT bypass
+custom bypass headers
+
+unless explicitly isolated inside a test-only environment and impossible to execute in production.
+
+---
+
+# 28. TYPESCRIPT
+
+Strict TypeScript is required.
+
+Every change must aim for:
+
+tsc --noEmit
+
+with zero new errors.
+
+Avoid:
+
+any
+
+unless technically justified.
+
+---
+
+# 29. TESTING
+
+Before declaring a feature complete:
+
+- typecheck;
+- lint if available;
+- relevant tests;
+- integration test where applicable;
+- security test for authorization-sensitive code.
+
+Never report PASS for tests that were not executed.
+
+Use:
+
+PASS
+FAIL
+NOT TESTED
+
+accurately.
+
+---
+
+# 30. NO FALSE COMPLETION
+
+Never claim:
+
+"production-ready"
+"fully functional"
+"secure"
+"complete"
+
+unless the relevant functionality has actually been tested.
+
+If environment limitations prevent testing:
+
+mark:
+
+BLOCKED
+or
+NOT TESTED
+
+and explain why.
+
+---
+
+# 31. I18N
+
+French is the default language.
+
+English and Arabic must remain supported.
+
+Arabic must use proper RTL layout.
+
+Do not implement RTL as a superficial CSS mirror.
+
+New user-facing features must not be permanently French-only.
+
+---
+
+# 32. UI
+
+Use:
+
+Tailwind CSS
+lucide-react
+
+Maintain:
+
+- accessibility;
+- responsive layout;
+- consistent spacing;
+- readable typography;
+- clear state feedback.
+
+Do not introduce unnecessary visual redesigns while implementing backend functionality.
+
+---
+
+# 33. NO UNSOLICITED FEATURES
+
+Implement precisely the requested scope.
+
+Do not:
+
+- redesign unrelated modules;
+- change database architecture unnecessarily;
+- replace Supabase;
+- introduce new infrastructure;
+- change R1-R7;
+- add new providers without request.
+
+If an architectural problem blocks the requested feature:
+
+STOP
+→ explain
+→ propose the minimal safe solution.
+
+---
+
+# 34. ARCHITECTURAL STOP CONDITIONS
+
+STOP and request approval if implementation requires:
+
+- disabling RLS;
+- exposing Service Role to frontend;
+- trusting tenant_id from external payload;
+- destructive migration;
+- silent data deletion;
+- bypassing RBAC;
+- introducing vendor-specific business logic into the core;
+- creating duplicate persistence systems;
+- modifying core R1-R7 rules;
+- changing authentication architecture.
+
+---
+
+# 35. DEVELOPMENT PRINCIPLE
+
+Prefer:
+
+simple
+explicit
+testable
+secure
+provider-agnostic
+tenant-safe
+
+over:
+
+clever
+implicit
+mocked
+vendor-specific
+over-engineered
+
+The objective is not to make the demo look complete.
+
+The objective is to make NextTransit structurally capable of becoming a production SaaS platform.

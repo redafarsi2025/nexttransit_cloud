@@ -9,6 +9,9 @@ import { SubscriptionPlans } from './SubscriptionPlans';
 import { SystemHealth } from './SystemHealth';
 import { GlobalSettings } from './GlobalSettings';
 
+import { UsersManagement } from './UsersManagement';
+import { PlatformAuditLog } from './PlatformAuditLog';
+
 export const AdminLayout: React.FC = () => {
   return (
     <div className="flex h-screen bg-slate-900 text-slate-200 overflow-hidden font-sans">
@@ -21,8 +24,10 @@ export const AdminLayout: React.FC = () => {
               <Route element={<SuperAdminGuard />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="tenants" element={<TenantManagement />} />
+                <Route path="users" element={<UsersManagement />} />
                 <Route path="billing" element={<SubscriptionPlans />} />
                 <Route path="system" element={<SystemHealth />} />
+                <Route path="audit" element={<PlatformAuditLog />} />
                 <Route path="settings" element={<GlobalSettings />} />
                 <Route path="*" element={<div className="text-slate-400">Under Construction</div>} />
               </Route>

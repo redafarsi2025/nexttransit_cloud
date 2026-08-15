@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DeviceResolver
  * ==============
  * Resolves a raw external_device_id (IMEI, unit_id, etc.) from an incoming
@@ -7,8 +7,8 @@
  * Uses device_mappings table (Supabase) with in-memory fallback.
  * Zero knowledge of device manufacturer, vehicle make/model, or provider protocol.
  */
-import { DeviceMapping } from '../../types';
-import { supabase } from '../../lib/supabase';
+import { DeviceMapping, TelematicsProviderType } from '../../types';
+import { supabaseAdmin } from '../../lib/supabaseAdmin';
 
 export interface ResolvedDevice {
   vehicle_id: string;
@@ -30,19 +30,22 @@ function isCacheValid(key: string): boolean {
  * Resolves an external_device_id to internal vehicle + tenant identifiers.
  * Returns null if no active mapping exists for the given device identifier.
  */
-export async function resolveDevice(externalDeviceId: string): Promise<ResolvedDevice | null> {
-  if (!externalDeviceId) return null;
+export async function resolveDevice(externalDeviceId: string, provider: TelematicsProviderType): Promise<ResolvedDevice | null> {
+  if (!externalDeviceId || !provider) return null;
+
+  const cacheKey = `${provider}:${externalDeviceId}`;
 
   // Cache hit
-  if (resolutionCache.has(externalDeviceId) && isCacheValid(externalDeviceId)) {
-    return resolutionCache.get(externalDeviceId)!;
+  if (resolutionCache.has(cacheKey) && isCacheValid(cacheKey)) {
+    return resolutionCache.get(cacheKey)!;
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('device_mappings')
       .select('*')
       .eq('external_device_id', externalDeviceId)
+      .eq('provider', provider)
       .eq('is_active', true)
       .maybeSingle();
 
@@ -56,14 +59,16 @@ export async function resolveDevice(externalDeviceId: string): Promise<ResolvedD
       return null;
     }
 
+    const mappingData = data as unknown as DeviceMapping;
+
     const resolved: ResolvedDevice = {
-      vehicle_id: data.vehicle_id,
-      tenant_id: data.tenant_id,
-      mapping: data as DeviceMapping,
+      vehicle_id: mappingData.vehicle_id,
+      tenant_id: mappingData.tenant_id,
+      mapping: mappingData,
     };
 
-    resolutionCache.set(externalDeviceId, resolved);
-    cacheTimestamps.set(externalDeviceId, Date.now());
+    resolutionCache.set(cacheKey, resolved);
+    cacheTimestamps.set(cacheKey, Date.now());
 
     return resolved;
   } catch (err) {
@@ -72,8 +77,8 @@ export async function resolveDevice(externalDeviceId: string): Promise<ResolvedD
   }
 }
 
-/** Invalidate cache for a specific device (call after mapping updates). */
-export function invalidateDeviceCache(externalDeviceId: string): void {
-  resolutionCache.delete(externalDeviceId);
-  cacheTimestamps.delete(externalDeviceId);
+export function invalidateDeviceCache(externalDeviceId: string, provider: TelematicsProviderType): void {
+  const cacheKey = `${provider}:${externalDeviceId}`;
+  resolutionCache.delete(cacheKey);
+  cacheTimestamps.delete(cacheKey);
 }

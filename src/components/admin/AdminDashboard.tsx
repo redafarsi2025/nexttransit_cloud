@@ -1,15 +1,59 @@
-import React from 'react';
-import { useTenant } from '../../context/TenantContext';
-import { Users, Building, Activity, DollarSign } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { adminApiService } from '../../services/adminApiService';
+import { Users, Building, Activity, DollarSign, AlertTriangle } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
-  const { tenantConfigs } = useTenant();
-  
-  const stats = [
-    { label: 'Active Tenants', value: tenantConfigs.length, icon: Building, color: 'text-indigo-400' },
-    { label: 'Total Users', value: '1,248', icon: Users, color: 'text-emerald-400' },
-    { label: 'Monthly MRR', value: '$45,200', icon: DollarSign, color: 'text-emerald-400' },
-    { label: 'System Uptime', value: '99.98%', icon: Activity, color: 'text-indigo-400' },
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [recentTenants, setRecentTenants] = useState<any[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const [statsData, tenantsData] = await Promise.all([
+          adminApiService.getPlatformStats(),
+          adminApiService.getAllTenants(1, 5)
+        ]);
+        if (isMounted) {
+          setStats(statsData);
+          setRecentTenants(tenantsData.data || []);
+        }
+      } catch (err: any) {
+        if (isMounted) setError(err.message || 'Failed to load dashboard data');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchDashboardData();
+    return () => { isMounted = false; };
+  }, []);
+
+  if (loading) {
+    return <div className="p-8 text-slate-400">Loading platform statistics...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-lg flex items-start">
+          <AlertTriangle className="w-5 h-5 mr-3 mt-0.5 shrink-0" />
+          <div>
+            <h3 className="font-semibold">Error Loading Dashboard</h3>
+            <p className="mt-1 text-sm opacity-90">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const statCards = [
+    { label: 'Total Tenants', value: stats?.tenantsTotal || 0, icon: Building, color: 'text-indigo-400' },
+    { label: 'Total Users', value: stats?.usersTotal || 0, icon: Users, color: 'text-emerald-400' },
+    { label: 'Monthly MRR', value: `${(stats?.estimatedMrr || 0).toLocaleString()} DZD`, icon: DollarSign, color: 'text-emerald-400' },
+    { label: 'Active Subscriptions', value: stats?.activeSubscriptions || 0, icon: Activity, color: 'text-indigo-400' },
   ];
 
   return (
@@ -22,8 +66,8 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <div key={index} className="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
+        {statCards.map((stat, index) => (
+          <div key={index} className="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm transition hover:border-slate-600">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-400 mb-1">{stat.label}</p>
@@ -40,36 +84,39 @@ export const AdminDashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-sm p-6">
           <h3 className="text-lg font-semibold text-slate-100 mb-4">Recent Tenant Signups</h3>
-          <div className="space-y-4">
-            {tenantConfigs.slice(0, 5).map(tenant => (
-              <div key={tenant.id} className="flex justify-between items-center p-4 bg-slate-900 rounded-lg border border-slate-700">
-                <div>
-                  <p className="font-medium text-slate-200">{tenant.societyName}</p>
-                  <p className="text-sm text-slate-400">Plan: Enterprise</p>
+          {recentTenants.length === 0 ? (
+            <p className="text-slate-400 text-sm">No tenants found.</p>
+          ) : (
+            <div className="space-y-4">
+              {recentTenants.map((tenant: any) => (
+                <div key={tenant.id} className="flex justify-between items-center p-4 bg-slate-900 rounded-lg border border-slate-700">
+                  <div>
+                    <p className="font-medium text-slate-200">{tenant.name}</p>
+                    <p className="text-sm text-slate-400">Plan: {tenant.subscription?.plan || 'N/A'}</p>
+                  </div>
+                  <div className={`text-sm px-2 py-1 rounded border ${
+                    tenant.subscription?.status === 'active' 
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      : tenant.subscription?.status === 'trial'
+                      ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                  }`}>
+                    {tenant.subscription?.status || 'Unknown'}
+                  </div>
                 </div>
-                <div className="text-sm px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  Active
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
         
         <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-sm p-6">
           <h3 className="text-lg font-semibold text-slate-100 mb-4">System Alerts</h3>
           <div className="space-y-4">
-            <div className="flex items-start p-4 bg-amber-500/10 rounded-lg border border-amber-500/20">
-              <Activity className="w-5 h-5 text-amber-400 mt-0.5 mr-3 shrink-0" />
-              <div>
-                <p className="font-medium text-amber-300">High API Latency Detected</p>
-                <p className="text-sm text-amber-400/80 mt-1">EMEA region showing elevated telemetry ingestion times.</p>
-              </div>
-            </div>
             <div className="flex items-start p-4 bg-slate-900 rounded-lg border border-slate-700">
-              <Building className="w-5 h-5 text-slate-400 mt-0.5 mr-3 shrink-0" />
+              <Activity className="w-5 h-5 text-emerald-400 mt-0.5 mr-3 shrink-0" />
               <div>
-                <p className="font-medium text-slate-300">Scheduled Maintenance</p>
-                <p className="text-sm text-slate-500 mt-1">Database failover test scheduled for 02:00 UTC.</p>
+                <p className="font-medium text-emerald-300">System Healthy</p>
+                <p className="text-sm text-slate-400 mt-1">All platform services are operating normally.</p>
               </div>
             </div>
           </div>

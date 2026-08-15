@@ -1,4 +1,4 @@
-﻿/**
+/**
  * TelemetryIngestionService
  * ==========================
  * Orchestrator for the full telemetry ingestion pipeline.
@@ -25,7 +25,7 @@ import { parseFlespiWebhookBatch } from './providers/FlespiAdapter';
 import { resolveDevice } from './DeviceResolver';
 import { resolveCapabilities } from './CapabilityResolver';
 import { normalizeTelemetryPayload } from './TelemetryNormalizer';
-import { supabase } from '../../lib/supabase';
+import { supabaseAdmin } from '../../lib/supabaseAdmin';
 import { DecisionEngine } from '../decisionEngine';
 
 export interface IngestionResult {
@@ -71,7 +71,7 @@ export async function processTelemetryWebhook(
     }
 
     // Step 2: Resolve external_device_id -> vehicle_id + tenant_id
-    const resolved = await resolveDevice(payload.external_device_id);
+    const resolved = await resolveDevice(payload.external_device_id, provider);
     if (!resolved) {
       console.warn('[TelemetryIngestionService] Unmapped device:', payload.external_device_id);
       ignoredCount++;
@@ -94,7 +94,8 @@ export async function processTelemetryWebhook(
     // Step 5: Persist position to Supabase
     if (event.position) {
       try {
-        await supabase.from('positions').insert({
+        // Table 'positions' sera créée ultérieurement, ce code restera fonctionnel
+        const positionPayload: any = {
           tenant_id,
           vehicle_id,
           latitude: event.position.latitude,
@@ -104,7 +105,8 @@ export async function processTelemetryWebhook(
           heading_deg: event.position.heading ?? null,
           timestamp: event.timestamp,
           data_source: 'live_telematics',
-        });
+        };
+        await supabaseAdmin.from('positions').insert(positionPayload as never);
       } catch (err) {
         console.warn('[TelemetryIngestionService] Position insert failed:', err);
       }
@@ -113,26 +115,29 @@ export async function processTelemetryWebhook(
     // Step 6: Update vehicle fault codes + trigger Rule R1
     if (event.faults.length > 0) {
       try {
-        const { data: currentVehicle } = await supabase
+        const { data: currentVehicleData } = await supabaseAdmin
           .from('vehicles')
           .select('*')
           .eq('id', vehicle_id)
           .single();
+        const currentVehicle = currentVehicleData as any;
 
         if (currentVehicle) {
           const r1Result = DecisionEngine.evalRuleR1(currentVehicle, event.faults);
           const updatedStatus = r1Result.isRedAlert ? 'Unsafe / Red' : currentVehicle.status;
 
-          await supabase
+          const updatePayload: any = {
+            active_fault_codes: event.faults,
+            status: updatedStatus,
+            status_reason: r1Result.isRedAlert
+              ? 'R1 Alert: ' + (r1Result.criticalFaults[0]?.name ?? 'Critical fault detected')
+              : currentVehicle.status_reason,
+            data_source: 'live_telematics',
+          };
+
+          await supabaseAdmin
             .from('vehicles')
-            .update({
-              active_fault_codes: event.faults,
-              status: updatedStatus,
-              status_reason: r1Result.isRedAlert
-                ? 'R1 Alert: ' + (r1Result.criticalFaults[0]?.name ?? 'Critical fault detected')
-                : currentVehicle.status_reason,
-              data_source: 'live_telematics',
-            })
+            .update(updatePayload as never)
             .eq('id', vehicle_id);
         }
       } catch (err) {

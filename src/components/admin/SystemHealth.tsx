@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Activity, Server, Cpu, Database, Play, Pause, RefreshCw, Trash2, CheckCircle, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { adminApiService } from '../../services/adminApiService';
 
 interface SystemMetric {
   name: string;
@@ -41,11 +42,37 @@ export const SystemHealth: React.FC = () => {
 
   const [systemMetrics, setSystemMetrics] = useState<SystemMetric[]>([
     { name: 'EMQX MQTT Broker', status: 'healthy', value: '42ms avg response', load: 34 },
-    { name: 'PostgreSQL Database Engine', status: 'healthy', value: '18 active pools', load: 12 },
+    { name: 'PostgreSQL Database Engine', status: 'warning', value: 'Checking...', load: 0 },
     { name: 'TimescaleDB (Telemetry Timeseries)', status: 'healthy', value: '1,240 inserts/s', load: 45 },
     { name: 'Redis Cache (DTC Dictionary & Session)', status: 'healthy', value: '98.4% hit rate', load: 8 },
     { name: 'Vite & Dev Server Middlewares', status: 'healthy', value: '3000 port binding', load: 5 }
   ]);
+
+  useEffect(() => {
+    adminApiService.getSystemHealth().then((health) => {
+      setSystemMetrics(prev => {
+        const newMetrics = [...prev];
+        const dbMetric = newMetrics.find(m => m.name.includes('PostgreSQL'));
+        if (dbMetric) {
+          dbMetric.status = health.database === 'HEALTHY' ? 'healthy' : health.database === 'DEGRADED' ? 'warning' : 'critical';
+          dbMetric.value = health.database === 'HEALTHY' ? 'Online' : health.error || 'Offline';
+          dbMetric.load = health.database === 'HEALTHY' ? 12 : 100;
+        }
+        return newMetrics;
+      });
+    }).catch(err => {
+      setSystemMetrics(prev => {
+        const newMetrics = [...prev];
+        const dbMetric = newMetrics.find(m => m.name.includes('PostgreSQL'));
+        if (dbMetric) {
+          dbMetric.status = 'critical';
+          dbMetric.value = 'Failed to connect';
+          dbMetric.load = 100;
+        }
+        return newMetrics;
+      });
+    });
+  }, []);
 
   const logScrollRef = useRef<HTMLDivElement>(null);
 
@@ -95,23 +122,38 @@ export const SystemHealth: React.FC = () => {
     }
   }, [logs, isStreaming]);
 
-  const triggerManualRefresh = () => {
+  const triggerManualRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      // Simulate slight metrics changes
-      setSystemMetrics(prev => prev.map(metric => ({
-        ...metric,
-        load: Math.max(5, Math.min(95, metric.load + Math.floor(Math.random() * 11) - 5))
-      })));
+    try {
+      const health = await adminApiService.getSystemHealth();
+      setSystemMetrics(prev => {
+        const newMetrics = [...prev];
+        const dbMetric = newMetrics.find(m => m.name.includes('PostgreSQL'));
+        if (dbMetric) {
+          dbMetric.status = health.database === 'HEALTHY' ? 'healthy' : health.database === 'DEGRADED' ? 'warning' : 'critical';
+          dbMetric.value = health.database === 'HEALTHY' ? 'Online' : health.error || 'Offline';
+          dbMetric.load = health.database === 'HEALTHY' ? 12 : 100;
+        }
+        
+        // Simulate other metrics changing slightly
+        return newMetrics.map(metric => {
+          if (metric.name.includes('PostgreSQL')) return metric;
+          return {
+            ...metric,
+            load: Math.max(5, Math.min(95, metric.load + Math.floor(Math.random() * 11) - 5))
+          };
+        });
+      });
       
-      // Simulate queue changes
       setQueueData(prev => prev.map(q => ({
         ...q,
         completed: q.completed + Math.floor(Math.random() * 50)
       })));
-
+    } catch (err) {
+      console.error(err);
+    } finally {
       setIsRefreshing(false);
-    }, 800);
+    }
   };
 
   const handleClearFailedJobs = (queueName: string) => {

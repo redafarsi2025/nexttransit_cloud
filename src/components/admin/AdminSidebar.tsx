@@ -9,8 +9,10 @@ export const AdminSidebar: React.FC = () => {
   const navItems = [
     { to: '/admin', icon: LayoutDashboard, label: 'Overview', exact: true },
     { to: '/admin/tenants', icon: Users, label: 'Tenants & Workspaces' },
+    { to: '/admin/users', icon: Users, label: 'Global Users' },
     { to: '/admin/billing', icon: CreditCard, label: 'Subscription Plans' },
     { to: '/admin/system', icon: Activity, label: 'System Health' },
+    { to: '/admin/audit', icon: Activity, label: 'Audit Logs' },
     { to: '/admin/settings', icon: Settings, label: 'Global Config' },
   ];
 
