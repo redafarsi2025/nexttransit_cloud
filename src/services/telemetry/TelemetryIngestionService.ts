@@ -151,10 +151,9 @@ export async function processTelemetryWebhook(
         throw error;
       }
     } catch (err) {
-      console.warn('[TelemetryIngestionService] Telemetry event log insert failed:', err);
-      // Fail closed policy for critical mapping errors
-      ignoredCount++;
-      continue;
+      console.error('[TelemetryIngestionService] Telemetry event log insert failed:', err);
+      // Let BullMQ retry on DB errors
+      throw err;
     }
 
     // Step 6: Persist position to Supabase
@@ -173,7 +172,8 @@ export async function processTelemetryWebhook(
         };
         await supabaseAdmin.from('positions').insert(positionPayload as never);
       } catch (err) {
-        console.warn('[TelemetryIngestionService] Position insert failed:', err);
+        console.error('[TelemetryIngestionService] Position persist failed:', err);
+        throw err;
       }
     }
 

@@ -1,9 +1,9 @@
-import { RateLimitStore, MemoryRateLimitStore } from './SecurityStores';
+import { RateLimitStore } from './SecurityStores';
+import { RedisRateLimitStore } from './RedisStores';
 import { WebhookSecurityPolicy } from './WebhookSecurityPolicy';
 
-// We use the Memory store for Phase 2D. 
-// In Phase 2E, this can be swapped with new RedisRateLimitStore().
-const rateLimitStore: RateLimitStore = new MemoryRateLimitStore();
+// Phase 2E: We use RedisRateLimitStore for distributed rate limiting
+const rateLimitStore: RateLimitStore = new RedisRateLimitStore();
 
 export class RateLimiter {
   static async checkIpLimit(ip: string, policy: WebhookSecurityPolicy): Promise<boolean> {

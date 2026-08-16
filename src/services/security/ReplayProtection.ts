@@ -1,8 +1,9 @@
-import { ReplayStore, MemoryReplayStore } from './SecurityStores';
+import { ReplayStore } from './SecurityStores';
+import { RedisReplayStore } from './RedisStores';
 import { WebhookSecurityPolicy } from './WebhookSecurityPolicy';
 
-// Memory store for Phase 2D. Will be replaced by Redis in Phase 2E.
-const replayStore: ReplayStore = new MemoryReplayStore();
+// Phase 2E: We use RedisReplayStore for distributed replay protection
+const replayStore: ReplayStore = new RedisReplayStore();
 
 export class ReplayProtection {
   /**

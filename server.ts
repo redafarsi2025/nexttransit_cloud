@@ -19,7 +19,7 @@ import { incidentRouter } from './src/api/incidents';
 import { platformAdminRouter } from './src/api/platformAdmin';
 import { platformAuthCheck } from './src/api/middleware';
 import { resolveFaultCode } from './src/services/faultCodeMappingService';
-import { processTelemetryWebhook } from './src/services/telemetry/TelemetryIngestionService';
+import { enqueueTelemetry } from './src/services/telemetry/queue/TelemetryQueue';
 import { TelematicsProviderType } from './src/types';
 import { supabase } from './src/lib/supabaseServer';
 import { TelematicsProviderRegistry } from './src/services/telemetry/TelematicsProviderRegistry';
@@ -383,8 +383,8 @@ Provide your rationale in clear French (reasoning_fr).`;
   });
 
   // Telemetry Webhook Ingestion Routes
-  // Dynamic Provider-Agnostic Route (Phase 2D)
-  app.post('/api/webhooks/telemetry/:provider', express.json({ limit: '2mb' }), async (req, res) => {
+  // Dynamic Provider-Agnostic Route (Phase 2E - Distributed)
+  app.post('/api/webhooks/telemetry/:provider', express.json({ limit: '256kb' }), async (req, res) => {
     const provider = req.params.provider as TelematicsProviderType;
     
     // 1 & 2. Gateway Authentication & Rate Limiting (Provider-Agnostic)
@@ -400,9 +400,24 @@ Provide your rationale in clear French (reasoning_fr).`;
         return res.status(401).json({ error: 'Unauthorized webhook' });
       }
 
-      // 3. Process the payload passing the security context
-      const result = await processTelemetryWebhook(req.body, provider, authResult.context!);
-      return res.json(result);
+      // 3. Enqueue the raw payload for background processing
+      const correlationId = crypto.randomUUID();
+      
+      const enqueued = await enqueueTelemetry({
+        provider,
+        rawPayload: req.body,
+        securityContext: authResult.context!,
+        correlationId,
+        receivedAt: Date.now()
+      });
+
+      if (!enqueued) {
+        // Rule 5: If Redis/BullMQ is down, return 503 Service Unavailable
+        return res.status(503).json({ error: 'Service Unavailable', message: 'Telemetry queue is temporarily unavailable' });
+      }
+
+      // 4. Return 202 Accepted only if queued successfully
+      return res.status(202).json({ accepted: true, correlationId });
 
     } catch (err: any) {
       if (err.message && err.message.includes('Unknown or unregistered provider')) {
