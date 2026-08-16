@@ -468,7 +468,7 @@ Les problèmes de SUPABASE_SERVICE_ROLE_KEY dans l’environnement de test et de
 
 8. Phase 2E — Redis + BullMQ
 
-🟡 STATUT : PROCHAINE PHASE — PLAN PRÊT
+🟢 STATUT : TERMINÉE ET VÉRIFIÉE
 
 Objectif : transformer le pipeline synchrone en ingestion distribuée, résiliente et observable.
 
@@ -538,12 +538,12 @@ déclenche R1–R7.
 
 Redis
 
-Remplacement des stores mémoire :
+Remplacement des stores mémoire par Redis :
 
 MemoryRateLimitStore → RedisRateLimitStore
 MemoryReplayStore    → RedisReplayStore
 
-Production :
+Politique de production (Fail-closed) :
 
 Redis DOWN
    ↓
@@ -824,7 +824,7 @@ idempotence PostgreSQL ;
 
 audit.
 
-Phase 2E — Observabilité
+Phase 2F — Observabilité et Monitoring
 
 redis_status
 queue_waiting
@@ -1008,11 +1008,11 @@ NextTransit Webhook
    ↓
 Redis
    ↓
-BullMQ
+BullMQ `telemetry-ingestion`
    ↓
-Worker
+Worker Indépendant (`worker.ts`)
    ↓
-Canonical Event
+TelemetryIngestionService
    ↓
 PostgreSQL
    ↓

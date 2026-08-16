@@ -27,18 +27,21 @@ NextTransit provides a vendor-agnostic telematics architecture that decouples li
 2. Create an **API Token** with Master or Read-Only permissions on Telemetry Streams. Set this token in `.env` as `FLESPI_API_TOKEN`.
 3. Register your Teltonika FM/FMM telematics devices under Flespi Channels / Devices using their hardware IMEI number.
 
-### 1.2 Webhook Configuration
-1. In Flespi (or Wialon), set up an HTTP Stream / Webhook pointing to:
+### 1.2 Webhook Configuration (Phase 2E Distributed)
+1. In Flespi (or Traccar, Wialon), set up an HTTP Stream / Webhook pointing to:
    ```http
-   POST https://<your-nexttransit-domain>/api/telemetry/webhook
+   POST https://<your-nexttransit-domain>/api/webhooks/telemetry/<provider>
    ```
-2. Configure HTTP Header:
-   ```http
-   Authorization: <FLESPI_WEBHOOK_SECRET>
-   ```
-3. Ensure `.env` contains `FLESPI_WEBHOOK_SECRET=<your_shared_webhook_secret_here>`. Any request without a matching secret will be rejected with `401 Unauthorized`.
+   *Exemple pour Flespi : `/api/webhooks/telemetry/flespi`*
+   *Exemple pour Traccar : `/api/webhooks/telemetry/traccar`*
 
-*Vérifié : le endpoint existe dans `server.ts` (ligne ~373) et lit bien `FLESPI_WEBHOOK_SECRET` depuis l'environnement.*
+2. Configure HTTP Header for Authentication:
+   ```http
+   Authorization: <YOUR_WEBHOOK_SECRET>
+   ```
+3. Ensure the gateway configuration is securely defined in the `telematics_gateways` table. Any request without a matching secret or from an unknown provider will be rejected with `401 Unauthorized`.
+
+*Vérifié : le endpoint dynamique existe dans `server.ts` et intègre une protection Rate Limit et Replay via Redis.*
 
 ### 1.3 Device Mapping in NextTransit
 To map an incoming hardware device to a specific NextTransit vehicle:
@@ -50,7 +53,13 @@ To map an incoming hardware device to a specific NextTransit vehicle:
    INSERT INTO public.device_mappings (tenant_id, vehicle_id, provider, external_device_id)
    VALUES ('<your_tenant_id>', 'V-024', 'flespi_wialon', 'TEL-864201049281002');
    ```
-   Le champ `provider` accepte exclusivement `'teltonika'`, `'flespi_wialon'`, ou `'manual'` (contrainte `CHECK` en base) — toute autre valeur sera rejetée.
+   Le champ `provider` accepte exclusivement `'traccar'`, `'teltonika'`, `'flespi'`, ou `'manual'` (contrainte `CHECK` en base) — toute autre valeur sera rejetée.
+
+### 1.4 Architecture d'ingestion distribuée (Phase 2E)
+Afin de supporter de grands volumes de données (ex: 10,000 véhicules) de manière résiliente, NextTransit utilise une architecture découplée :
+1. **API Gateway (`server.ts`)** : Reçoit le webhook, vérifie la taille du payload (<256kb), valide l'authentification et le rate limit (via **Redis**), puis pousse le payload brut dans la queue `telemetry-ingestion` (via **BullMQ**) avant de retourner immédiatement un code HTTP `202 Accepted`.
+2. **Worker (`worker.ts`)** : Tourne dans un processus Node séparé. Il consomme la queue, résout le `tenant_id` et `vehicle_id` de manière sécurisée (depuis `device_mappings`), normalise la donnée via l'Adapter, vérifie l'idempotence (via la base de données), enregistre l'événement et met à jour l'état du véhicule.
+*Pour lancer le worker en développement : `npm run dev:worker`*
 
 ---
 
