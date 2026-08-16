@@ -20,11 +20,13 @@
  * or provider-specific payload structure. Those concerns live in their
  * respective layers (adapter, resolver, normalizer).
  */
-import { NormalizedTelemetryEvent, TelematicsProviderType } from '../../types';
-import { parseFlespiWebhookBatch } from './providers/FlespiAdapter';
+import { CanonicalTelemetryEvent, TelematicsProviderType } from '../../types';
+import { TelematicsProviderRegistry } from './TelematicsProviderRegistry';
 import { resolveDevice } from './DeviceResolver';
 import { resolveCapabilities } from './CapabilityResolver';
-import { normalizeTelemetryPayload } from './TelemetryNormalizer';
+import { SecurityContext } from '../security/WebhookSecurityService';
+import { ReplayProtection } from '../security/ReplayProtection';
+import { getSecurityPolicyForProvider } from '../security/WebhookSecurityPolicy';
 import { supabaseAdmin } from '../../lib/supabaseAdmin';
 import { DecisionEngine } from '../decisionEngine';
 
@@ -32,8 +34,11 @@ export interface IngestionResult {
   status: 'success';
   processed: number;
   ignored: number;
-  events?: NormalizedTelemetryEvent[];
+  events?: CanonicalTelemetryEvent[];
 }
+
+// L'idempotence est désormais gérée strictement par la contrainte UNIQUE 
+// de la table telemetry_events sur la colonne event_id.
 
 /**
  * Processes a raw telemetry webhook payload end-to-end.
@@ -44,57 +49,117 @@ export interface IngestionResult {
  */
 export async function processTelemetryWebhook(
   body: unknown,
-  provider: TelematicsProviderType = 'flespi'
+  provider: TelematicsProviderType,
+  authContext: SecurityContext
 ): Promise<IngestionResult> {
   let processedCount = 0;
   let ignoredCount = 0;
-  const events: NormalizedTelemetryEvent[] = [];
+  const events: CanonicalTelemetryEvent[] = [];
 
-  // Step 1: Adapt raw payload to standardized ProviderPayload[]
-  // Each provider has its own adapter. Add new providers here without touching
-  // the normalizer, resolver, or decision engine.
-  let payloads;
-  switch (provider) {
-    case 'flespi':
-      payloads = parseFlespiWebhookBatch(body);
-      break;
-    // Future: case 'wialon': payloads = parseWialonBatch(body); break;
-    // Future: case 'direct': payloads = parseTCPBatch(body); break;
-    default:
-      payloads = parseFlespiWebhookBatch(body); // Fallback to Flespi format
+  // Step 1: Retrieve adapter from Registry
+  let adapter;
+  try {
+    adapter = TelematicsProviderRegistry.get(provider);
+  } catch (err) {
+    console.error(`[TelemetryIngestionService] ${err}`);
+    throw err;
   }
 
-  for (const payload of payloads) {
-    if (!payload.external_device_id) {
+  // Validate payload (optional but good practice)
+  if (!adapter.validate(body)) {
+    console.warn(`[TelemetryIngestionService] Payload validation failed for provider ${provider}`);
+    return { status: 'success', processed: 0, ignored: 1 };
+  }
+
+  // Parse payload into intermediate format
+  const parsedItems = adapter.parse(body);
+
+  for (const item of parsedItems) {
+    if (!item.externalDeviceId) {
       ignoredCount++;
       continue;
     }
 
-    // Step 2: Resolve external_device_id -> vehicle_id + tenant_id
-    const resolved = await resolveDevice(payload.external_device_id, provider);
+    // Le contrôle d'idempotence s'effectue désormais après la normalisation
+    // lors de l'insertion dans la table telemetry_events.
+
+    // Step 3: Resolve external_device_id -> vehicle_id + tenant_id
+    const resolved = await resolveDevice(item.externalDeviceId, provider);
     if (!resolved) {
-      console.warn('[TelemetryIngestionService] Unmapped device:', payload.external_device_id);
+      console.warn('[TelemetryIngestionService] Unmapped device:', item.externalDeviceId);
       ignoredCount++;
       continue;
     }
 
     const { vehicle_id, tenant_id, mapping } = resolved;
 
-    // Step 3: Resolve effective capabilities for this installation
+    // Step 4: Resolve effective capabilities for this installation
     const capabilities = resolveCapabilities(mapping);
 
-    // Step 4: Normalize into canonical event
-    const event = normalizeTelemetryPayload(payload, {
-      vehicle_id,
-      tenant_id,
-      device_id: mapping.device_id,
+    // Step 5: Normalize into CanonicalTelemetryEvent via Adapter
+    const event = adapter.normalize(item.parsedData, {
+      vehicleId: vehicle_id,
+      tenantId: tenant_id,
+      deviceId: mapping.device_id,
       capabilities,
     });
 
-    // Step 5: Persist position to Supabase
+    // Step 5.1: Timestamp Validation & Replay Protection
+    const policy = getSecurityPolicyForProvider(provider);
+    const timestampMs = new Date(event.timestamp).getTime();
+    
+    if (!ReplayProtection.isTimestampValid(timestampMs, policy)) {
+      console.warn(`[TelemetryIngestionService] Event ${event.eventId} rejected: Timestamp out of bounds`);
+      ignoredCount++;
+      continue;
+    }
+    
+    const replayAllowed = await ReplayProtection.checkAndStoreEvent(event.eventId, policy);
+    if (!replayAllowed) {
+      console.warn(`[TelemetryIngestionService] Event ${event.eventId} rejected: Memory Replay Detected`);
+      ignoredCount++;
+      continue;
+    }
+
+    // Step 5.2: Cross-Tenant Spoofing Check
+    // If the gateway is explicitly scoped to a tenant (e.g. Numilog dedicated gateway),
+    // we strictly verify it matches the device's resolved tenant.
+    if (authContext.tenantId && authContext.tenantId !== tenant_id) {
+      console.error(`[TelemetryIngestionService] CROSS-TENANT SPOOFING REJECTED: Gateway scope ${authContext.tenantId} != Device owner ${tenant_id}`);
+      ignoredCount++;
+      continue;
+    }
+
+    // Step 5.5: Idempotency & Audit Log Insertion
+    try {
+      const { error } = await supabaseAdmin.from('telemetry_events').insert({
+        event_id: event.eventId,
+        tenant_id,
+        vehicle_id,
+        provider,
+        external_device_id: event.external_device_id,
+        event_timestamp: event.timestamp,
+        payload: event
+      } as any);
+      
+      if (error) {
+        if (error.code === '23505' || error.message.includes('unique_telemetry_event_id')) {
+          console.info(`[TelemetryIngestionService] Ignoring duplicate event ID from DB: ${event.eventId}`);
+          ignoredCount++;
+          continue; // Stop processing this event, it's a duplicate
+        }
+        throw error;
+      }
+    } catch (err) {
+      console.warn('[TelemetryIngestionService] Telemetry event log insert failed:', err);
+      // Fail closed policy for critical mapping errors
+      ignoredCount++;
+      continue;
+    }
+
+    // Step 6: Persist position to Supabase
     if (event.position) {
       try {
-        // Table 'positions' sera créée ultérieurement, ce code restera fonctionnel
         const positionPayload: any = {
           tenant_id,
           vehicle_id,
@@ -104,7 +169,7 @@ export async function processTelemetryWebhook(
           speed_kmh: event.position.speed ?? null,
           heading_deg: event.position.heading ?? null,
           timestamp: event.timestamp,
-          data_source: 'live_telematics',
+          data_source: event.data_source,
         };
         await supabaseAdmin.from('positions').insert(positionPayload as never);
       } catch (err) {
@@ -112,7 +177,7 @@ export async function processTelemetryWebhook(
       }
     }
 
-    // Step 6: Update vehicle fault codes + trigger Rule R1
+    // Step 7: Update vehicle fault codes + trigger Rule R1
     if (event.faults.length > 0) {
       try {
         const { data: currentVehicleData } = await supabaseAdmin
@@ -132,7 +197,7 @@ export async function processTelemetryWebhook(
             status_reason: r1Result.isRedAlert
               ? 'R1 Alert: ' + (r1Result.criticalFaults[0]?.name ?? 'Critical fault detected')
               : currentVehicle.status_reason,
-            data_source: 'live_telematics',
+            data_source: event.data_source,
           };
 
           await supabaseAdmin

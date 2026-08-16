@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       tenants: {
@@ -77,6 +77,7 @@ export interface Database {
           current_period_end?: string
           created_at?: string
         }
+        Relationships: any[]
       }
       audit_logs: {
         Row: {
@@ -207,6 +208,41 @@ export interface Database {
           provider?: string
           external_device_id?: string
           is_active?: boolean
+        }
+      }
+      telemetry_events: {
+        Row: {
+          id: string
+          event_id: string
+          tenant_id: string
+          vehicle_id: string
+          provider: string
+          external_device_id: string
+          event_timestamp: string
+          payload: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          tenant_id: string
+          vehicle_id: string
+          provider: string
+          external_device_id: string
+          event_timestamp: string
+          payload: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          tenant_id?: string
+          vehicle_id?: string
+          provider?: string
+          external_device_id?: string
+          event_timestamp?: string
+          payload?: Json
+          created_at?: string
         }
       }
       platform_admins: {

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database.types';
 
 // SERVER-ONLY Supabase client initialized with the Service Role Key.
@@ -16,11 +16,11 @@ if (typeof window !== 'undefined') {
   throw new Error('SECURITY BREACH: supabaseAdmin.ts must only be used on the server.');
 }
 
-let clientInstance: ReturnType<typeof createClient<Database>> | null = null;
+let clientInstance: SupabaseClient<Database> | null = null;
 
 // Use a Proxy to lazily initialize the client only when it is actually accessed.
 // This prevents the entire server from crashing on startup if the service role key is missing in .env.
-export const supabaseAdmin = new Proxy({} as ReturnType<typeof createClient<Database>>, {
+export const supabaseAdmin: SupabaseClient<Database> = new Proxy({} as SupabaseClient<Database>, {
   get(target, prop) {
     if (!clientInstance) {
       const url = getSupabaseUrl();

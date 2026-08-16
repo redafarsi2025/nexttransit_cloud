@@ -379,6 +379,7 @@ describe('Vendor-Agnostic Telematics Ingestion Layer', () => {
       const { normalizeTelemetryPayload } = await import('./telemetry/TelemetryNormalizer');
       const capabilities = { gps: true, ignition: true, speed: true, obd2: true, eobd: true, j1939: false, j1708: false, canBus: true, dtc: true, harshDriving: false, batteryVoltage: false, fuelLevel: false, engineRpm: false, engineTemperature: false, odometer: false, digitalInputs: 0, analogInputs: 0 };
       const payload = {
+        provider: 'manual' as const,
         external_device_id: 'TEST-IMEI-001',
         timestamp_unix: 1723657200,
         latitude: 36.7538,
@@ -405,6 +406,7 @@ describe('Vendor-Agnostic Telematics Ingestion Layer', () => {
       const { normalizeTelemetryPayload } = await import('./telemetry/TelemetryNormalizer');
       const capabilities = { gps: true, ignition: false, speed: true, obd2: false, eobd: false, j1939: false, j1708: false, canBus: false, dtc: false, harshDriving: false, batteryVoltage: false, fuelLevel: false, engineRpm: false, engineTemperature: false, odometer: false, digitalInputs: 0, analogInputs: 0 };
       const payload = {
+        provider: 'manual' as const,
         external_device_id: 'TEST-GPS-ONLY',
         latitude: 36.7538,
         longitude: 3.0588,

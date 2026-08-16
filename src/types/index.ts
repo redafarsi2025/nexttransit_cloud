@@ -103,7 +103,7 @@ export type VehicleStatus = 'Healthy' | 'Attention' | 'Critical' | 'Unknown';
 export type VehicleClassification = 'Keystone' | 'Standard';
 export type SeverityTier = 'Critical' | 'Warning' | 'Info' | 'Unknown';
 
-export interface ActiveFaultCode {
+export type ActiveFaultCode = {
   code: string;
   name: string;
   severity: SeverityTier;
@@ -401,6 +401,7 @@ export interface AuditLog {
 // They are independent of the device model or vehicle type.
 export type TelematicsProviderType =
   | 'flespi'       // Flespi.io — primary Phase 2 middleware
+  | 'traccar'      // Traccar.org — open-source middleware
   | 'wialon'       // Wialon / Gurtam platform
   | 'direct'       // Direct TCP / UDP connection (no middleware)
   | 'mqtt'         // Generic MQTT broker
@@ -582,16 +583,19 @@ export interface TelematicsProvider {
   ): Unsubscribe;
 }
 
-// ── Normalized Telemetry Event — output of TelemetryNormalizer ───────────────
+// ── Canonical Telemetry Event — output of TelematicsProviderAdapter ───────────────
 // This is the canonical internal representation of any telemetry frame,
 // regardless of provider, protocol, device type, or vehicle make/model.
-export interface NormalizedTelemetryEvent {
+export type CanonicalTelemetryEvent = {
+  eventId: string;             // Unique identifier for the event (for idempotency)
+  provider: TelematicsProviderType; // Source provider (e.g., 'flespi', 'traccar', 'manual')
   tenant_id: string;
   vehicle_id: string;
   device_id?: string;          // FK to TelematicsDevice if known
   external_device_id: string;  // Raw IMEI / unit_id from payload
 
-  timestamp: string;
+  timestamp: string;           // Device timestamp
+  receivedAt: string;          // Ingestion server timestamp
 
   // GPS / position data — absent if device lacks GPS or no fix
   position?: {
@@ -610,6 +614,7 @@ export interface NormalizedTelemetryEvent {
     engineTemperature?: number;  // °C
     fuelLevel?: number;          // % 0-100
     odometer?: number;           // km
+    engineHours?: number;        // h
     batteryVoltage?: number;     // V
   };
 
@@ -627,8 +632,18 @@ export interface NormalizedTelemetryEvent {
   // Actual capabilities available for this event (from DeviceMapping overlay)
   capabilities?: Partial<TelematicsCapabilities>;
 
-  data_source: 'live_telematics';
+  data_source: 'live_telematics' | 'manual_entry';
+  
+  // Provider-specific metadata kept for auditing/diagnostics, NOT for business logic
+  metadata?: {
+    rawPayload?: any;
+    [key: string]: any;
+  };
 }
+
+// ALIAS for backward compatibility during Phase 2A refactor.
+// To be removed once all consumers are fully migrated to CanonicalTelemetryEvent.
+export type NormalizedTelemetryEvent = CanonicalTelemetryEvent;
 
 // ── Telemetry Event Hierarchy — for future event-driven extensions ────────────
 // DiagnosticEvent feeds FaultCodeResolver → ActiveFaultCode → Decision Engine R1.

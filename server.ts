@@ -20,7 +20,18 @@ import { platformAdminRouter } from './src/api/platformAdmin';
 import { platformAuthCheck } from './src/api/middleware';
 import { resolveFaultCode } from './src/services/faultCodeMappingService';
 import { processTelemetryWebhook } from './src/services/telemetry/TelemetryIngestionService';
+import { TelematicsProviderType } from './src/types';
 import { supabase } from './src/lib/supabaseServer';
+import { TelematicsProviderRegistry } from './src/services/telemetry/TelematicsProviderRegistry';
+import { FlespiAdapter } from './src/services/telemetry/providers/FlespiAdapter';
+import { ManualEntryAdapter } from './src/services/telemetry/providers/ManualEntryAdapter';
+import { TraccarAdapter } from './src/services/telemetry/providers/TraccarAdapter';
+import { WebhookSecurityService } from './src/services/security/WebhookSecurityService';
+
+// Register core telematics adapters
+TelematicsProviderRegistry.register(FlespiAdapter);
+TelematicsProviderRegistry.register(ManualEntryAdapter);
+TelematicsProviderRegistry.register(TraccarAdapter);
 
 let genAIClient: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI | null {
@@ -371,25 +382,34 @@ Provide your rationale in clear French (reasoning_fr).`;
     }
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Telemetry Webhook Ingestion Route (Flespi / Wialon MQTT & HTTP Push)
-  // This endpoint is intentionally thin. All pipeline logic lives in
-  // TelemetryIngestionService: adapter -> resolver -> normalizer -> persistence -> R1.
-  // ─────────────────────────────────────────────────────────────────────────────
-  app.post('/api/telemetry/webhook', express.json(), async (req, res) => {
-    const webhookSecret = process.env.FLESPI_WEBHOOK_SECRET;
-    const authHeader = req.headers['authorization'] || req.headers['x-flespi-secret'];
-
-    if (!webhookSecret || (authHeader !== webhookSecret && authHeader !== `Bearer ${webhookSecret}`)) {
-      return res.status(401).json({ error: 'Unauthorized: Invalid or missing telemetry webhook secret' });
-    }
-
+  // Telemetry Webhook Ingestion Routes
+  // Dynamic Provider-Agnostic Route (Phase 2D)
+  app.post('/api/webhooks/telemetry/:provider', express.json({ limit: '2mb' }), async (req, res) => {
+    const provider = req.params.provider as TelematicsProviderType;
+    
+    // 1 & 2. Gateway Authentication & Rate Limiting (Provider-Agnostic)
     try {
-      const result = await processTelemetryWebhook(req.body, 'flespi');
+      const authResult = await WebhookSecurityService.authenticateAndRateLimit(provider, req);
+
+      if (!authResult.authenticated) {
+        // NEVER LOG credentials. Only log the reason and provider.
+        console.warn(`[TelemetryWebhook] Security blocked request for provider '${provider}'. Reason: ${authResult.reason}`);
+        if (authResult.reason === 'RATE_LIMIT_EXCEEDED') {
+          return res.status(429).json({ error: 'Too many requests' });
+        }
+        return res.status(401).json({ error: 'Unauthorized webhook' });
+      }
+
+      // 3. Process the payload passing the security context
+      const result = await processTelemetryWebhook(req.body, provider, authResult.context!);
       return res.json(result);
+
     } catch (err: any) {
-      console.error('[TelemetryWebhook] Processing error:', err);
-      return res.status(500).json({ error: 'Webhook processing failed', message: err.message });
+      if (err.message && err.message.includes('Unknown or unregistered provider')) {
+        return res.status(404).json({ error: 'Provider not found', message: err.message });
+      }
+      console.error(`[TelemetryWebhook] Processing error for ${provider}:`, err.message);
+      return res.status(500).json({ error: 'Webhook processing failed' });
     }
   });
 

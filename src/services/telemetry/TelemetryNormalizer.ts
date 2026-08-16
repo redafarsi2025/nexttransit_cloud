@@ -1,4 +1,4 @@
-﻿/**
+/**
  * TelemetryNormalizer
  * ====================
  * Transforms a raw, provider-specific telemetry payload into a canonical
@@ -18,9 +18,10 @@
  *   Raw payload -> Provider Adapter -> ProviderPayload -> TelemetryNormalizer -> NormalizedTelemetryEvent
  */
 import {
-  NormalizedTelemetryEvent,
+  CanonicalTelemetryEvent,
   FaultStandard,
   TelematicsCapabilities,
+  TelematicsProviderType,
 } from '../../types';
 import { resolveFaultCode } from '../faultCodeMappingService';
 import { hasCapability } from './CapabilityResolver';
@@ -32,6 +33,9 @@ import { hasCapability } from './CapabilityResolver';
 export interface ProviderPayload {
   external_device_id: string;
   timestamp_unix?: number;           // Unix epoch seconds; falls back to now()
+  eventId?: string;                  // External event ID for idempotency
+  provider: TelematicsProviderType;
+  rawPayload?: any;                  // For auditing
 
   // Position
   latitude?: number;
@@ -47,6 +51,7 @@ export interface ProviderPayload {
   engineTemperature?: number;        // Celsius
   fuelLevel?: number;                // % 0-100
   odometer?: number;                 // km
+  engineHours?: number;              // h
   batteryVoltage?: number;           // Volts
 
   // Diagnostic codes — standard is declared per DTC entry
@@ -58,8 +63,10 @@ export interface ProviderPayload {
   }>;
 }
 
+import * as crypto from 'crypto';
+
 /**
- * Normalizes a ProviderPayload into a NormalizedTelemetryEvent.
+ * Normalizes a ProviderPayload into a CanonicalTelemetryEvent.
  * Only emits fields that are declared available in the effective capabilities.
  * Never emits a field by guessing or assuming availability.
  */
@@ -70,21 +77,45 @@ export function normalizeTelemetryPayload(
     tenant_id: string;
     device_id?: string;
     capabilities: TelematicsCapabilities;
+    dataSource?: 'live_telematics' | 'manual_entry';
   }
-): NormalizedTelemetryEvent {
-  const { vehicle_id, tenant_id, device_id, capabilities } = context;
+): CanonicalTelemetryEvent {
+  const { vehicle_id, tenant_id, device_id, capabilities, dataSource = 'live_telematics' } = context;
   const ts = payload.timestamp_unix
     ? new Date(payload.timestamp_unix * 1000).toISOString()
     : new Date().toISOString();
 
-  const event: NormalizedTelemetryEvent = {
+  // Generate a deterministic event ID
+  let eventId = payload.eventId;
+  if (!eventId) {
+    const fingerprintString = JSON.stringify({
+      lat: payload.latitude,
+      lon: payload.longitude,
+      spd: payload.speed,
+      ign: payload.ignition,
+      odo: payload.odometer,
+      dtc: payload.dtc
+    });
+    const fingerprint = crypto.createHash('md5').update(fingerprintString).digest('hex');
+    eventId = `${payload.provider}_${payload.external_device_id}_${ts}_${fingerprint}`;
+  } else {
+    eventId = `${payload.provider}_${payload.external_device_id}_${eventId}`;
+  }
+
+  const event: CanonicalTelemetryEvent = {
+    eventId,
+    provider: payload.provider,
     tenant_id,
     vehicle_id,
     device_id,
     external_device_id: payload.external_device_id,
     timestamp: ts,
+    receivedAt: new Date().toISOString(),
     faults: [],
-    data_source: 'live_telematics',
+    data_source: dataSource,
+    metadata: {
+      rawPayload: payload.rawPayload
+    }
   };
 
   // Position — only emit if GPS capability is confirmed

@@ -203,7 +203,11 @@ export const SubscriptionPlans: React.FC = () => {
                           <span className={`text-sm ${isPastDue ? 'text-rose-400' : isExpiringSoon ? 'text-amber-400' : 'text-slate-300'}`}>
                             {endDate.toLocaleDateString()}
                           </span>
-                          {isExpiringSoon && <AlertTriangle className="w-4 h-4 text-amber-400" title="Expiring within 7 days" />}
+                          {isExpiringSoon && (
+                            <span title="Expiring within 7 days">
+                              <AlertTriangle className="w-4 h-4 text-amber-400" />
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
