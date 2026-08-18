@@ -1,19 +1,24 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { envConfig } from '../config/env';
 
 // Server-side Supabase client (Node.js CJS build via esbuild)
-// Uses process.env ONLY — no import.meta which is not available in CJS.
-const supabaseUrl =
-  process.env.VITE_SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  'https://placeholder-tenant.supabase.co';
+// Uses Proxy for lazy initialization. This prevents immediate crashes in test environments
+// while still adhering to strict fail-fast rules in production.
 
-const supabaseKey =
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2MDA0OTY0MDAsImV4cCI6MTkxNjA3MjQwMH0.placeholder';
+let clientInstance: SupabaseClient | null = null;
 
-if (!supabaseUrl || supabaseUrl === 'https://placeholder-tenant.supabase.co') {
-  console.warn('[NextTransit Server] VITE_SUPABASE_URL is missing. Running in demo fallback mode.');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(target, prop) {
+    if (!clientInstance) {
+      const url = envConfig.supabaseUrl;
+      const key = envConfig.supabaseAnonKey;
+      
+      if (!url || !key) {
+        throw new Error('FATAL: Supabase Anon credentials missing.');
+      }
+      
+      clientInstance = createClient(url, key);
+    }
+    return (clientInstance as any)[prop];
+  }
+});

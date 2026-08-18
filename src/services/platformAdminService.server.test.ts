@@ -2,29 +2,26 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { platformAdminService } from './platformAdminService.server';
 import { supabaseAdmin } from '../lib/supabaseAdmin';
 
+import { supabaseMock, resetSupabaseMock } from '../../tests/setup/supabaseMock';
+
 // Mock the internal supabaseAdmin client
-vi.mock('../lib/supabaseAdmin', () => ({
-  supabaseAdmin: {
-    from: vi.fn(),
-  },
-}));
+vi.mock('../lib/supabaseAdmin', async () => {
+  const { supabaseMock } = await import('../../tests/setup/supabaseMock');
+  return { __esModule: true, supabaseAdmin: supabaseMock };
+});
 
 describe('platformAdminService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetSupabaseMock();
   });
 
   it('getPlatformStats should aggregate stats correctly and estimate MRR', async () => {
-    // Setup mock returns for the 3 queries in getPlatformStats
-    const mockSelect = vi.fn();
-    (supabaseAdmin.from as any).mockImplementation((table: string) => ({
-      select: mockSelect,
-    }));
-
-    mockSelect
-      .mockResolvedValueOnce({ count: 10, error: null, data: null }) // tenants
-      .mockResolvedValueOnce({ count: 50, error: null, data: null }) // profiles
-      .mockResolvedValueOnce({ 
+    // Setup mock returns for the 3 queries in getPlatformStats by mocking the thenable
+    (supabaseMock.from().then as any)
+      .mockImplementationOnce((resolve: any) => resolve({ count: 10, error: null, data: null })) // tenants
+      .mockImplementationOnce((resolve: any) => resolve({ count: 50, error: null, data: null })) // profiles
+      .mockImplementationOnce((resolve: any) => resolve({ 
         error: null, 
         data: [
           { plan: 'enterprise', status: 'active' },
@@ -32,7 +29,7 @@ describe('platformAdminService', () => {
           { plan: 'professional', status: 'past_due' },
           { plan: 'startup', status: 'trial' }
         ] 
-      }); // subscriptions
+      })); // subscriptions
 
     const stats = await platformAdminService.getPlatformStats();
 

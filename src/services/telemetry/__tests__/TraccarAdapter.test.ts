@@ -1,7 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TraccarAdapter } from '../providers/TraccarAdapter';
 
 describe('TraccarAdapter', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
   it('should have correct provider name', () => {
     expect(TraccarAdapter.provider).toBe('traccar');
   });

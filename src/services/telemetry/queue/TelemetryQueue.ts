@@ -29,12 +29,19 @@ export const telemetryQueue = new Queue<TelemetryJobData>(TELEMETRY_QUEUE_NAME, 
   },
 });
 
+import { bullmqJobsTotal } from '../../../lib/metrics';
+
 export async function enqueueTelemetry(jobData: TelemetryJobData): Promise<boolean> {
   try {
     const job = await telemetryQueue.add(TELEMETRY_QUEUE_NAME, jobData, {
       jobId: `telemetry-${jobData.correlationId}`
     });
-    return !!job.id;
+    
+    if (job.id) {
+      bullmqJobsTotal.inc({ queue: TELEMETRY_QUEUE_NAME, status: 'enqueued' });
+      return true;
+    }
+    return false;
   } catch (error) {
     console.error(`[TelemetryQueue] Failed to enqueue job for correlationId ${jobData.correlationId}:`, error);
     // Returning false will trigger a 503 from the API, implementing Fail-Closed for the queue.

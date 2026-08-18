@@ -4,24 +4,13 @@ import { registerPublicCompany, loginUser, AuthEmailConfirmationError, AuthProvi
 import { acceptInvitation } from '../invitationService';
 import { recordAudit } from '../auditService';
 
+import { supabaseMock, resetSupabaseMock } from '../../../tests/setup/supabaseMock';
+
 // Mock dependencies
-vi.mock('../../lib/supabase', () => ({
-  supabase: {
-    auth: {
-      signUp: vi.fn(),
-      signInWithPassword: vi.fn(),
-    },
-    rpc: vi.fn(),
-    from: vi.fn(() => ({
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      is: vi.fn().mockReturnThis(),
-      single: vi.fn(),
-      insert: vi.fn(),
-      update: vi.fn().mockReturnThis(),
-    })),
-  },
-}));
+vi.mock('../../lib/supabase', async () => {
+  const { supabaseMock } = await import('../../../tests/setup/supabaseMock');
+  return { __esModule: true, supabase: supabaseMock };
+});
 
 vi.mock('../auditService', () => ({
   recordAudit: vi.fn(),
@@ -30,11 +19,13 @@ vi.mock('../auditService', () => ({
 describe('Auth Security & Privilege Escalation Prevention', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetSupabaseMock();
   });
 
   describe('registerPublicCompany (Public Registration)', () => {
     it('should NOT include role or tenant_id in signUp metadata', async () => {
       const mockAuthUser = { id: 'auth-123', email: 'test@example.com' };
+      console.log('SUPABASE MOCK:', supabase);
       (supabase.auth.signUp as any).mockResolvedValue({
         data: { user: mockAuthUser, session: { access_token: 'fake-token' } },
         error: null,

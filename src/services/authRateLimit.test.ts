@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   checkRateLimit,
   checkRateLimitAsync,
@@ -6,6 +6,15 @@ import {
   clearRateLimit,
   validatePasswordPolicy,
 } from './authService';
+
+vi.mock('../lib/supabase', async () => {
+  const { supabaseMock } = await import('../../tests/setup/supabaseMock');
+  return { __esModule: true, supabase: supabaseMock };
+});
+vi.mock('../lib/supabaseAdmin', async () => {
+  const { supabaseMock } = await import('../../tests/setup/supabaseMock');
+  return { __esModule: true, supabaseAdmin: supabaseMock };
+});
 
 describe('Auth Service Persistent Rate Limiting & Password Policy', () => {
   const testEmail = 'lockout-test@nexttransit.io';

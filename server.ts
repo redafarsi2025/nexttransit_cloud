@@ -5,7 +5,13 @@ import { createServer as createViteServer, loadEnv } from 'vite';
 // Ensure .env is loaded for the server context
 const env = loadEnv('', process.cwd(), '');
 Object.assign(process.env, env);
+
+import { logger } from './src/lib/logger';
+import { requestContextMiddleware, getRequestContext } from './src/middleware/requestContext';
+import { healthRouter } from './src/api/healthRouter';
 import { freeTranslateText } from './src/services/freeTranslationService';
+import { metricsMiddleware } from './src/middleware/metricsMiddleware';
+import { metricsRegistry, nexttransitBuildInfo } from './src/lib/metrics';
 import { z } from 'zod';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
@@ -159,6 +165,19 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // 0. Correlation ID & Logging Context
+  app.use(requestContextMiddleware);
+  app.use((req, res, next) => {
+    const context = getRequestContext();
+    if (context && context.request_id) {
+      res.setHeader('X-Request-ID', context.request_id);
+    }
+    next();
+  });
+
+  // Prometheus Metrics Middleware
+  app.use(metricsMiddleware);
+
   // 1. Security & Middleware Setup (Helmet, CSP, CORS)
   const supabaseDomain = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://*.supabase.co';
   const cleanSupabaseDomain = supabaseDomain.replace(/^https?:\/\//, '');
@@ -197,6 +216,9 @@ async function startServer() {
   app.use('/api/inventory', inventoryRouter);
   app.use('/api/incidents', incidentRouter);
   app.use('/api/platform', platformAdminRouter);
+
+  // Phase 2F-02: Health & Readiness Probes
+  app.use('/health', healthRouter);
 
   // Platform Admin Frontend UI (SaaS Operator Panel)
   app.get('/platform-admin', (req, res) => {
@@ -389,14 +411,22 @@ Provide your rationale in clear French (reasoning_fr).`;
     
     // 1 & 2. Gateway Authentication & Rate Limiting (Provider-Agnostic)
     try {
-      const authResult = await WebhookSecurityService.authenticateAndRateLimit(provider, req);
+      const securityService = new WebhookSecurityService();
+      const authResult = await securityService.authenticateAndRateLimit(provider, req);
 
       if (!authResult.authenticated) {
+        if (authResult.reason === 'SERVICE_UNAVAILABLE') {
+          // Rule 5: Fail closed on security dependency outage
+          import('./src/lib/metrics').then(m => m.telemetryWebhooksTotal.inc({ provider, status: 'error_503' }));
+          return res.status(503).json({ error: 'Service Unavailable', message: 'Security service is temporarily unavailable' });
+        }
         // NEVER LOG credentials. Only log the reason and provider.
-        console.warn(`[TelemetryWebhook] Security blocked request for provider '${provider}'. Reason: ${authResult.reason}`);
+        logger.warn({ event: 'telemetry_webhook_blocked', provider, reason: authResult.reason }, `Security blocked request for provider '${provider}'`);
         if (authResult.reason === 'RATE_LIMIT_EXCEEDED') {
+          import('./src/lib/metrics').then(m => m.telemetryWebhooksTotal.inc({ provider, status: 'error_429' }));
           return res.status(429).json({ error: 'Too many requests' });
         }
+        import('./src/lib/metrics').then(m => m.telemetryWebhooksTotal.inc({ provider, status: 'error_401' }));
         return res.status(401).json({ error: 'Unauthorized webhook' });
       }
 
@@ -413,17 +443,23 @@ Provide your rationale in clear French (reasoning_fr).`;
 
       if (!enqueued) {
         // Rule 5: If Redis/BullMQ is down, return 503 Service Unavailable
+        import('./src/lib/metrics').then(m => m.telemetryWebhooksTotal.inc({ provider, status: 'error_503' }));
         return res.status(503).json({ error: 'Service Unavailable', message: 'Telemetry queue is temporarily unavailable' });
       }
 
+      logger.info({ event: 'telemetry_webhook_received', provider, payload_size: JSON.stringify(req.body).length, correlationId }, 'Webhook received and enqueued');
+
       // 4. Return 202 Accepted only if queued successfully
+      import('./src/lib/metrics').then(m => m.telemetryWebhooksTotal.inc({ provider, status: 'success' }));
       return res.status(202).json({ accepted: true, correlationId });
 
     } catch (err: any) {
       if (err.message && err.message.includes('Unknown or unregistered provider')) {
+        import('./src/lib/metrics').then(m => m.telemetryWebhooksTotal.inc({ provider, status: 'error_404' }));
         return res.status(404).json({ error: 'Provider not found', message: err.message });
       }
-      console.error(`[TelemetryWebhook] Processing error for ${provider}:`, err.message);
+      logger.error({ event: 'telemetry_webhook_error', provider, error: err.message }, 'Processing error');
+      import('./src/lib/metrics').then(m => m.telemetryWebhooksTotal.inc({ provider, status: 'error_500' }));
       return res.status(500).json({ error: 'Webhook processing failed' });
     }
   });
@@ -448,8 +484,39 @@ Provide your rationale in clear French (reasoning_fr).`;
     });
   }
 
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    logger.error({
+      event: 'http_error',
+      route: req.path,
+      status: err.status || 500,
+      message: err.message,
+    });
+    res.status(err.status || 500).json({ error: 'Internal Server Error' });
+  });
+
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`NextTransit Server running on http://0.0.0.0:${PORT}`);
+    logger.info(`NextTransit Server running on http://0.0.0.0:${PORT}`);
+  });
+
+  // Start internal metrics server on port 9090
+  const METRICS_PORT = 9090;
+  const metricsApp = express();
+  
+  // Update Build Info Metric
+  nexttransitBuildInfo.set({ version: '2.1.0', environment: process.env.NODE_ENV || 'development', service: 'api' }, 1);
+
+  metricsApp.get('/metrics', async (req, res) => {
+    try {
+      res.set('Content-Type', metricsRegistry.contentType);
+      const metrics = await metricsRegistry.metrics();
+      res.end(metrics);
+    } catch (err) {
+      res.status(500).end(String(err));
+    }
+  });
+
+  metricsApp.listen(METRICS_PORT, '0.0.0.0', () => {
+    logger.info(`NextTransit API Metrics Server running on http://0.0.0.0:${METRICS_PORT}`);
   });
 }
 

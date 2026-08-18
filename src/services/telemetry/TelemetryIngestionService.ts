@@ -29,6 +29,7 @@ import { ReplayProtection } from '../security/ReplayProtection';
 import { getSecurityPolicyForProvider } from '../security/WebhookSecurityPolicy';
 import { supabaseAdmin } from '../../lib/supabaseAdmin';
 import { DecisionEngine } from '../decisionEngine';
+import { logger } from '../../lib/logger';
 
 export interface IngestionResult {
   status: 'success';
@@ -50,7 +51,8 @@ export interface IngestionResult {
 export async function processTelemetryWebhook(
   body: unknown,
   provider: TelematicsProviderType,
-  authContext: SecurityContext
+  authContext: SecurityContext,
+  replayProtection: ReplayProtection = new ReplayProtection()
 ): Promise<IngestionResult> {
   let processedCount = 0;
   let ignoredCount = 0;
@@ -58,16 +60,18 @@ export async function processTelemetryWebhook(
 
   // Step 1: Retrieve adapter from Registry
   let adapter;
+  const startTime = Date.now();
+  logger.info({ event: 'telemetry_ingestion_started', provider }, 'Telemetry ingestion started');
   try {
     adapter = TelematicsProviderRegistry.get(provider);
-  } catch (err) {
-    console.error(`[TelemetryIngestionService] ${err}`);
+  } catch (err: any) {
+    logger.error({ event: 'telemetry_ingestion_failed', provider, error: err.message, duration_ms: Date.now() - startTime }, 'Provider adapter not found');
     throw err;
   }
 
   // Validate payload (optional but good practice)
   if (!adapter.validate(body)) {
-    console.warn(`[TelemetryIngestionService] Payload validation failed for provider ${provider}`);
+    logger.warn({ event: 'telemetry_ingestion_failed', provider, reason: 'payload_validation_failed', duration_ms: Date.now() - startTime }, 'Payload validation failed');
     return { status: 'success', processed: 0, ignored: 1 };
   }
 
@@ -86,7 +90,7 @@ export async function processTelemetryWebhook(
     // Step 3: Resolve external_device_id -> vehicle_id + tenant_id
     const resolved = await resolveDevice(item.externalDeviceId, provider);
     if (!resolved) {
-      console.warn('[TelemetryIngestionService] Unmapped device:', item.externalDeviceId);
+      logger.warn({ event: 'telemetry_ingestion_warning', reason: 'unmapped_device', externalDeviceId: item.externalDeviceId }, 'Unmapped device');
       ignoredCount++;
       continue;
     }
@@ -108,15 +112,25 @@ export async function processTelemetryWebhook(
     const policy = getSecurityPolicyForProvider(provider);
     const timestampMs = new Date(event.timestamp).getTime();
     
-    if (!ReplayProtection.isTimestampValid(timestampMs, policy)) {
-      console.warn(`[TelemetryIngestionService] Event ${event.eventId} rejected: Timestamp out of bounds`);
+    // Ensure deterministic event_id for replay/idempotency
+    if (!event.eventId) {
+      const posHash = event.position ? Math.round(event.position.latitude * 10000) : 'nopos';
+      event.eventId = `${provider}_${mapping.device_id}_${timestampMs}_${posHash}`;
+    }
+
+    if (!replayProtection.isTimestampValid(timestampMs, policy)) {
+      logger.warn({ event: 'telemetry_ingestion_warning', reason: 'timestamp_out_of_bounds', eventId: event.eventId }, 'Timestamp out of bounds');
       ignoredCount++;
       continue;
     }
+    const replayDecision = await replayProtection.checkAndStoreEvent(tenant_id, provider, mapping.device_id!, event.eventId as string, policy);
     
-    const replayAllowed = await ReplayProtection.checkAndStoreEvent(event.eventId, policy);
-    if (!replayAllowed) {
-      console.warn(`[TelemetryIngestionService] Event ${event.eventId} rejected: Memory Replay Detected`);
+    if (!replayDecision.allowed) {
+      if (replayDecision.reason === 'SERVICE_UNAVAILABLE') {
+        logger.error({ event: 'telemetry_ingestion_failed', reason: 'SECURITY_SERVICE_UNAVAILABLE' }, 'Security service unavailable');
+        throw new Error('SECURITY_SERVICE_UNAVAILABLE');
+      }
+      logger.warn({ event: 'telemetry_ingestion_warning', reason: replayDecision.reason, eventId: event.eventId }, 'Replay rejected');
       ignoredCount++;
       continue;
     }
@@ -125,7 +139,7 @@ export async function processTelemetryWebhook(
     // If the gateway is explicitly scoped to a tenant (e.g. Numilog dedicated gateway),
     // we strictly verify it matches the device's resolved tenant.
     if (authContext.tenantId && authContext.tenantId !== tenant_id) {
-      console.error(`[TelemetryIngestionService] CROSS-TENANT SPOOFING REJECTED: Gateway scope ${authContext.tenantId} != Device owner ${tenant_id}`);
+      logger.error({ event: 'telemetry_ingestion_failed', reason: 'cross_tenant_spoofing', gatewayScope: authContext.tenantId, deviceOwner: tenant_id }, 'Cross-tenant spoofing rejected');
       ignoredCount++;
       continue;
     }
@@ -144,14 +158,14 @@ export async function processTelemetryWebhook(
       
       if (error) {
         if (error.code === '23505' || error.message.includes('unique_telemetry_event_id')) {
-          console.info(`[TelemetryIngestionService] Ignoring duplicate event ID from DB: ${event.eventId}`);
+          logger.info({ event: 'telemetry_ingestion_warning', reason: 'duplicate_event', eventId: event.eventId }, 'Ignoring duplicate event ID from DB');
           ignoredCount++;
           continue; // Stop processing this event, it's a duplicate
         }
         throw error;
       }
-    } catch (err) {
-      console.error('[TelemetryIngestionService] Telemetry event log insert failed:', err);
+    } catch (err: any) {
+      logger.error({ event: 'db_query_failed', operation: 'insert_telemetry_events', error: err.message }, 'Telemetry event log insert failed');
       // Let BullMQ retry on DB errors
       throw err;
     }
@@ -171,8 +185,8 @@ export async function processTelemetryWebhook(
           data_source: event.data_source,
         };
         await supabaseAdmin.from('positions').insert(positionPayload as never);
-      } catch (err) {
-        console.error('[TelemetryIngestionService] Position persist failed:', err);
+      } catch (err: any) {
+        logger.error({ event: 'db_query_failed', operation: 'insert_positions', error: err.message }, 'Position persist failed');
         throw err;
       }
     }
@@ -205,14 +219,21 @@ export async function processTelemetryWebhook(
             .update(updatePayload as never)
             .eq('id', vehicle_id);
         }
-      } catch (err) {
-        console.warn('[TelemetryIngestionService] Vehicle update failed:', err);
+
+        // Always save normalized event even if no new faults
+        logger.info({ event: 'telemetry_event_normalized', vehicle_id, tenant_id, faults_detected: event.faults.length }, 'Telemetry event normalized');
+      } catch (err: any) {
+        logger.warn({ event: 'db_query_failed', operation: 'update_vehicles_faults', error: err.message }, 'Vehicle update failed');
+        throw err;
       }
     }
 
-    events.push(event);
     processedCount++;
+    events.push(event);
+    
+    logger.info({ event: 'telemetry_saved', vehicle_id, tenant_id, provider, eventId: event.eventId }, 'Telemetry saved successfully');
   }
 
+  logger.info({ event: 'telemetry_ingestion_completed', processedCount, ignoredCount, duration_ms: Date.now() - startTime }, 'Ingestion completed');
   return { status: 'success', processed: processedCount, ignored: ignoredCount, events };
 }

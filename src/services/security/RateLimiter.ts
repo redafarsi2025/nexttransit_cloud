@@ -1,30 +1,27 @@
-import { RateLimitStore } from './SecurityStores';
+import { RateLimitStore, SecurityDecision } from './SecurityStores';
 import { RedisRateLimitStore } from './RedisStores';
 import { WebhookSecurityPolicy } from './WebhookSecurityPolicy';
 
-// Phase 2E: We use RedisRateLimitStore for distributed rate limiting
-const rateLimitStore: RateLimitStore = new RedisRateLimitStore();
-
 export class RateLimiter {
-  static async checkIpLimit(ip: string, policy: WebhookSecurityPolicy): Promise<boolean> {
-    const result = await rateLimitStore.checkLimit(`ratelimit:ip:${ip}`, policy.rateLimits.ipLimit, policy.rateLimits.windowMs);
-    return result.allowed;
+  constructor(private rateLimitStore: RateLimitStore = new RedisRateLimitStore()) {}
+
+  async checkIpLimit(ip: string, policy: WebhookSecurityPolicy): Promise<SecurityDecision> {
+    const result = await this.rateLimitStore.checkLimit(`nexttransit:security:ratelimit:ip:${ip}`, policy.rateLimits.ipLimit, policy.rateLimits.windowMs);
+    return result.decision;
   }
 
-  static async checkGatewayLimit(gatewayId: string, policy: WebhookSecurityPolicy): Promise<boolean> {
-    const result = await rateLimitStore.checkLimit(`ratelimit:gateway:${gatewayId}`, policy.rateLimits.gatewayLimit, policy.rateLimits.windowMs);
-    return result.allowed;
+  async checkGatewayLimit(gatewayId: string, policy: WebhookSecurityPolicy): Promise<SecurityDecision> {
+    const result = await this.rateLimitStore.checkLimit(`nexttransit:security:ratelimit:gateway:${gatewayId}`, policy.rateLimits.gatewayLimit, policy.rateLimits.windowMs);
+    return result.decision;
   }
 
-  static async checkDeviceLimit(provider: string, externalDeviceId: string, policy: WebhookSecurityPolicy): Promise<boolean> {
-    const result = await rateLimitStore.checkLimit(`ratelimit:device:${provider}:${externalDeviceId}`, policy.rateLimits.deviceLimit, policy.rateLimits.windowMs);
-    return result.allowed;
+  async checkDeviceLimit(provider: string, externalDeviceId: string, policy: WebhookSecurityPolicy): Promise<SecurityDecision> {
+    const result = await this.rateLimitStore.checkLimit(`nexttransit:security:ratelimit:device:${provider}:${externalDeviceId}`, policy.rateLimits.deviceLimit, policy.rateLimits.windowMs);
+    return result.decision;
   }
 
-  static async checkEndpointLimit(endpoint: string, policy: WebhookSecurityPolicy): Promise<boolean> {
-    // Basic IP-based limit per endpoint if needed, but for now we rely on IP / Gateway limits mainly.
-    // Using IP limit as a fallback for the endpoint in general.
-    const result = await rateLimitStore.checkLimit(`ratelimit:endpoint:${endpoint}`, policy.rateLimits.ipLimit, policy.rateLimits.windowMs);
-    return result.allowed;
+  async checkEndpointLimit(endpoint: string, policy: WebhookSecurityPolicy): Promise<SecurityDecision> {
+    const result = await this.rateLimitStore.checkLimit(`nexttransit:security:ratelimit:endpoint:${endpoint}`, policy.rateLimits.ipLimit, policy.rateLimits.windowMs);
+    return result.decision;
   }
 }

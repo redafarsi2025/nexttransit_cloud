@@ -6,26 +6,21 @@ import * as DeviceResolver from '../DeviceResolver';
 import * as CapabilityResolver from '../CapabilityResolver';
 import { SecurityContext } from '../../security/WebhookSecurityService';
 import { processTelemetryWebhook } from '../TelemetryIngestionService';
+import { ReplayProtection } from '../../security/ReplayProtection';
+import { MemoryReplayStore } from '../../security/SecurityStores';
 
-vi.mock('../../../lib/supabaseAdmin', () => ({
-  supabaseAdmin: {
-    from: vi.fn(() => ({
-      insert: vi.fn().mockResolvedValue({ error: null }),
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn().mockResolvedValue({ data: { status: 'OK', status_reason: '' }, error: null })
-        }))
-      })),
-      update: vi.fn(() => ({
-        eq: vi.fn().mockResolvedValue({ error: null })
-      }))
-    }))
-  }
-}));
+import { supabaseMock, resetSupabaseMock } from '../../../../tests/setup/supabaseMock';
+
+vi.mock('../../../lib/supabaseAdmin', async () => {
+  const { supabaseMock } = await import('../../../../tests/setup/supabaseMock');
+  return { __esModule: true, supabaseAdmin: supabaseMock };
+});
 
 const mockContext: SecurityContext = { gatewayId: 'mock-gw', provider: 'traccar', tenantId: null };
 
 describe('Phase 2C: Traccar Integration & Mandatory Verification', () => {
+  let memoryReplayProtection: ReplayProtection;
+
   beforeEach(() => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'mock-key';
     process.env.VITE_SUPABASE_URL = 'http://mock.supabase.co';
@@ -33,8 +28,15 @@ describe('Phase 2C: Traccar Integration & Mandatory Verification', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-16T12:00:05.000Z'));
     vi.clearAllMocks();
+    
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    resetSupabaseMock();
     TelematicsProviderRegistry.register(TraccarAdapter);
     TelematicsProviderRegistry.register(FlespiAdapter);
+    memoryReplayProtection = new ReplayProtection(new MemoryReplayStore());
   });
 
   describe('2. Payload Validation (Zod Strict)', () => {
@@ -60,14 +62,14 @@ describe('Phase 2C: Traccar Integration & Mandatory Verification', () => {
     it('should reject unknown device', async () => {
       vi.spyOn(DeviceResolver, 'resolveDevice').mockResolvedValue(null);
       const payload = { deviceId: 1, device: { uniqueId: 'UNKNOWN' }, latitude: 10, longitude: 20 };
-      const result = await processTelemetryWebhook(payload, 'traccar', mockContext);
+      const result = await processTelemetryWebhook(payload, 'traccar', mockContext, memoryReplayProtection);
       expect(result.ignored).toBe(1);
     });
 
     it('should reject inactive device', async () => {
       vi.spyOn(DeviceResolver, 'resolveDevice').mockResolvedValue(null);
       const payload = { deviceId: 1, device: { uniqueId: 'DEV_INACTIVE' }, latitude: 10, longitude: 20 };
-      const result = await processTelemetryWebhook(payload, 'traccar', mockContext);
+      const result = await processTelemetryWebhook(payload, 'traccar', mockContext, memoryReplayProtection);
       expect(result.ignored).toBe(1);
     });
 
@@ -81,7 +83,7 @@ describe('Phase 2C: Traccar Integration & Mandatory Verification', () => {
 
       // We explicitly pass `tenantId: 'REAL-TENANT-A'` in the webhook context 
       // (e.g. gateway scoped to Tenant A), but the device resolves to Tenant B.
-      const result = await processTelemetryWebhook(spoofedPayload, 'traccar', { ...mockContext, tenantId: 'REAL-TENANT-A' });
+      const result = await processTelemetryWebhook(spoofedPayload, 'traccar', { ...mockContext, tenantId: 'REAL-TENANT-A' }, memoryReplayProtection);
       expect(result.ignored).toBe(1);
       expect(result.events?.length || 0).toBe(0);
     });
@@ -98,8 +100,8 @@ describe('Phase 2C: Traccar Integration & Mandatory Verification', () => {
       const flespiPayload = { ident: 'DEV_IDENTICAL', timestamp: 1786881601, 'position.latitude': 48.8, 'position.longitude': 2.3, 'position.speed': 74.08, 'engine.ignition.status': true };
       const traccarPayload = { deviceId: 1, device: { uniqueId: 'DEV_IDENTICAL' }, deviceTime: '2026-08-16T12:00:01.000Z', latitude: 48.8, longitude: 2.3, speed: 40.0, attributes: { ignition: true } };
 
-      const flespiResult = await processTelemetryWebhook(flespiPayload, 'flespi', { ...mockContext, provider: 'flespi' });
-      const traccarResult = await processTelemetryWebhook(traccarPayload, 'traccar', mockContext);
+      const flespiResult = await processTelemetryWebhook(flespiPayload, 'flespi', { ...mockContext, provider: 'flespi' }, memoryReplayProtection);
+      const traccarResult = await processTelemetryWebhook(traccarPayload, 'traccar', mockContext, memoryReplayProtection);
 
       expect(flespiResult.events![0].position?.latitude).toBe(traccarResult.events![0].position?.latitude);
       expect(flespiResult.events![0].vehicleState?.ignition).toBe(traccarResult.events![0].vehicleState?.ignition);
@@ -115,8 +117,8 @@ describe('Phase 2C: Traccar Integration & Mandatory Verification', () => {
       vi.spyOn(CapabilityResolver, 'resolveCapabilities').mockReturnValue({ gps: true } as any);
 
       const payload = { deviceId: 1, device: { uniqueId: 'DEV_IDEMP' }, deviceTime: '2026-08-16T12:00:02.000Z', latitude: 48.8, longitude: 2.3 };
-      const result1 = await processTelemetryWebhook(payload, 'traccar', mockContext);
-      const result2 = await processTelemetryWebhook(payload, 'traccar', mockContext);
+      const result1 = await processTelemetryWebhook(payload, 'traccar', mockContext, memoryReplayProtection);
+      const result2 = await processTelemetryWebhook(payload, 'traccar', mockContext, memoryReplayProtection);
 
       expect(result1.events![0].eventId).toBeDefined();
       expect(result2.ignored).toBe(1); // Blocked by memory replay protection before DB Idempotency
@@ -132,10 +134,10 @@ describe('Phase 2C: Traccar Integration & Mandatory Verification', () => {
 
       // No 'id' provided by Traccar payload
       const payload1 = { deviceId: 1, device: { uniqueId: 'DEV_REPLAY' }, deviceTime: '2026-08-16T12:00:03.000Z', latitude: 48.8, longitude: 2.3 };
-      const result1 = await processTelemetryWebhook(payload1, 'traccar', mockContext);
+      const result1 = await processTelemetryWebhook(payload1, 'traccar', mockContext, memoryReplayProtection);
       
       const payload2 = { deviceId: 1, device: { uniqueId: 'DEV_REPLAY' }, deviceTime: '2026-08-16T12:00:03.000Z', latitude: 48.80001, longitude: 2.3 };
-      const result2 = await processTelemetryWebhook(payload2, 'traccar', mockContext);
+      const result2 = await processTelemetryWebhook(payload2, 'traccar', mockContext, memoryReplayProtection);
 
       // The eventIds should differ because the GPS hash differs, avoiding collisions within the same second
       expect(result1.events![0].eventId).not.toBe(result2.events![0].eventId);

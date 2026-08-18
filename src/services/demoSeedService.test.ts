@@ -1,20 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { generateLargeFleetDemoData, seedDemoTenant, DEMO_TENANT_UUID } from './demoSeedService';
 
-vi.mock('../lib/supabase', () => ({
-  supabase: {
-    from: vi.fn().mockReturnValue({
-      delete: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      }),
-      upsert: vi.fn().mockResolvedValue({ error: null }),
-    }),
-  },
-}));
+import { supabaseMock, resetSupabaseMock } from '../../tests/setup/supabaseMock';
+
+vi.mock('../lib/supabase', async () => {
+  const { supabaseMock } = await import('../../tests/setup/supabaseMock');
+  return { supabase: supabaseMock };
+});
 
 describe('demoSeedService Smoke Test', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetSupabaseMock();
   });
 
   describe('generateLargeFleetDemoData', () => {

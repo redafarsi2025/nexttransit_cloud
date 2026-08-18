@@ -1,15 +1,14 @@
-import { ReplayStore } from './SecurityStores';
+import { ReplayStore, SecurityDecision } from './SecurityStores';
 import { RedisReplayStore } from './RedisStores';
 import { WebhookSecurityPolicy } from './WebhookSecurityPolicy';
 
-// Phase 2E: We use RedisReplayStore for distributed replay protection
-const replayStore: ReplayStore = new RedisReplayStore();
-
 export class ReplayProtection {
+  constructor(private replayStore: ReplayStore = new RedisReplayStore()) {}
+
   /**
    * Validates if the timestamp falls within the allowed temporal window.
    */
-  static isTimestampValid(timestampMs: number, policy: WebhookSecurityPolicy): boolean {
+  isTimestampValid(timestampMs: number, policy: WebhookSecurityPolicy): boolean {
     const now = Date.now();
     const age = now - timestampMs;
     const futureSkew = timestampMs - now;
@@ -27,10 +26,17 @@ export class ReplayProtection {
 
   /**
    * Attempts to store the event ID in cache to prevent duplicate processing.
-   * @returns true if allowed, false if REPLAY_DETECTED.
+   * @returns SecurityDecision
    */
-  static async checkAndStoreEvent(eventId: string, policy: WebhookSecurityPolicy): Promise<boolean> {
-    const allowed = await replayStore.storeIfNotExists(`replay:event:${eventId}`, policy.replayTtlMs);
-    return allowed;
+  async checkAndStoreEvent(
+    tenantId: string,
+    provider: string,
+    deviceId: string,
+    eventId: string,
+    policy: WebhookSecurityPolicy
+  ): Promise<SecurityDecision> {
+    const key = `nexttransit:security:replay:${tenantId}:${provider}:${deviceId}:${eventId}`;
+    const decision = await this.replayStore.storeIfNotExists(key, policy.replayTtlMs);
+    return decision;
   }
 }

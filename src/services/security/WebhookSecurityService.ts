@@ -2,6 +2,8 @@ import crypto from 'crypto';
 import { supabaseAdmin } from '../../lib/supabaseAdmin';
 import { RateLimiter } from './RateLimiter';
 import { getSecurityPolicyForProvider } from './WebhookSecurityPolicy';
+import { logger } from '../../lib/logger';
+import { securityRejectsTotal, securityServiceUnavailableTotal } from '../../lib/metrics';
 
 export interface SecurityContext {
   gatewayId: string;
@@ -16,11 +18,13 @@ export interface WebhookAuthResult {
 }
 
 export class WebhookSecurityService {
+  constructor(private rateLimiter: RateLimiter = new RateLimiter()) {}
+
   /**
    * Main entry point for webhook security (Size, Auth, Rate Limit).
    * Note: Replay and Payload Validation happen later in the pipeline once the schema is known.
    */
-  static async authenticateAndRateLimit(
+  async authenticateAndRateLimit(
     provider: string,
     req: any
   ): Promise<WebhookAuthResult> {
@@ -28,14 +32,22 @@ export class WebhookSecurityService {
     const ip = req.ip || req.connection?.remoteAddress || 'unknown';
 
     // 1. IP-Level Rate Limiting
-    const ipAllowed = await RateLimiter.checkIpLimit(ip, policy);
-    if (!ipAllowed) {
-      return { authenticated: false, reason: 'RATE_LIMIT_EXCEEDED' };
+    const ipDecision = await this.rateLimiter.checkIpLimit(ip, policy);
+    if (!ipDecision.allowed) {
+      if (ipDecision.reason === 'SERVICE_UNAVAILABLE') {
+        securityServiceUnavailableTotal.inc({ provider });
+      } else {
+        securityRejectsTotal.inc({ provider, reason: ipDecision.reason });
+      }
+      logger.warn({ event: 'security_rate_limit_blocked', ip, reason: ipDecision.reason, provider }, 'IP rate limit blocked webhook');
+      return { authenticated: false, reason: ipDecision.reason };
     }
 
     // 2. Extract Credentials (NEVER log these values)
     const authHeader = req.headers['authorization'] || req.headers['x-flespi-secret'] || req.headers['x-traccar-secret'];
     if (!authHeader) {
+      securityRejectsTotal.inc({ provider, reason: 'MISSING_CREDENTIALS' });
+      logger.warn({ event: 'security_validation_failed', reason: 'MISSING_CREDENTIALS', provider }, 'Missing credentials for webhook');
       return { authenticated: false, reason: 'MISSING_CREDENTIALS' };
     }
 
@@ -62,7 +74,13 @@ export class WebhookSecurityService {
     const gateways = data as any[] | null;
 
     if (error || !gateways || gateways.length === 0) {
-      return { authenticated: false, reason: 'PROVIDER_DISABLED_OR_NO_GATEWAYS' };
+      if (error) {
+        securityServiceUnavailableTotal.inc({ provider });
+      } else {
+        securityRejectsTotal.inc({ provider, reason: 'PROVIDER_DISABLED_OR_NO_GATEWAYS' });
+      }
+      logger.warn({ event: 'security_service_unavailable', error: error?.message, provider }, 'Database error or no active gateways');
+      return { authenticated: false, reason: error ? 'SERVICE_UNAVAILABLE' : 'PROVIDER_DISABLED_OR_NO_GATEWAYS' };
     }
 
     let matchedGateway: any = null;
@@ -82,14 +100,24 @@ export class WebhookSecurityService {
     }
 
     if (!matchedGateway) {
+      securityRejectsTotal.inc({ provider, reason: 'INVALID_CREDENTIALS' });
+      logger.warn({ event: 'security_validation_failed', reason: 'INVALID_CREDENTIALS', provider }, 'Invalid credentials for webhook');
       return { authenticated: false, reason: 'INVALID_CREDENTIALS' };
     }
 
     // 4. Gateway-Level Rate Limiting
-    const gatewayAllowed = await RateLimiter.checkGatewayLimit(matchedGateway.id, policy);
-    if (!gatewayAllowed) {
-      return { authenticated: false, reason: 'RATE_LIMIT_EXCEEDED' };
+    const gatewayDecision = await this.rateLimiter.checkGatewayLimit(matchedGateway.id, policy);
+    if (!gatewayDecision.allowed) {
+      if (gatewayDecision.reason === 'SERVICE_UNAVAILABLE') {
+        securityServiceUnavailableTotal.inc({ provider });
+      } else {
+        securityRejectsTotal.inc({ provider, reason: gatewayDecision.reason });
+      }
+      logger.warn({ event: 'security_rate_limit_blocked', gatewayId: matchedGateway.id, reason: gatewayDecision.reason, provider }, 'Gateway rate limit blocked webhook');
+      return { authenticated: false, reason: gatewayDecision.reason };
     }
+
+    logger.info({ event: 'security_validation_success', gatewayId: matchedGateway.id, tenantId: matchedGateway.tenant_id, provider }, 'Webhook security validation successful');
 
     return {
       authenticated: true,

@@ -13,6 +13,9 @@ import { DecisionEngine } from './decisionEngine';
 describe('Vendor-Agnostic Telematics Ingestion Layer', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   describe('ManualEntryProvider', () => {

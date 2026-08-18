@@ -1,4 +1,4 @@
-import { RateLimitResult, RateLimitStore, ReplayStore } from './SecurityStores';
+import { RateLimitResult, RateLimitStore, ReplayStore, SecurityDecision } from './SecurityStores';
 import { redisClient } from '../../lib/redis';
 
 export class RedisRateLimitStore implements RateLimitStore {
@@ -16,7 +16,7 @@ export class RedisRateLimitStore implements RateLimitStore {
       
       if (!results) {
         // Fail-closed if Redis pipeline fails
-        return { allowed: false, remaining: 0, resetAt };
+        return { decision: { allowed: false, reason: 'SERVICE_UNAVAILABLE' }, remaining: 0, resetAt };
       }
       
       const count = results[0][1] as number;
@@ -28,20 +28,20 @@ export class RedisRateLimitStore implements RateLimitStore {
       }
       
       if (count <= limit) {
-        return { allowed: true, remaining: limit - count, resetAt: ttl > 0 ? now + ttl : resetAt };
+        return { decision: { allowed: true }, remaining: limit - count, resetAt: ttl > 0 ? now + ttl : resetAt };
       }
       
-      return { allowed: false, remaining: 0, resetAt: ttl > 0 ? now + ttl : resetAt };
+      return { decision: { allowed: false, reason: 'RATE_LIMIT_EXCEEDED' }, remaining: 0, resetAt: ttl > 0 ? now + ttl : resetAt };
     } catch (error) {
       console.error(`[RedisRateLimitStore] Error checking limit for ${key}:`, error);
-      // FAIL-CLOSED POLICY (Rule 5/11): If Redis is down, reject requests
-      return { allowed: false, remaining: 0, resetAt: Date.now() + windowMs };
+      // FAIL-CLOSED POLICY (Rule 5/11): If Redis is down, reject requests with SERVICE_UNAVAILABLE
+      return { decision: { allowed: false, reason: 'SERVICE_UNAVAILABLE' }, remaining: 0, resetAt: Date.now() + windowMs };
     }
   }
 }
 
 export class RedisReplayStore implements ReplayStore {
-  async storeIfNotExists(key: string, ttlMs: number): Promise<boolean> {
+  async storeIfNotExists(key: string, ttlMs: number): Promise<SecurityDecision> {
     try {
       // SETNX: Sets the key if it does not exist. Returns 1 if set, 0 if it already existed.
       // We use PX to set the expiration in milliseconds atomically in Redis 2.6.12+ 
@@ -49,14 +49,14 @@ export class RedisReplayStore implements ReplayStore {
       const result = await redisClient.set(key, '1', 'PX', ttlMs, 'NX');
       
       if (result === 'OK') {
-        return true; // Key was set, not a replay
+        return { allowed: true }; // Key was set, not a replay
       }
       
-      return false; // Key already existed, replay detected
+      return { allowed: false, reason: 'REPLAY_DETECTED' }; // Key already existed, replay detected
     } catch (error) {
       console.error(`[RedisReplayStore] Error checking replay for ${key}:`, error);
-      // FAIL-CLOSED POLICY (Rule 5/11): If Redis is down, consider it a replay (reject)
-      return false; 
+      // FAIL-CLOSED POLICY (Rule 5/11): If Redis is down, consider it unavailable
+      return { allowed: false, reason: 'SERVICE_UNAVAILABLE' }; 
     }
   }
 }

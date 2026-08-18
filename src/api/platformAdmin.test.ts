@@ -11,32 +11,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 
-// ─── Mocks ───────────────────────────────────────────────────────────────────
-const mockGetUser = vi.fn();
+import { supabaseMock, resetSupabaseMock, setMockData, setMockEmpty, setMockError } from '../../tests/setup/supabaseMock';
 
 // Mock @supabase/supabase-js createClient used inside platformAdmin.ts
 vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn(() => ({
-    auth: { getUser: mockGetUser },
-  })),
+  createClient: vi.fn(() => supabaseMock),
 }));
 
-// Mock supabaseAdmin used to check platform_admins table
-const mockSelect = vi.fn();
-const mockEq = vi.fn();
-const mockSingle = vi.fn();
-
 vi.mock('../lib/supabaseAdmin', () => ({
-  supabaseAdmin: {
-    from: vi.fn(() => ({
-      select: mockSelect.mockReturnValue({
-        eq: mockEq.mockReturnValue({
-          single: mockSingle,
-        }),
-      }),
-    })),
-    auth: { admin: { listUsers: vi.fn().mockResolvedValue({ data: { users: [] }, error: null }) } },
-  },
+  supabaseAdmin: supabaseMock,
 }));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -123,6 +106,7 @@ async function requirePlatformAdmin(req: Partial<Request>, res: any, next: NextF
 describe('requirePlatformAdmin (AGENTS.md §6)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetSupabaseMock();
     process.env.VITE_SUPABASE_URL = 'https://test.supabase.co';
     process.env.VITE_SUPABASE_PUBLISHABLE_KEY = 'anon-test-key';
   });
@@ -136,7 +120,7 @@ describe('requirePlatformAdmin (AGENTS.md §6)', () => {
   });
 
   it('returns 401 when JWT is invalid or expired', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null }, error: { message: 'JWT expired' } });
+    vi.mocked(supabaseMock.auth.getUser).mockResolvedValueOnce({ data: { user: null }, error: { message: 'JWT expired' } as any });
     const req = mockRequest('Bearer bad-token');
     const res = mockResponse();
     await requirePlatformAdmin(req, res, mockNext);
@@ -146,12 +130,12 @@ describe('requirePlatformAdmin (AGENTS.md §6)', () => {
 
   it('returns 403 for a valid TENANT_ADMIN JWT (not in platform_admins)', async () => {
     // Valid user found via JWT
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: 'tenant-user-001', email: 'tenant@customer.dz' } },
+    vi.mocked(supabaseMock.auth.getUser).mockResolvedValueOnce({
+      data: { user: { id: 'tenant-user-001', email: 'tenant@customer.dz' } as any },
       error: null,
     });
     // BUT platform_admins returns no record for this user
-    mockSingle.mockResolvedValue({ data: null, error: { message: 'No rows found' } });
+    setMockEmpty(); // Ensures .single() returns null
 
     const req = mockRequest('Bearer valid-tenant-jwt');
     const res = mockResponse();
@@ -166,9 +150,9 @@ describe('requirePlatformAdmin (AGENTS.md §6)', () => {
   it('calls next() and attaches platformAdmin for a valid platform admin', async () => {
     const adminUser = { id: 'admin-001', email: 'admin@nexttransit.io' };
     // Valid user found via JWT
-    mockGetUser.mockResolvedValue({ data: { user: adminUser }, error: null });
+    vi.mocked(supabaseMock.auth.getUser).mockResolvedValueOnce({ data: { user: adminUser as any }, error: null });
     // platform_admins returns the admin record
-    mockSingle.mockResolvedValue({ data: { id: adminUser.id }, error: null });
+    setMockData({ id: adminUser.id });
 
     const req = mockRequest('Bearer valid-admin-jwt');
     const res = mockResponse();

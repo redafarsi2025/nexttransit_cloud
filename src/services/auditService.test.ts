@@ -1,10 +1,19 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   recordAudit,
   getAuditTrail,
   updateAuditLog,
   deleteAuditLog,
 } from './auditService';
+
+vi.mock('../lib/supabase', async () => {
+  const { supabaseMock } = await import('../../tests/setup/supabaseMock');
+  return { __esModule: true, supabase: supabaseMock };
+});
+vi.mock('../lib/supabaseAdmin', async () => {
+  const { supabaseMock } = await import('../../tests/setup/supabaseMock');
+  return { __esModule: true, supabaseAdmin: supabaseMock };
+});
 
 describe('Immutable Audit Trail (Contractual Compliance Ledger)', () => {
   const TEST_TENANT = 'c0a80101-0000-0000-0000-000000000001';
