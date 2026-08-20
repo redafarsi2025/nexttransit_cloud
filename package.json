@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22 <25"
+  },
   "scripts": {
     "dev": "tsx --env-file=.env server.ts",
     "dev:worker": "tsx --env-file=.env worker.ts",
@@ -11,9 +14,10 @@
     "start:worker": "node --env-file=.env dist/worker.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "smoke:docker": "bash scripts/smoke/docker-healthcheck.sh && bash scripts/smoke/smoke-api.sh && bash scripts/smoke/smoke-telemetry.sh && bash scripts/smoke/smoke-idempotency.sh && bash scripts/smoke/smoke-worker-restart.sh && bash scripts/smoke/smoke-redis-recovery.sh"
   },
   "dependencies": {
     "@google/genai": "^2.15.0",
@@ -41,11 +45,18 @@
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@types/supertest": "^7.2.1",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "pg": "^8.23.0",
     "supertest": "^7.2.2",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",

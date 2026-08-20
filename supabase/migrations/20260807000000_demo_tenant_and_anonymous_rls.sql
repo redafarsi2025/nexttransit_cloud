@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS public.demo_seed_snapshot (
 
 -- Reset snapshot table for clean seed population
 DELETE FROM public.demo_seed_snapshot WHERE table_name IN (
-    'vehicles', 'warranties', 'fuel_logs', 'work_orders', 'inventory_items', 'fleet_alerts', 'incidents', 'cost_records'
+    'vehicles', 'warranties', 'fuel_logs', 'work_orders', 'inventory_items', 'fleet_alerts', 'driver_incidents', 'cost_records'
 );
 
 -- Seed Snapshot Data: Algerian Heavy Commercial Fleet (DZD)
@@ -160,7 +160,7 @@ BEGIN
     -- Delete existing demo records
     DELETE FROM public.fleet_alerts WHERE tenant_id = DEMO_TENANT_ID;
     DELETE FROM public.work_orders WHERE tenant_id = DEMO_TENANT_ID;
-    DELETE FROM public.incidents WHERE tenant_id = DEMO_TENANT_ID;
+    DELETE FROM public.driver_incidents WHERE tenant_id = DEMO_TENANT_ID;
     DELETE FROM public.fuel_logs WHERE tenant_id = DEMO_TENANT_ID;
     DELETE FROM public.warranties WHERE tenant_id = DEMO_TENANT_ID;
     DELETE FROM public.vehicles WHERE tenant_id = DEMO_TENANT_ID;
@@ -231,7 +231,7 @@ DROP POLICY IF EXISTS "Anon Demo Select FuelLogs" ON public.fuel_logs;
 DROP POLICY IF EXISTS "Anon Demo Select WorkOrders" ON public.work_orders;
 DROP POLICY IF EXISTS "Anon Demo Select FleetAlerts" ON public.fleet_alerts;
 DROP POLICY IF EXISTS "Anon Demo Select Inventory" ON public.inventory_items;
-DROP POLICY IF EXISTS "Anon Demo Select Incidents" ON public.incidents;
+DROP POLICY IF EXISTS "Anon Demo Select Incidents" ON public.driver_incidents;
 
 -- Create STRICT TO anon SELECT policies scoped ONLY to DEMO_TENANT_ID ('c0a80101-0000-0000-0000-000000000001')
 CREATE POLICY "Anon Demo Select Vehicles"
@@ -259,5 +259,5 @@ CREATE POLICY "Anon Demo Select Inventory"
   USING (tenant_id = 'c0a80101-0000-0000-0000-000000000001'::uuid);
 
 CREATE POLICY "Anon Demo Select Incidents"
-  ON public.incidents FOR SELECT TO anon
+  ON public.driver_incidents FOR SELECT TO anon
   USING (tenant_id = 'c0a80101-0000-0000-0000-000000000001'::uuid);

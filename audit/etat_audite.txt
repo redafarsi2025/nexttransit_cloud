@@ -1,0 +1,56 @@
+ M package-lock.json
+ M package.json
+ M server.ts
+ M src/api/vehicles.ts
+ M src/components/screens/PMSchedulesView.tsx
+ M src/components/vehicle/AddEditVehicleModal.tsx
+ M src/components/vehicle/ImportVehiclesModal.tsx
+ M src/components/vehicle/VehicleDetailModal.tsx
+ M src/config/env.ts
+ M src/context/FleetContext.tsx
+ M src/data/seedData.ts
+ M src/services/demoSeedService.ts
+ M src/services/fleetData.ts
+ M src/services/platformAdminService.server.ts
+ M src/services/telematicsService.test.ts
+ M src/services/telemetry/TelemetryIngestionService.ts
+ M src/types/database.types.ts
+ M src/types/index.ts
+ D supabase/migrations/00002_epic1_auth_multitenant.sql
+ D supabase/migrations/20260805000000_full_saas_erp_schema.sql
+ M supabase/migrations/20260807000000_demo_tenant_and_anonymous_rls.sql
+ M supabase/schema.sql
+ M worker.ts
+?? .dockerignore
+?? .nvmrc
+?? Dockerfile
+?? audit/
+?? backup_avant_migration.sql
+?? docker-compose.yml
+?? docs/FLEET_GAP_ANALYSIS.md
+?? "docs/Plan d'impl\303\251mentation  Phase 3B \342\200\224 Maintenance Intelligence"
+?? "docs/Walkthrough  Phase 3A-03A & 3A-04 (Driver Management & Vehicle Lifecycle)"
+?? "docs/implementation_plan Phase 3B_1 PM Rule Resolver"
+?? docs/implementation_plan_vehicle_assignement
+?? forensic_audit_report.md
+?? infra/
+?? roadmap.md
+?? scripts/smoke/
+?? scripts/validate_3a02b.ts
+?? src/api/pmSchedules.ts
+?? src/api/pmSubscriptions.ts
+?? src/api/vehicleAssignments.ts
+?? src/config/dbValidation.ts
+?? src/services/__tests__/driverService.test.ts
+?? src/services/driverService.ts
+?? src/services/maintenance/
+?? supabase/migrations/20260804000008_epic1_auth_multitenant.sql
+?? supabase/migrations/20260804000009_add_billing_email.sql
+?? supabase/migrations/20260819000000_vehicle_assignment_refactor.sql
+?? supabase/migrations/20260820000000_driver_management.sql
+?? supabase/migrations/20260821000000_vehicle_lifecycle.sql
+?? supabase/migrations/20260822000000_pm_schedules.sql
+?? supabase/migrations/20260823000000_pm_schedule_rules.sql
+?? supabase/tests/3a_03a_concurrency_test.ts
+?? supabase/tests/3a_03a_driver_integration_test.sql
+?? supabase/tests/3a_04_vehicle_lifecycle_test.ts

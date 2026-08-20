@@ -1,0 +1,34 @@
+# Walkthrough: Phase 3A-03A & 3A-04 (Driver Management & Vehicle Lifecycle)
+
+We have successfully finalized the **Phase 3A** requirements regarding Driver assignments and Vehicle lifecycles according to the specifications in `AGENTS.md`.
+
+## What was accomplished
+
+### 1. Concurrency Testing & Driver Assignments (3A-03A)
+- We verified the `update_vehicle_lifecycle` and `assign_driver_to_vehicle` locking mechanisms.
+- A Node.js integration test (`supabase/tests/3a_03a_concurrency_test.ts`) was executed to fire parallel driver assignments for the same vehicle.
+- The `FOR UPDATE` lock successfully serialized the transactions. Exactly **one driver** was safely assigned, avoiding any race conditions or duplicate active assignments.
+
+### 2. Vehicle Lifecycle Machine (3A-04)
+- Added the `vin` uniqueness constraint and `lifecycle_status` to the `vehicles` table.
+- Removed the deprecated `assigned_driver_id` from the vehicles table (since we now rely entirely on `vehicle_assignments`).
+- Created the strict state transition RPC (`update_vehicle_lifecycle`):
+  - Validates transitions strictly: `ORDERED -> PENDING_ACTIVATION -> IN_SERVICE -> (IMMOBILIZED / RETIRED)`
+  - Records an immutable history log in `vehicle_lifecycle_history`
+  - Records a cross-cutting event in `audit_logs`
+- We executed a dedicated TypeScript test (`3a_04_vehicle_lifecycle_test.ts`) that correctly tested:
+  - Allowed transitions successfully executing and generating history.
+  - Invalid transitions (e.g., `ORDERED -> IN_SERVICE` or moving from `RETIRED`) failing properly with database-level exceptions.
+
+### 3. Types and Unit Tests
+- Regenerated the `database.types.ts` from the newly migrated local schema.
+- Confirmed that `npm test` runs with **100% success** (153 tests passed).
+- Confirmed that the TypeScript definitions (`Vehicle` interface) correctly mirror the database state.
+
+## Verification
+- **Unit Tests:** `npm test` (153 passed)
+- **Concurrency Test:** `npx tsx supabase/tests/3a_03a_concurrency_test.ts` (Passed: Locked row and enforced exactly 1 active assignment)
+- **Lifecycle Test:** `npx tsx supabase/tests/3a_04_vehicle_lifecycle_test.ts` (Passed: Strict transitions enforced at the DB level)
+- **Typecheck:** `npm run typecheck` (Passed)
+
+Phase 3A is now fully verified. Next steps can involve Phase 3B or frontend integrations.

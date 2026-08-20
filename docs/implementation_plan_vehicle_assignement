@@ -1,0 +1,102 @@
+# NEXTTRANSIT — PHASE 3A-00 : VEHICLE ASSIGNMENT FORENSIC AUDIT & MIGRATION DESIGN
+
+## 1. INVENTORY (Fichiers impactés)
+- `supabase/migrations/` (Nouvelle migration à créer pour le schéma et les triggers)
+- `src/api/vehicles.ts` (API backend)
+- `src/types/index.ts` (Types TypeScript pour Vehicle)
+- `src/components/vehicle/VehicleDetailModal.tsx` (Affichage frontend)
+- `src/components/vehicle/AddEditVehicleModal.tsx` (Formulaire frontend)
+- `src/data/seedData.ts` / `src/services/demoSeedService.ts` (Génération des données de démo)
+
+## 2. CURRENT DATA MODEL
+Actuellement, l'affectation est un simple champ dans la table `vehicles` :
+```sql
+CREATE TABLE public.vehicles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+    -- ...
+    assigned_driver_id VARCHAR(255),
+    -- ...
+);
+```
+- Le champ est de type `VARCHAR(255)` et n'a pas de contrainte de clé étrangère (`FOREIGN KEY`) vers `profiles(id)`.
+- Aucune table d'historique n'existe.
+- La mise à jour écrase l'ancienne valeur.
+
+## 3. DEPENDENCY MAP
+Les éléments suivants dépendent de `assigned_driver_id` :
+- **RLS (Row Level Security)** : Les politiques de sécurité (ex. `20260810000001_tenant_admin_role.sql`) autorisent les rôles `DRIVER` à lire les informations (`fleet_alerts`, `work_orders`, etc.) si `assigned_driver_id::text = auth.uid()::text`.
+- **Frontend** : Le formulaire d'édition des véhicules (`AddEditVehicleModal.tsx`) et le modal de détail (`VehicleDetailModal.tsx`) lisent et écrivent directement ce champ.
+- **Seeders** : Les scripts de démo injectent des valeurs factices (`DRV-001`, `DR-01`).
+
+## 4. TARGET DATA MODEL
+Nous introduisons une table `vehicle_assignments` comme seule source de vérité pour l'historique et l'état actuel :
+```sql
+CREATE TABLE public.vehicle_assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+    vehicle_id UUID NOT NULL REFERENCES public.vehicles(id) ON DELETE CASCADE,
+    driver_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+    assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    unassigned_at TIMESTAMPTZ,
+    
+    CONSTRAINT check_assignment_dates CHECK (unassigned_at IS NULL OR unassigned_at > assigned_at)
+);
+```
+*Choix `assigned_at` / `unassigned_at` : C'est le modèle standard d'audit. Une affectation active est celle où `unassigned_at IS NULL`. Cela simplifie les requêtes de l'état actuel.*
+
+## 5. SOURCE OF TRUTH DECISION
+**Décision : Conserver temporairement `vehicles.assigned_driver_id` comme PROJECTION (Option C & B hybride).**
+- **Pourquoi :** Supprimer immédiatement la colonne casserait toutes les politiques RLS existantes et le code frontend.
+- **Comment :** `vehicle_assignments` devient la **source de vérité**. 
+  Un trigger PostgreSQL sur `vehicle_assignments` mettra automatiquement à jour la colonne `vehicles.assigned_driver_id` (projection) pour maintenir la compatibilité absolue du frontend et des RLS actuels pendant la transition. 
+  À terme (Phase 4), la colonne sera complètement supprimée.
+
+## 6. MIGRATION PLAN
+**STEP 1 : Schéma & Contraintes**
+- Créer la table `vehicle_assignments`.
+- Ajouter un partial unique index pour garantir qu'un véhicule ne peut avoir qu'une seule affectation active.
+
+**STEP 2 : Backfill des données existantes**
+- Script d'insertion : Prendre tous les `vehicles` avec `assigned_driver_id IS NOT NULL` (et qui sont des UUID valides) et créer une ligne dans `vehicle_assignments` avec `assigned_at = created_at` (ou `NOW()`).
+
+**STEP 3 : Trigger de synchronisation (Source of Truth Enforcement)**
+- Créer un trigger sur `vehicle_assignments` : 
+  - À chaque `INSERT` (nouvelle affectation), `UPDATE vehicles SET assigned_driver_id = NEW.driver_id`.
+  - À chaque `UPDATE` où `unassigned_at IS NOT NULL`, `UPDATE vehicles SET assigned_driver_id = NULL`.
+- Créer un trigger défensif sur `vehicles` : Empêcher la modification directe de `assigned_driver_id` (ou la rediriger silencieusement vers `vehicle_assignments`).
+
+**STEP 4 : Mise à jour Backend/Frontend (Optionnel pour cette sous-phase)**
+- Modifier `AddEditVehicleModal` pour qu'il appelle une nouvelle API RPC (`assign_driver`) plutôt que de patcher la table `vehicles` directement.
+
+*Stratégie Rollback : Désactiver les triggers, supprimer la table `vehicle_assignments`. Les valeurs actuelles dans `vehicles` restent intactes.*
+
+## 7. RLS PLAN
+- `vehicle_assignments` héritera de l'isolation tenant stricte :
+```sql
+CREATE POLICY "Tenant isolation for vehicle_assignments" ON public.vehicle_assignments
+    FOR ALL USING (tenant_id = public.get_current_tenant_id());
+```
+- Le RLS s'assure via une fonction ou jointure que `driver_id` et `vehicle_id` appartiennent au même `tenant_id`.
+
+## 8. CONCURRENCY PLAN
+Pour empêcher l'affectation simultanée (REQUEST A et REQUEST B pour le même véhicule), nous utiliserons un index unique partiel :
+```sql
+CREATE UNIQUE INDEX idx_unique_active_assignment 
+ON public.vehicle_assignments (vehicle_id) 
+WHERE unassigned_at IS NULL;
+```
+Cela garantit au niveau transactionnel de PostgreSQL (ACID) qu'une *Race Condition* échouera avec une erreur de contrainte unique, bloquant toute double affectation.
+
+## 9. INDEX PLAN
+- `CREATE INDEX idx_vehicle_assignments_vehicle_id ON public.vehicle_assignments(vehicle_id);`
+- `CREATE INDEX idx_vehicle_assignments_driver_id ON public.vehicle_assignments(driver_id);`
+- `CREATE UNIQUE INDEX idx_unique_active_assignment ON public.vehicle_assignments(vehicle_id) WHERE unassigned_at IS NULL;`
+
+## 10. TEST PLAN
+- **assign** : Vérifier que l'insertion crée un enregistrement actif et met à jour `vehicles.assigned_driver_id`.
+- **unassign** : Vérifier que définir `unassigned_at` met à jour `vehicles.assigned_driver_id` à NULL.
+- **reassign** : Vérifier qu'on ne peut pas assigner un nouveau conducteur sans clôturer l'ancien.
+- **tenant isolation** : Vérifier qu'un tenant A ne peut pas assigner un conducteur du tenant B.
+- **concurrent requests** : Envoyer 2 requêtes parallèles, vérifier que la base rejette la seconde (violation d'unicité).
+- **migration compatibility** : Vérifier que les anciens véhicules avec un conducteur ont bien été migrés en historique.

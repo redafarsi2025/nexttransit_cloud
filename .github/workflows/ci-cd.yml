@@ -15,25 +15,47 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20.x
+      - name: Setup Node.js 22.x
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck & ESLint
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
         run: npm run lint
 
       - name: Run Decision Engine & Service Unit Tests (Vitest)
         run: npm test
 
-      - name: Automated RLS Multi-Tenant Security & Isolation Audit
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase stack (Postgres via Docker)
+        run: supabase start
+
+      - name: RLS & Multi-Tenant Isolation Tests (executed for real, not just checked for existence)
         run: |
-          echo "Verifying RLS Isolation test SQL script syntax..."
-          test -f supabase/tests/rls-isolation-test.sql
+          DB_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          for f in supabase/tests/rls-isolation-test.sql supabase/tests/rls-role-based-policies-test.sql supabase/tests/verify-tenant-foreign-keys.sql; do
+            if [ -f "$f" ]; then
+              echo "=== Running $f ==="
+              psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+            else
+              echo "SKIP: $f not found"
+            fi
+          done
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop
 
       - name: Build Application (Vite & Express Server CJS Bundle)
         run: npm run build

@@ -3,12 +3,17 @@ import { loadEnv } from 'vite';
 // Ensure .env is loaded for the worker context
 const env = loadEnv('', process.cwd(), '');
 Object.assign(process.env, env);
+import './src/config/env';
+import { validateDatabaseContract } from './src/config/dbValidation';
 
 import { telemetryWorker, queueMetricsCollector } from './src/services/telemetry/queue/TelemetryWorker';
 import http from 'http';
 import { metricsRegistry, nexttransitBuildInfo } from './src/lib/metrics';
 
 console.log('[Worker] Starting Telemetry Worker...');
+
+// Validate Database Contract asynchronously but blockingly at startup
+validateDatabaseContract();
 
 // Start the queue metrics collector (idempotent, unref'd interval)
 queueMetricsCollector.start();

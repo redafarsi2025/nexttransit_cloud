@@ -15,6 +15,8 @@ import {
   updateVehicleInSupabase,
   deleteVehicleInSupabase,
   createVehiclesBulkInSupabase,
+  fetchPmSchedules,
+  fetchPmSubscriptions,
 } from '../services/fleetData';
 import {
   Vehicle,
@@ -267,13 +269,15 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const isDemoTenant = activeTenantId === DEMO_TENANT_ID;
 
     try {
-      const [dbVehicles, dbInventory, dbWO, dbIncidents, dbCosts, dbAlerts] = await Promise.all([
+      const [dbVehicles, dbInventory, dbWO, dbIncidents, dbCosts, dbAlerts, dbPmSchedules, dbPmSubs] = await Promise.all([
         fetchVehicles(),
         fetchInventory(),
         fetchWorkOrders(),
         fetchIncidents(),
         fetchCostRecords(),
-        fetchAlerts()
+        fetchAlerts(),
+        fetchPmSchedules(),
+        fetchPmSubscriptions()
       ]);
 
       if (isDemoTenant) {
@@ -283,7 +287,10 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setIncidents(dbIncidents.length ? dbIncidents : INITIAL_INCIDENTS);
         setCostRecords(dbCosts.length ? dbCosts : INITIAL_COST_RECORDS);
         setAlerts(dbAlerts.length ? dbAlerts : INITIAL_ALERTS);
-        setPmSchedules(INITIAL_PM_SCHEDULES);
+        setAlerts(dbAlerts.length ? dbAlerts : INITIAL_ALERTS);
+        setPmSchedules(dbPmSchedules.length ? dbPmSchedules : []);
+        // Note: For subscriptions, you'd typically store them in context, too, 
+        // but for now PM schedules is the main missing link.
         setEdiOrders(INITIAL_EDI_ORDERS);
       } else {
         // PRODUCTION TENANT: Show ONLY the connected tenant's actual DB records
@@ -294,7 +301,8 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setIncidents(dbIncidents);
         setCostRecords(dbCosts);
         setAlerts(dbAlerts);
-        setPmSchedules([]);
+        setAlerts(dbAlerts);
+        setPmSchedules(dbPmSchedules);
         setEdiOrders([]);
       }
       setSyncStatus('online');

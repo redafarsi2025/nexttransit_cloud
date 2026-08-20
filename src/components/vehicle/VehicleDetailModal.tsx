@@ -452,7 +452,7 @@ export const VehicleDetailModal: React.FC<VehicleDetailModalProps> = ({
                 <div>
                   <h4 className="font-bold text-slate-900 text-sm">Operational Assignment</h4>
                   <p className="text-xs text-slate-600 mt-0.5">
-                    Assigned Mechanic: <strong>{vehicle.assigned_mechanic_id || 'M-01 (David Thorne)'}</strong> • Assigned Driver: <strong>{vehicle.assigned_driver_id || 'Unassigned'}</strong>
+                    Assigned Mechanic: <strong>{vehicle.assigned_mechanic_id || 'M-01 (David Thorne)'}</strong>
                   </p>
                 </div>
                 {currentRole === 'DRIVER' && (

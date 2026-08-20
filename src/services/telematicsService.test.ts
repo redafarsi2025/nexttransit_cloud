@@ -27,7 +27,8 @@ describe('Vendor-Agnostic Telematics Ingestion Layer', () => {
           name: 'Transit Test 1',
           classification: 'Keystone',
           status: 'Healthy',
-          status_reason: 'Normal operation',
+          lifecycle_status: 'IN_SERVICE',
+    status_reason: 'Normal operation',
           last_check_date: '2026-08-01',
           active_fault_codes: [
             {

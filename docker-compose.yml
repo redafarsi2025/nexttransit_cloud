@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: nexttransit-redis
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      target: api
+    container_name: nexttransit-api
+    ports:
+      - "3000:3000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env.docker
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      target: worker
+    container_name: nexttransit-worker
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env.docker
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus
+    container_name: nexttransit-prometheus
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9092:9090"
+    restart: unless-stopped
+
+volumes:
+  redis_data:

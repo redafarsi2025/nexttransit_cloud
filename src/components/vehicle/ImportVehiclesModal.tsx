@@ -96,6 +96,7 @@ export const ImportVehiclesModal: React.FC<ImportVehiclesModalProps> = ({ onClos
       name: row.name,
       classification: row.classification,
       status: row.status,
+      lifecycle_status: 'IN_SERVICE' as 'IN_SERVICE',
       status_reason: 'Importé en masse depuis un fichier',
       mileage: row.mileage,
       next_service_mileage: row.mileage + 15000,

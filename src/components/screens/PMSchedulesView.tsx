@@ -32,43 +32,54 @@ export const PMSchedulesView: React.FC = () => {
   const [newInterval, setNewInterval] = useState<number>(15000);
   const [newLaborHours, setNewLaborHours] = useState<number>(2.5);
 
-  // Calculate PM Statuses for all vehicles across all schedules
-  const vehiclePMStatuses: VehiclePMStatus[] = [];
+  const [vehiclePMStatuses, setVehiclePMStatuses] = useState<any[]>([]);
+  const [loadingStatuses, setLoadingStatuses] = useState(true);
 
-  vehicles.forEach((v) => {
-    pmSchedules.forEach((sch) => {
-      if (
-        sch.applicable_classifications.includes(v.classification) ||
-        sch.applicable_classifications.length === 0
-      ) {
-        let lastKm = v.mileage - Math.floor(v.mileage % sch.interval_value) - 2000;
-        if (lastKm < 0) lastKm = 0;
-
-        let kmRemaining = sch.interval_value - (v.mileage - lastKm);
-        let status: 'Overdue' | 'Due Soon' | 'Ok' = 'Ok';
-
-        if (kmRemaining <= 0) {
-          status = 'Overdue';
-        } else if (kmRemaining <= 2000) {
-          status = 'Due Soon';
-        }
-
-        vehiclePMStatuses.push({
-          vehicle_id: v.id,
-          vehicle_plate: v.plate,
-          pm_schedule_id: sch.id,
-          pm_title: sch.title,
-          last_performed_mileage: lastKm,
-          last_performed_date: '2026-04-12',
-          next_due_mileage: lastKm + sch.interval_value,
-          next_due_date: '2026-08-20',
-          km_remaining: kmRemaining,
-          days_remaining: Math.max(1, Math.floor(kmRemaining / 150)),
-          status,
+  React.useEffect(() => {
+    const fetchStatuses = async () => {
+      try {
+        const token = localStorage.getItem('token') || '';
+        const res = await fetch('/api/pm-schedules/status', {
+          headers: { Authorization: `Bearer ${token}` }
         });
+        if (res.ok) {
+          const data = await res.json();
+          const mapped = data.map((item: any) => {
+            // Map backend PMStatus to frontend statuses ('Ok', 'Due Soon', 'Overdue')
+            let statusLabel = 'Ok';
+            if (item.status === 'OVERDUE') statusLabel = 'Overdue';
+            else if (item.status === 'DUE_SOON') statusLabel = 'Due Soon';
+            else if (item.status === 'DUE') statusLabel = 'Overdue';
+
+            return {
+              vehicle_id: item.vehicle_id,
+              vehicle_plate: item.vehicle_plate,
+              pm_schedule_id: item.pm_schedule_id,
+              pm_title: item.pm_title,
+              status: statusLabel,
+              current_value: item.current_value,
+              next_due: item.next_due,
+              resolution_source: item.resolution_source || 'Unknown',
+              resolved_rule_id: item.resolved_rule_id || 'Fallback',
+              resolved_interval_value: item.resolved_interval_value || 'N/A',
+              resolved_trigger_type: item.resolved_trigger_type || 'Unknown',
+              resolved_at: item.resolved_at ? new Date(item.resolved_at).toLocaleDateString() : 'N/A',
+              // Just visual placeholders for fields we aren't sending from backend yet
+              km_remaining: typeof item.next_due === 'number' ? Math.max(0, item.next_due - item.current_value) : 0,
+              days_remaining: typeof item.next_due === 'string' ? Math.max(1, Math.floor((new Date(item.next_due).getTime() - new Date().getTime()) / 86400000)) : 0
+            };
+          });
+          setVehiclePMStatuses(mapped);
+        }
+      } catch (e) {
+        console.error('Failed to fetch PM statuses', e);
+      } finally {
+        setLoadingStatuses(false);
       }
-    });
-  });
+    };
+    fetchStatuses();
+  }, [vehicles]); // Re-fetch if vehicles change
+
 
   const filteredStatuses = vehiclePMStatuses.filter((item) => {
     const matchesCat = selectedCategory === 'all' || item.status === selectedCategory;
@@ -307,6 +318,7 @@ export const PMSchedulesView: React.FC = () => {
               <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 uppercase font-black tracking-wider text-[10px]">
                 <th className="py-3 px-4">Véhicule</th>
                 <th className="py-3 px-4">Programme PM</th>
+                <th className="py-3 px-4">Règle Appliquée (Scope)</th>
                 <th className="py-3 px-4">Dernière Révision</th>
                 <th className="py-3 px-4">Prochaine Échéance</th>
                 <th className="py-3 px-4">Reste Avant Révision</th>
@@ -322,6 +334,13 @@ export const PMSchedulesView: React.FC = () => {
                   </td>
                   <td className="py-3.5 px-4 text-slate-800 font-semibold">
                     {item.pm_title}
+                  </td>
+                  <td className="py-3.5 px-4 text-[10px]">
+                    <div className="font-bold text-indigo-700">{item.resolution_source}</div>
+                    <div className="text-slate-500 font-mono" title={item.resolved_rule_id}>ID: {item.resolved_rule_id?.substring(0,8)}</div>
+                    <div className="text-slate-500">
+                      {item.resolved_interval_value} {item.resolved_trigger_type}
+                    </div>
                   </td>
                   <td className="py-3.5 px-4 text-slate-500 font-mono">
                     {item.last_performed_mileage.toLocaleString()} km ({item.last_performed_date})

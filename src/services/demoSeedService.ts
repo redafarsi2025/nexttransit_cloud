@@ -106,7 +106,8 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       name: 'TRK-001 Volvo FH16 Titan Alpha',
       classification: 'Keystone',
       status: 'Critical',
-      status_reason: 'R1 EMERGENCY STOP: Critical Turbocharger Boost Circuit Low Fault (P0299)',
+      lifecycle_status: 'IN_SERVICE',
+    status_reason: 'R1 EMERGENCY STOP: Critical Turbocharger Boost Circuit Low Fault (P0299)',
       last_check_date: '2026-08-04',
       active_fault_codes: [
         {
@@ -134,7 +135,6 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
           total_cost: 46000,
         },
       ],
-      assigned_driver_id: 'DRV-001',
       assigned_mechanic_id: 'MCH-001',
       fault_score: 25,
       compliance_score: 98,
@@ -148,7 +148,8 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       name: 'TRK-002 Renault T480 Atlas Beta',
       classification: 'Keystone',
       status: 'Attention',
-      status_reason: 'R2 SCHEDULE CONFLICT: Departure in 2 days with Open Corrective Work Order',
+      lifecycle_status: 'IN_SERVICE',
+    status_reason: 'R2 SCHEDULE CONFLICT: Departure in 2 days with Open Corrective Work Order',
       last_check_date: '2026-08-03',
       active_fault_codes: [
         {
@@ -166,7 +167,6 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       scheduled_use_days: 2,
       scheduled_route: 'Plateforme Logistique Alger -> Oran Senia Hub',
       maintenance_history: [],
-      assigned_driver_id: 'DRV-002',
       assigned_mechanic_id: 'MCH-002',
       fault_score: 65,
       compliance_score: 95,
@@ -180,7 +180,8 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       name: 'TRK-003 Mercedes Actros Sirius Gamma',
       classification: 'Keystone',
       status: 'Critical',
-      status_reason: 'Engine Overheating Warning (P0217) - Thermostat Stuck Closed',
+      lifecycle_status: 'IN_SERVICE',
+    status_reason: 'Engine Overheating Warning (P0217) - Thermostat Stuck Closed',
       last_check_date: '2026-08-04',
       active_fault_codes: [
         {
@@ -198,7 +199,6 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       scheduled_use_days: 1,
       scheduled_route: 'Base Sud Hassi Messaoud -> Ouargla Local',
       maintenance_history: [],
-      assigned_driver_id: 'DRV-003',
       assigned_mechanic_id: 'MCH-001',
       fault_score: 15,
       compliance_score: 90,
@@ -212,7 +212,8 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       name: 'TRK-004 Scania R500 Oasis Delta',
       classification: 'Standard',
       status: 'Attention',
-      status_reason: 'EBS Brake Sensor Signal Erratic (C0035)',
+      lifecycle_status: 'IN_SERVICE',
+    status_reason: 'EBS Brake Sensor Signal Erratic (C0035)',
       last_check_date: '2026-08-02',
       active_fault_codes: [
         {
@@ -230,7 +231,6 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       scheduled_use_days: 4,
       scheduled_route: 'Constantine Le Khroub -> Annaba Port',
       maintenance_history: [],
-      assigned_driver_id: 'DRV-004',
       assigned_mechanic_id: 'MCH-003',
       fault_score: 70,
       compliance_score: 92,
@@ -244,7 +244,8 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       name: 'TRK-005 MAN TGX Hoggar Epsilon',
       classification: 'Keystone',
       status: 'Critical',
-      status_reason: 'Cylinder 3 Misfire & High Fuel Pressure Drop (P0300)',
+      lifecycle_status: 'IN_SERVICE',
+    status_reason: 'Cylinder 3 Misfire & High Fuel Pressure Drop (P0300)',
       last_check_date: '2026-08-03',
       active_fault_codes: [
         {
@@ -262,7 +263,6 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       scheduled_use_days: 2,
       scheduled_route: 'Sétif Euro-Park -> Batna Hub',
       maintenance_history: [],
-      assigned_driver_id: 'DRV-005',
       assigned_mechanic_id: 'MCH-002',
       fault_score: 20,
       compliance_score: 88,
@@ -276,7 +276,8 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       name: 'TRK-006 Scania R500 Dune Zeta',
       classification: 'Standard',
       status: 'Attention',
-      status_reason: 'R6 UNVERIFIED INCIDENT: Driver reported steering vibration without OBD fault code',
+      lifecycle_status: 'IN_SERVICE',
+    status_reason: 'R6 UNVERIFIED INCIDENT: Driver reported steering vibration without OBD fault code',
       last_check_date: '2026-08-04',
       active_fault_codes: [],
       mileage: 142000,
@@ -285,7 +286,6 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       scheduled_use_days: 3,
       scheduled_route: 'Alger -> Djelfa Express',
       maintenance_history: [],
-      assigned_driver_id: 'DRV-006',
       assigned_mechanic_id: 'MCH-001',
       fault_score: 85,
       compliance_score: 96,
@@ -470,7 +470,8 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       name: `${id} ${tm.brand} ${tm.model.split(' ')[0]} (${region.split(' ')[0]})`,
       classification: tm.class,
       status,
-      status_reason: statusReason,
+      lifecycle_status: 'IN_SERVICE',
+    status_reason: statusReason,
       last_check_date: '2026-08-03',
       active_fault_codes: faultCodes,
       mileage,
@@ -479,7 +480,6 @@ export function generateLargeFleetDemoData(tenantId: string = DEMO_TENANT_UUID):
       scheduled_use_days: scheduledDays,
       scheduled_route: `${region} Sector Route #${100 + i}`,
       maintenance_history: [],
-      assigned_driver_id: `DRV-${(i % 30) + 1}`,
       assigned_mechanic_id: `MCH-${(i % 5) + 1}`,
       fault_score: faultScore,
       compliance_score: 85 + (i % 15),
@@ -1030,7 +1030,7 @@ export async function seedDemoTenant(tenantId: string = DEMO_TENANT_UUID): Promi
     // Delete existing records scoped to tenantId in reverse dependency order
     await supabase.from('audit_log').delete().eq('tenant_id', tenantId);
     await supabase.from('device_mappings').delete().eq('tenant_id', tenantId);
-    await supabase.from('alerts').delete().eq('tenant_id', tenantId);
+    await supabase.from('alerts' as any).delete().eq('tenant_id', tenantId);
     await supabase.from('work_orders').delete().eq('tenant_id', tenantId);
     await supabase.from('fuel_logs').delete().eq('tenant_id', tenantId);
     await supabase.from('warranties').delete().eq('tenant_id', tenantId);
@@ -1075,7 +1075,8 @@ export async function seedDemoTenant(tenantId: string = DEMO_TENANT_UUID): Promi
         name: v.name,
         classification: v.classification,
         status: v.status,
-        status_reason: v.status_reason,
+        lifecycle_status: 'IN_SERVICE',
+    status_reason: v.status_reason,
         last_check_date: v.last_check_date,
         active_fault_codes: v.active_fault_codes,
         mileage: v.mileage,
@@ -1084,7 +1085,6 @@ export async function seedDemoTenant(tenantId: string = DEMO_TENANT_UUID): Promi
         scheduled_use_days: v.scheduled_use_days,
         scheduled_route: v.scheduled_route,
         maintenance_history: v.maintenance_history,
-        assigned_driver_id: v.assigned_driver_id,
         assigned_mechanic_id: v.assigned_mechanic_id,
         fault_score: v.fault_score,
         compliance_score: v.compliance_score,
@@ -1161,7 +1161,7 @@ export async function seedDemoTenant(tenantId: string = DEMO_TENANT_UUID): Promi
         part_id: a.part_id,
         read: a.read,
       }));
-      await supabase.from('alerts').upsert(alertPayloads);
+      await supabase.from('alerts' as any).upsert(alertPayloads);
     }
 
     // Insert device_mappings

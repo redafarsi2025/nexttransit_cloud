@@ -1,0 +1,73 @@
+# Plan d'implémentation : Phase 3B — Maintenance Intelligence (Validé)
+
+## 1. Objectif (Goal)
+
+L'objectif de cette phase est de créer le premier véritable moteur décisionnel opérationnel de NextTransit. Ce moteur d'intelligence de maintenance (PM Engine) remplacera les mocks statiques du frontend et automatisera la création des ordres de travail (Automatic Work Orders) en se basant sur des déclencheurs stricts (Odomètre, Temps, Engine Hours).
+
+L'architecture respectera une séparation stricte des responsabilités :
+- La Télémétrie ne fera que publier l'information.
+- Le PM Engine évaluera l'éligibilité.
+- L'idempotence base de données garantira l'unicité des Work Orders générés.
+
+---
+
+## 2. Architecture Décisionnelle
+
+```mermaid
+flowchart TD
+    T[Telemetry Worker] --> |Odometer Event| PME[PM Engine]
+    C[Daily Cron] --> |Time Event| PME
+    
+    PME --> |Evaluate Eligibility| ID[Idempotency Check DB]
+    
+    ID --> |trigger_key unique| WO[Work Order Generator]
+    ID --> |Already Exists| SKIP[Skip]
+    
+    WO --> DB[(work_orders)]
+```
+
+---
+
+## 3. Découpage des Tâches (Phase 3B)
+
+### 3B-01 — PM DATA MODEL
+- [ ] Créer `supabase/migrations/20260822000000_pm_schedules.sql`
+- [ ] Table `pm_schedules` (modèles de maintenance, `trigger_type`, `interval_value`, `interval_unit`)
+- [ ] Table `pm_vehicle_subscriptions` (état actuel : `last_service_date`, `next_due_odometer`, etc.)
+- [ ] Types de déclencheurs supportés : `ODOMETER`, `TIME`, `ENGINE_HOURS`
+
+### 3B-02 — PM ENGINE
+- [ ] Créer `src/services/maintenance/pmEngine.ts` (Séparé de `decisionEngine.ts`)
+- [ ] Implémenter l'évaluation des triggers temporels et kilométriques.
+- [ ] Calcul des statuts stricts : `NOT_DUE`, `DUE_SOON`, `DUE`, `OVERDUE`.
+
+### 3B-03 — IDEMPOTENCY
+- [ ] Ajouter un système d'idempotence DB (ex: `trigger_key` ou `pm_events` table) pour bloquer les évaluations concurrentes.
+- [ ] Contrainte d'unicité sur `trigger_key` (ex: `sub_id:135000`).
+
+### 3B-04 — AUTOMATIC WORK ORDERS
+- [ ] Modifier la table `work_orders` (ou ajouter colonnes) pour conserver la **provenance** du PM (`pm_subscription_id`, `trigger_type`, `trigger_value`).
+- [ ] Créer `pmWorkOrderGenerator.ts` pour générer automatiquement un WO préventif.
+- [ ] Garantir l'isolation des tenants et l'audit.
+
+### 3B-05 — TELEMETRY INTEGRATION
+- [ ] Brancher le `TelemetryWorker` (ou l'étape post-ingestion) pour déclencher le `PMEngine` de façon asynchrone / découplée.
+- [ ] S'assurer de la compatibilité avec l'architecture distribuée (BullMQ).
+
+### 3B-06 — TIME TRIGGER
+- [ ] Créer un Cron (Edge Function ou worker Node) planifié pour exécuter quotidiennement la vérification des PM basés sur le temps.
+
+### 3B-07 — API
+- [ ] Routes CRUD `/api/pm-schedules` et `/api/pm-subscriptions`.
+- [ ] Endpoint `/api/pm-status` pour renvoyer le statut consolidé au frontend.
+- [ ] Endpoint de déclenchement manuel (Admin/Debug).
+
+### 3B-08 — FRONTEND
+- [ ] Mettre à jour `PMSchedulesView` pour consommer les données de l'API (supprimer les calculs locaux).
+- [ ] Afficher les statuts `DUE_SOON` / `OVERDUE` fournis par le backend.
+- [ ] Supprimer `INITIAL_PM_SCHEDULES` de `seedData.ts`.
+
+### 3B-09 — VERIFICATION
+- [ ] Tests unitaires sur le `PMEngine`.
+- [ ] Tests d'intégration (Idempotence, Concurrence, Isolation RLS).
+- [ ] Vérification du flux End-to-End.

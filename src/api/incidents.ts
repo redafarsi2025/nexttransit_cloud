@@ -12,7 +12,7 @@ incidentRouter.post('/', async (req, res) => {
   
   try {
     const { data: incident, error: incidentError } = await supabase
-      .from('incidents')
+      .from('driver_incidents')
       .insert({ vehicle_id, ...incidentData })
       .select()
       .single();

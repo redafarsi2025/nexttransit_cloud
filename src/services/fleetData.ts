@@ -246,6 +246,42 @@ export async function fetchCostRecords(bypassCache: boolean = false): Promise<Co
   });
 }
 
+export async function fetchPmSchedules(bypassCache: boolean = false): Promise<any[]> {
+  const tenantId = await getCurrentTenantId();
+  const cacheKey = `pm_schedules_${tenantId}`;
+  if (bypassCache) clearFleetCache(cacheKey);
+  return fetchWithCache(cacheKey, async () => {
+    const { data, error } = await supabase
+      .from('pm_schedules')
+      .select('*')
+      .eq('tenant_id', tenantId);
+    
+    if (error) {
+      console.warn(`fetchPmSchedules: ${error.message}`);
+      return [];
+    }
+    return data || [];
+  });
+}
+
+export async function fetchPmSubscriptions(bypassCache: boolean = false): Promise<any[]> {
+  const tenantId = await getCurrentTenantId();
+  const cacheKey = `pm_subs_${tenantId}`;
+  if (bypassCache) clearFleetCache(cacheKey);
+  return fetchWithCache(cacheKey, async () => {
+    const { data, error } = await supabase
+      .from('pm_vehicle_subscriptions')
+      .select('*')
+      .eq('tenant_id', tenantId);
+    
+    if (error) {
+      console.warn(`fetchPmSubscriptions: ${error.message}`);
+      return [];
+    }
+    return data || [];
+  });
+}
+
 export async function fetchAlerts(bypassCache: boolean = false): Promise<FleetAlert[]> {
   const tenantId = await getCurrentTenantId();
   const cacheKey = `alerts_${tenantId}`;

@@ -5,12 +5,17 @@ import { createServer as createViteServer, loadEnv } from 'vite';
 // Ensure .env is loaded for the server context
 const env = loadEnv('', process.cwd(), '');
 Object.assign(process.env, env);
+import './src/config/env';
+import { validateDatabaseContract } from './src/config/dbValidation';
 
 import { logger } from './src/lib/logger';
 import { requestContextMiddleware, getRequestContext } from './src/middleware/requestContext';
 import { healthRouter } from './src/api/healthRouter';
 import { freeTranslateText } from './src/services/freeTranslationService';
 import { metricsMiddleware } from './src/middleware/metricsMiddleware';
+
+// Validate Database Contract asynchronously but blockingly at startup
+validateDatabaseContract();
 import { metricsRegistry, nexttransitBuildInfo } from './src/lib/metrics';
 import { z } from 'zod';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -18,12 +23,14 @@ import { createClient } from '@supabase/supabase-js';
 import helmet from 'helmet';
 import { vehicleRouter } from './src/api/vehicles';
 import { maintenanceRouter } from './src/api/maintenance';
+import { pmSchedulesRouter } from './src/api/pmSchedules';
 import { workOrderRouter } from './src/api/workOrders';
 import { fuelRouter } from './src/api/fuel';
 import { inventoryRouter } from './src/api/inventory';
 import { incidentRouter } from './src/api/incidents';
 import { platformAdminRouter } from './src/api/platformAdmin';
 import { platformAuthCheck } from './src/api/middleware';
+import { assignmentRouter } from './src/api/vehicleAssignments';
 import { resolveFaultCode } from './src/services/faultCodeMappingService';
 import { enqueueTelemetry } from './src/services/telemetry/queue/TelemetryQueue';
 import { TelematicsProviderType } from './src/types';
@@ -211,11 +218,14 @@ async function startServer() {
   // Phase 0: Socle Technique - Backend API Routing
   app.use('/api/vehicles', vehicleRouter);
   app.use('/api/maintenance', maintenanceRouter);
+  app.use('/api/pm-schedules', pmSchedulesRouter);
+  app.use('/api/pm-subscriptions', require('./src/api/pmSubscriptions').pmSubscriptionsRouter);
   app.use('/api/work-orders', workOrderRouter);
   app.use('/api/fuel', fuelRouter);
   app.use('/api/inventory', inventoryRouter);
   app.use('/api/incidents', incidentRouter);
   app.use('/api/platform', platformAdminRouter);
+  app.use('/api/vehicleAssignments', assignmentRouter);
 
   // Phase 2F-02: Health & Readiness Probes
   app.use('/health', healthRouter);

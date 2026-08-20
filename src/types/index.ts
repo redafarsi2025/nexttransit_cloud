@@ -63,6 +63,21 @@ export interface Company {
   created_at: string;
 }
 
+export type OperationalStatus = 'AVAILABLE' | 'ON_LEAVE' | 'SICK' | 'SUSPENDED' | 'INACTIVE';
+
+export interface Driver {
+  id: string;
+  tenant_id: string;
+  operational_status: OperationalStatus;
+  license_number: string;
+  license_category?: string;
+  license_expiration?: string;
+  medical_certificate_expiration?: string;
+  archived_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface UserProfile {
   id: string;
   auth_user_id: string;
@@ -125,14 +140,16 @@ export interface MaintenanceHistoryItem {
   total_cost: number;
 }
 
-
+export type LifecycleStatus = 'ORDERED' | 'PENDING_ACTIVATION' | 'IN_SERVICE' | 'IMMOBILIZED' | 'RETIRED';
 
 export interface Vehicle {
   id: string;
   plate: string;
+  vin?: string;
   name: string; // e.g. "Transit-024"
   classification: VehicleClassification;
   status: VehicleStatus;
+  lifecycle_status: LifecycleStatus;
   status_reason: string; // One-line plain-language reason
   last_check_date: string;
   active_fault_codes: ActiveFaultCode[];
@@ -141,8 +158,10 @@ export interface Vehicle {
   next_service_date: string;
   scheduled_use_days: number; // Scheduled for use in next N days
   scheduled_route?: string;
+  acquisition_date?: string;
+  acquisition_cost?: number;
+  disposal_date?: string;
   maintenance_history: MaintenanceHistoryItem[];
-  assigned_driver_id?: string;
   assigned_mechanic_id?: string;
   warranty?: Warranty | null;
   // Sub-scores (secondary / collapsible)
@@ -152,6 +171,28 @@ export interface Vehicle {
   // CAE configuration tags
   classification_weight: number; // 1.5 for Keystone, 1.0 for Standard
   delay_multiplier: number; // 2.2 for Keystone, 1.4 for Standard
+}
+
+export type AssignmentType = 'PRIMARY' | 'SECONDARY' | 'TEMPORARY';
+export type UnassignmentReason = 'MANUAL' | 'REASSIGNED' | 'DRIVER_DEACTIVATED' | 'DRIVER_SUSPENDED' | 'VEHICLE_ARCHIVED' | 'SYSTEM';
+
+export interface VehicleAssignment {
+  id: string;
+  tenant_id: string;
+  vehicle_id: string;
+  driver_id: string;
+  assignment_type: AssignmentType;
+  assigned_at: string;
+  unassigned_at?: string;
+  unassignment_reason?: UnassignmentReason;
+  created_at: string;
+  updated_at: string;
+  driver?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+  };
 }
 
 export interface WorkOrderPartUsed {

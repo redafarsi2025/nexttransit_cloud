@@ -1,0 +1,99 @@
+# Phase 3B.1 — PM Rule Resolver (Révisé)
+
+Cette phase transforme le moteur de maintenance pour supporter des intervalles conditionnels dynamiques en fonction du véhicule (marque, modèle, année, etc.), tout en conservant une traçabilité totale et le respect absolu de l'architecture existante.
+
+## User Review Required
+> [!IMPORTANT]
+> **Validation des corrections** : Le plan a été intégralement mis à jour pour intégrer vos 10 points de correction. Veuillez vérifier que l'architecture cible (`PMRuleResolver` -> `Effective Rule` -> `PM Schedule Calculator` -> `next_due` -> `PMEngine` -> `Work Order`) et le mécanisme de réévaluation sur changement de véhicule correspondent exactement à vos attentes avant le GO final.
+
+---
+
+## Proposed Changes
+
+### 1. Schéma Base de Données (PostgreSQL)
+
+#### [NEW] [20260823000000_pm_schedule_rules.sql](file:///c:/Users/MAGICSOFTDZ/Desktop/reda/nexttransitv2/supabase/migrations/20260823000000_pm_schedule_rules.sql)
+- **Table `vehicles`** : Ajout explicite des colonnes `make`, `model`, `model_year`, `engine_code`, `fuel_type`, `vehicle_type`.
+- **Table `pm_schedule_rules`** : Création avec les contraintes strictes :
+  - `interval_value > 0`
+  - `model_year_from >= 1900`, `model_year_to >= 1900`
+  - `model_year_to >= model_year_from`
+  - `trigger_type IN ('TIME', 'ODOMETER', 'ENGINE_HOURS')`
+- **Table `pm_vehicle_subscriptions`** : Ajout des champs d'audit complets :
+  - `resolved_rule_id` (UUID)
+  - `resolved_trigger_type` (VARCHAR)
+  - `resolved_interval_value` (NUMERIC)
+  - `resolved_at` (TIMESTAMPTZ)
+  - `resolution_source` (VARCHAR)
+  - `resolution_reason` (TEXT)
+- **Indexation ciblée** : Création des index sur `pm_schedule_rules` (`pm_schedule_id`, `tenant_id`, `make`, `model`, `model_year`, `is_active`) pour optimiser la résolution.
+- **Politiques RLS (Tenant Isolation)** : Isolation standard pour `pm_schedule_rules`.
+- **Migration des données (Rétrocompatibilité)** : Convertit automatiquement le `interval_value` existant dans `pm_schedules` en une *Generic Rule* dans `pm_schedule_rules`.
+
+---
+
+### 2. Architecture & Backend
+
+#### [NEW] [pmRuleResolver.ts](file:///c:/Users/MAGICSOFTDZ/Desktop/reda/nexttransitv2/src/services/maintenance/pmRuleResolver.ts)
+- Service `PMRuleResolver.resolve({ vehicle, schedule, tenantId })`.
+- Algorithme de calcul du **Specificity Score** basé sur le Scope (Global/Tenant/Vehicle) :
+  - `VEHICLE override` : 1000
+  - `TENANT + MODEL` : 800
+  - `TENANT + MAKE` : 700
+  - `GLOBAL + MODEL + YEAR` : 600
+  - `GLOBAL + MODEL` : 500
+  - `GLOBAL + MAKE` : 400
+  - `VEHICLE TYPE` : 200
+  - `GENERIC` : 100
+- Retourne `{ ruleId, intervalValue, triggerType, specificityScore, resolutionSource, resolutionReason }`.
+
+#### [NEW] [pmSubscriptionManager.ts](file:///c:/Users/MAGICSOFTDZ/Desktop/reda/nexttransitv2/src/services/maintenance/pmSubscriptionManager.ts) (ou `PMScheduleCalculator`)
+- **Séparation stricte** : Responsable de la résolution et du calcul des échéances (distinct du `pmWorkOrderGenerator.ts`).
+- **Initialisation immédiate** : Appelée dès la création d'une souscription (`POST /api/pm/subscriptions`) pour calculer et persister les `next_due_*` et l'audit de résolution instantanément.
+- **Réévaluation (`resolveSubscription`)** : Recalcule la règle et ajuste l'échéance `next_due` si les caractéristiques du véhicule (make, model, etc.) sont modifiées, *sans attendre le prochain événement télémétrique*.
+- **Roll-forward** : Fonction `rollForwardSubscription()` qui ré-invoque le Resolver après la clôture d'un cycle (ou création d'un WO) pour définir la prochaine échéance.
+
+#### [MODIFY] [pmWorkOrderGenerator.ts](file:///c:/Users/MAGICSOFTDZ/Desktop/reda/nexttransitv2/src/services/maintenance/pmWorkOrderGenerator.ts)
+- Le générateur ne s'occupe plus du calcul de `next_due`. Il délègue l'avancement de l'abonnement à `PMSubscriptionManager.rollForwardSubscription()`.
+
+#### [MODIFY] [pmEngine.ts](file:///c:/Users/MAGICSOFTDZ/Desktop/reda/nexttransitv2/src/services/maintenance/pmEngine.ts)
+- Évalue strictement en fonction de `subscription.next_due_*` calculé au préalable.
+
+---
+
+### 3. API REST
+
+#### [NEW/MODIFY] [pmRules.ts & pmSubscriptions.ts](file:///c:/Users/MAGICSOFTDZ/Desktop/reda/nexttransitv2/src/api/pmRules.ts)
+- `GET /api/pm/schedules/:scheduleId/rules`
+- `POST /api/pm/schedules/:scheduleId/rules`
+- `PATCH /api/pm/rules/:ruleId`
+- `DELETE /api/pm/rules/:ruleId` : **Désactivation logique** (`is_active = false`), aucune suppression physique pour préserver l'historique d'audit.
+- `POST /api/pm/subscriptions` : Mise à jour pour appeler la résolution initiale synchrone.
+
+---
+
+### 4. Frontend
+
+#### [MODIFY] [PMSchedulesView.tsx](file:///c:/Users/MAGICSOFTDZ/Desktop/reda/nexttransitv2/src/components/screens/PMSchedulesView.tsx)
+- Ajout d'une interface de gestion des règles conditionnelles (ajout/modification/désactivation).
+- Sur la fiche de Maintenance / Véhicule, affichage transparent de la trace de résolution (ex: *Toyota Hilux 2026 matched rule: GLOBAL + MAKE + MODEL + YEAR*).
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- **Tests Unitaires du Resolver (`PMRuleResolver.test.ts`)** :
+  - Exactitude de la table des scores (Vehicle > Tenant > Global > Generic).
+  - Test de désactivation (`is_active = false`) et période d'effectivité.
+- **Tests Unitaires du Calculator (`PMSubscriptionManager.test.ts`)** :
+  - Test de création initiale (résolution immédiate des `next_due`).
+- **Tests E2E (`pmRuleResolver.e2e.test.ts`)** :
+  - **Création & Odometer** : Simulation de `Toyota Hilux` (10k) et `Renault Master` (15k). Déclenchement télémétrique pour vérifier la création de WO asynchrone et l'idempotence.
+  - **Changement de véhicule (Le Test Essentiel)** : Modification d'une souscription active en changeant le `make`/`model` du véhicule de *Toyota Hilux* à *Renault Master*. Vérification stricte que `resolved_interval_value` passe automatiquement de 10 000 à 15 000 sans aucune intervention télémétrique, et que `next_due_odometer` est ajusté.
+- **Vérifications de compilation** : `npm run typecheck`, `npm run lint`.
+
+### Manual Verification
+- Démarrer le Worker et l'API localement (`npm run smoke:docker`).
+- Créer une nouvelle souscription via l'UI et constater que l'échéance est immédiatement calculée.
+- Modifier le véhicule associé et vérifier la mise à jour asynchrone des échéances via la trace d'audit.

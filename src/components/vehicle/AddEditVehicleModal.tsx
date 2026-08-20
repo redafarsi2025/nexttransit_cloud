@@ -12,7 +12,7 @@ import {
   Shield,
   ChevronDown,
 } from 'lucide-react';
-import { Vehicle, VehicleStatus, VehicleClassification } from '../../types';
+import { Vehicle, VehicleStatus, VehicleClassification, LifecycleStatus } from '../../types';
 import { useLocalization } from '../../context/LocalizationContext';
 
 // -------------------------------------------------------
@@ -23,13 +23,13 @@ type VehicleFormInput = {
   name: string;
   classification: VehicleClassification;
   status: VehicleStatus;
+  lifecycle_status: LifecycleStatus;
   status_reason: string;
   mileage: number;
   next_service_mileage: number;
   next_service_date: string;
   scheduled_use_days: number;
   scheduled_route: string;
-  assigned_driver_id: string;
   fault_score: number;
   compliance_score: number;
   freshness_score: number;
@@ -49,13 +49,13 @@ const DEFAULT_FORM: VehicleFormInput = {
   name: '',
   classification: 'Standard',
   status: 'Healthy',
+  lifecycle_status: 'IN_SERVICE',
   status_reason: 'Véhicule opérationnel — aucun défaut actif.',
   mileage: 0,
   next_service_mileage: 15000,
   next_service_date: '',
   scheduled_use_days: 30,
   scheduled_route: '',
-  assigned_driver_id: '',
   fault_score: 100,
   compliance_score: 100,
   freshness_score: 0,
@@ -89,13 +89,13 @@ function toFormInput(v: Vehicle): VehicleFormInput {
     name: v.name,
     classification: v.classification,
     status: v.status,
+    lifecycle_status: v.lifecycle_status,
     status_reason: v.status_reason,
     mileage: v.mileage,
     next_service_mileage: v.next_service_mileage,
     next_service_date: v.next_service_date,
     scheduled_use_days: v.scheduled_use_days,
     scheduled_route: v.scheduled_route || '',
-    assigned_driver_id: v.assigned_driver_id || '',
     fault_score: v.fault_score,
     compliance_score: v.compliance_score,
     freshness_score: v.freshness_score,
@@ -187,13 +187,13 @@ export const AddEditVehicleModal: React.FC<AddEditVehicleModalProps> = ({
       name: form.name.trim(),
       classification: form.classification,
       status: form.status,
+      lifecycle_status: form.lifecycle_status,
       status_reason: form.status_reason.trim(),
       mileage: form.mileage,
       next_service_mileage: form.next_service_mileage,
       next_service_date: form.next_service_date,
       scheduled_use_days: form.scheduled_use_days,
       scheduled_route: form.scheduled_route || undefined,
-      assigned_driver_id: form.assigned_driver_id || undefined,
       fault_score: form.fault_score,
       compliance_score: form.compliance_score,
       freshness_score: form.freshness_score,
@@ -477,27 +477,6 @@ export const AddEditVehicleModal: React.FC<AddEditVehicleModalProps> = ({
                   onChange={e => set('scheduled_route', e.target.value)}
                   disabled={isReadOnly}
                   placeholder="ex: Alger - Constantine"
-                  className={inputCls()}
-                />
-              </Field>
-            </div>
-          </section>
-
-          {/* Affectation */}
-          <section>
-            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-3 flex items-center gap-1.5">
-              <User className="h-3 w-3" />
-              {t('vehicle.modal.section_assignment', {}, 'Affectation')}
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label={t('vehicle.modal.driver_id', {}, 'ID Chauffeur assigne')}>
-                <input
-                  id="vehicle-driver-id"
-                  type="text"
-                  value={form.assigned_driver_id}
-                  onChange={e => set('assigned_driver_id', e.target.value)}
-                  disabled={isReadOnly}
-                  placeholder="ex: DRV-042"
                   className={inputCls()}
                 />
               </Field>

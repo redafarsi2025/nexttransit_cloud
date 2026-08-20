@@ -30,6 +30,7 @@ import { getSecurityPolicyForProvider } from '../security/WebhookSecurityPolicy'
 import { supabaseAdmin } from '../../lib/supabaseAdmin';
 import { DecisionEngine } from '../decisionEngine';
 import { logger } from '../../lib/logger';
+import { PMTriggerService } from '../maintenance/pmTriggerService';
 
 export interface IngestionResult {
   status: 'success';
@@ -170,26 +171,9 @@ export async function processTelemetryWebhook(
       throw err;
     }
 
-    // Step 6: Persist position to Supabase
-    if (event.position) {
-      try {
-        const positionPayload: any = {
-          tenant_id,
-          vehicle_id,
-          latitude: event.position.latitude,
-          longitude: event.position.longitude,
-          altitude_m: event.position.altitude ?? null,
-          speed_kmh: event.position.speed ?? null,
-          heading_deg: event.position.heading ?? null,
-          timestamp: event.timestamp,
-          data_source: event.data_source,
-        };
-        await supabaseAdmin.from('positions').insert(positionPayload as never);
-      } catch (err: any) {
-        logger.error({ event: 'db_query_failed', operation: 'insert_positions', error: err.message }, 'Position persist failed');
-        throw err;
-      }
-    }
+    // Step 6: (Obsolete) Positions are now natively stored inside telemetry_events JSONB
+    // The positions table was deprecated in favor of the unified telemetry_events log.
+
 
     // Step 7: Update vehicle fault codes + trigger Rule R1
     if (event.faults.length > 0) {
@@ -225,6 +209,19 @@ export async function processTelemetryWebhook(
       } catch (err: any) {
         logger.warn({ event: 'db_query_failed', operation: 'update_vehicles_faults', error: err.message }, 'Vehicle update failed');
         throw err;
+      }
+    }
+
+    // Step 8: PM Evaluation (Odometer Trigger)
+    // We decoupled the PM Engine from telemetry parsing.
+    if (event.vehicleState && typeof event.vehicleState.odometer === 'number') {
+      try {
+        const vehiclePlate = (resolved as any).mapping?.plate || 'Unknown';
+        // We do this asynchronously to avoid blocking the ingestion pipeline
+        PMTriggerService.evaluateOdometer(tenant_id, vehicle_id, vehiclePlate, event.vehicleState.odometer)
+          .catch(err => logger.error({ event: 'pm_eval_async_failed', vehicle_id, error: err.message }, 'Async PM evaluation failed'));
+      } catch (err: any) {
+        logger.error({ event: 'pm_trigger_dispatch_failed', vehicle_id, error: err.message }, 'Failed to dispatch PM trigger');
       }
     }
 
