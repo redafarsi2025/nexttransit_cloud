@@ -10,19 +10,20 @@ ALTER TABLE IF EXISTS public.warranties ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.fuel_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.inventory_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.fleet_alerts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.incidents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.driver_incidents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.device_mappings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.tenants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.login_attempts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.demo_seed_snapshot ENABLE ROW LEVEL SECURITY;
 
 -- 2. Audit Table RLS Activation Status
 DO $$
 DECLARE
     target_tables TEXT[] := ARRAY[
-        'vehicles', 'work_orders', 'warranties', 'fuel_logs', 
-        'inventory_items', 'fleet_alerts', 'incidents', 'audit_logs', 
-        'device_mappings', 'tenants', 'login_attempts'
+        'vehicles', 'work_orders', 'warranties', 'fuel_logs',
+        'inventory_items', 'fleet_alerts', 'driver_incidents', 'audit_logs',
+        'device_mappings', 'tenants', 'login_attempts', 'demo_seed_snapshot'
     ];
     tbl TEXT;
     is_rls_enabled BOOLEAN;

@@ -1105,6 +1105,297 @@ export type Database = {
           },
         ]
       }
+      pm_evaluation_events: {
+        Row: {
+          evaluated_at: string
+          id: string
+          pm_subscription_id: string
+          tenant_id: string
+          trigger_key: string
+          work_order_id: string | null
+        }
+        Insert: {
+          evaluated_at?: string
+          id?: string
+          pm_subscription_id: string
+          tenant_id?: string
+          trigger_key: string
+          work_order_id?: string | null
+        }
+        Update: {
+          evaluated_at?: string
+          id?: string
+          pm_subscription_id?: string
+          tenant_id?: string
+          trigger_key?: string
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_evaluation_events_pm_subscription_id_fkey"
+            columns: ["pm_subscription_id"]
+            isOneToOne: false
+            referencedRelation: "pm_vehicle_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_evaluation_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_evaluation_events_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_schedule_rules: {
+        Row: {
+          created_at: string
+          effective_from: string | null
+          effective_to: string | null
+          engine_code: string | null
+          fuel_type: string | null
+          id: string
+          interval_value: number
+          is_active: boolean
+          make: string | null
+          model: string | null
+          model_year_from: number | null
+          model_year_to: number | null
+          pm_schedule_id: string
+          priority: number
+          rule_scope: string
+          tenant_id: string | null
+          trigger_type: string
+          updated_at: string
+          vehicle_id: string | null
+          vehicle_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          effective_from?: string | null
+          effective_to?: string | null
+          engine_code?: string | null
+          fuel_type?: string | null
+          id?: string
+          interval_value: number
+          is_active?: boolean
+          make?: string | null
+          model?: string | null
+          model_year_from?: number | null
+          model_year_to?: number | null
+          pm_schedule_id: string
+          priority?: number
+          rule_scope: string
+          tenant_id?: string | null
+          trigger_type: string
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          effective_from?: string | null
+          effective_to?: string | null
+          engine_code?: string | null
+          fuel_type?: string | null
+          id?: string
+          interval_value?: number
+          is_active?: boolean
+          make?: string | null
+          model?: string | null
+          model_year_from?: number | null
+          model_year_to?: number | null
+          pm_schedule_id?: string
+          priority?: number
+          rule_scope?: string
+          tenant_id?: string | null
+          trigger_type?: string
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_schedule_rules_pm_schedule_id_fkey"
+            columns: ["pm_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "pm_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_schedule_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_schedule_rules_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_schedules: {
+        Row: {
+          applicable_classifications: Json | null
+          created_at: string
+          estimated_labor_hours: number | null
+          id: string
+          interval_unit: string
+          interval_value: number
+          is_active: boolean
+          required_parts: Json | null
+          system_category: string
+          tenant_id: string
+          title: string
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          applicable_classifications?: Json | null
+          created_at?: string
+          estimated_labor_hours?: number | null
+          id?: string
+          interval_unit: string
+          interval_value: number
+          is_active?: boolean
+          required_parts?: Json | null
+          system_category: string
+          tenant_id?: string
+          title: string
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          applicable_classifications?: Json | null
+          created_at?: string
+          estimated_labor_hours?: number | null
+          id?: string
+          interval_unit?: string
+          interval_value?: number
+          is_active?: boolean
+          required_parts?: Json | null
+          system_category?: string
+          tenant_id?: string
+          title?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_schedules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_vehicle_subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_service_date: string | null
+          last_service_engine_hours: number | null
+          last_service_odometer: number | null
+          next_due_date: string | null
+          next_due_engine_hours: number | null
+          next_due_odometer: number | null
+          pm_schedule_id: string
+          resolution_reason: string | null
+          resolution_source: string | null
+          resolved_at: string | null
+          resolved_interval_value: number | null
+          resolved_rule_id: string | null
+          resolved_trigger_type: string | null
+          tenant_id: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_service_date?: string | null
+          last_service_engine_hours?: number | null
+          last_service_odometer?: number | null
+          next_due_date?: string | null
+          next_due_engine_hours?: number | null
+          next_due_odometer?: number | null
+          pm_schedule_id: string
+          resolution_reason?: string | null
+          resolution_source?: string | null
+          resolved_at?: string | null
+          resolved_interval_value?: number | null
+          resolved_rule_id?: string | null
+          resolved_trigger_type?: string | null
+          tenant_id?: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_service_date?: string | null
+          last_service_engine_hours?: number | null
+          last_service_odometer?: number | null
+          next_due_date?: string | null
+          next_due_engine_hours?: number | null
+          next_due_odometer?: number | null
+          pm_schedule_id?: string
+          resolution_reason?: string | null
+          resolution_source?: string | null
+          resolved_at?: string | null
+          resolved_interval_value?: number | null
+          resolved_rule_id?: string | null
+          resolved_trigger_type?: string | null
+          tenant_id?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_vehicle_subscriptions_pm_schedule_id_fkey"
+            columns: ["pm_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "pm_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_vehicle_subscriptions_resolved_rule_id_fkey"
+            columns: ["resolved_rule_id"]
+            isOneToOne: false
+            referencedRelation: "pm_schedule_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_vehicle_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_vehicle_subscriptions_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           company_id: string | null
@@ -1868,12 +2159,17 @@ export type Database = {
           data_source: string | null
           delay_multiplier: number
           disposal_date: string | null
+          engine_code: string | null
           fault_score: number
+          fuel_type: string | null
           id: string
           last_check_date: string
           lifecycle_status: string
           maintenance_history: Json
+          make: string | null
           mileage: number
+          model: string | null
+          model_year: number | null
           name: string
           next_service_date: string
           next_service_mileage: number
@@ -1884,6 +2180,7 @@ export type Database = {
           status_reason: string
           tenant_id: string
           updated_at: string
+          vehicle_type: string | null
           vin: string | null
         }
         Insert: {
@@ -1898,12 +2195,17 @@ export type Database = {
           data_source?: string | null
           delay_multiplier?: number
           disposal_date?: string | null
+          engine_code?: string | null
           fault_score?: number
+          fuel_type?: string | null
           id?: string
           last_check_date?: string
           lifecycle_status?: string
           maintenance_history?: Json
+          make?: string | null
           mileage?: number
+          model?: string | null
+          model_year?: number | null
           name: string
           next_service_date?: string
           next_service_mileage?: number
@@ -1914,6 +2216,7 @@ export type Database = {
           status_reason?: string
           tenant_id?: string
           updated_at?: string
+          vehicle_type?: string | null
           vin?: string | null
         }
         Update: {
@@ -1928,12 +2231,17 @@ export type Database = {
           data_source?: string | null
           delay_multiplier?: number
           disposal_date?: string | null
+          engine_code?: string | null
           fault_score?: number
+          fuel_type?: string | null
           id?: string
           last_check_date?: string
           lifecycle_status?: string
           maintenance_history?: Json
+          make?: string | null
           mileage?: number
+          model?: string | null
+          model_year?: number | null
           name?: string
           next_service_date?: string
           next_service_mileage?: number
@@ -1944,6 +2252,7 @@ export type Database = {
           status_reason?: string
           tenant_id?: string
           updated_at?: string
+          vehicle_type?: string | null
           vin?: string | null
         }
         Relationships: [
@@ -2104,6 +2413,10 @@ export type Database = {
           labor_cost?: number
           labor_hours?: number
           parts_used?: Json
+          pm_schedule_id?: string | null
+          pm_subscription_id?: string | null
+          pm_trigger_type?: string | null
+          pm_trigger_value?: string | null
           related_fault_code?: string | null
           related_incident_id?: string | null
           reserved_parts?: Json | null
@@ -2116,6 +2429,20 @@ export type Database = {
           warranty_risk?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "work_orders_pm_schedule_id_fkey"
+            columns: ["pm_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "pm_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_pm_subscription_id_fkey"
+            columns: ["pm_subscription_id"]
+            isOneToOne: false
+            referencedRelation: "pm_vehicle_subscriptions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "work_orders_tenant_id_fkey"
             columns: ["tenant_id"]

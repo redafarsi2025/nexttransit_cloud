@@ -45,7 +45,7 @@ DELETE FROM public.demo_seed_snapshot WHERE table_name IN (
 INSERT INTO public.demo_seed_snapshot (table_name, snapshot_data) VALUES
 ('vehicles', '[
   {
-    "id": "v0a80101-0000-0000-0000-000000000001",
+    "id": "a0a80101-0000-0000-0000-000000000001",
     "tenant_id": "c0a80101-0000-0000-0000-000000000001",
     "plate": "00123-116-16",
     "name": "Renault T480 Keystone frigorifique (Alger Nord)",
@@ -61,7 +61,7 @@ INSERT INTO public.demo_seed_snapshot (table_name, snapshot_data) VALUES
     "active_fault_codes": []
   },
   {
-    "id": "v0a80101-0000-0000-0000-000000000002",
+    "id": "a0a80101-0000-0000-0000-000000000002",
     "tenant_id": "c0a80101-0000-0000-0000-000000000001",
     "plate": "05421-120-06",
     "name": "Volvo FH16 Multi-Temp (Béjaïa Port Logistics)",
@@ -85,7 +85,7 @@ INSERT INTO public.demo_seed_snapshot (table_name, snapshot_data) VALUES
     ]
   },
   {
-    "id": "v0a80101-0000-0000-0000-000000000003",
+    "id": "a0a80101-0000-0000-0000-000000000003",
     "tenant_id": "c0a80101-0000-0000-0000-000000000001",
     "plate": "12890-119-31",
     "name": "Scania R500 V8 Heavy Haulage (Oran Zone Industrielle)",
@@ -112,8 +112,8 @@ INSERT INTO public.demo_seed_snapshot (table_name, snapshot_data) VALUES
 
 ('warranties', '[
   {
-    "id": "w0a80101-0000-0000-0000-000000000001",
-    "vehicle_id": "v0a80101-0000-0000-0000-000000000002",
+    "id": "d0a80101-0000-0000-0000-000000000001",
+    "vehicle_id": "a0a80101-0000-0000-0000-000000000002",
     "tenant_id": "c0a80101-0000-0000-0000-000000000001",
     "provider": "Volvo Trucks Algérie (Constructeur)",
     "status": "Active",
@@ -126,7 +126,7 @@ INSERT INTO public.demo_seed_snapshot (table_name, snapshot_data) VALUES
 ('fuel_logs', '[
   {
     "id": "f0a80101-0000-0000-0000-000000000001",
-    "vehicle_id": "v0a80101-0000-0000-0000-000000000001",
+    "vehicle_id": "a0a80101-0000-0000-0000-000000000001",
     "tenant_id": "c0a80101-0000-0000-0000-000000000001",
     "liters": 380,
     "cost": 15200.00,
@@ -137,7 +137,7 @@ INSERT INTO public.demo_seed_snapshot (table_name, snapshot_data) VALUES
   },
   {
     "id": "f0a80101-0000-0000-0000-000000000002",
-    "vehicle_id": "v0a80101-0000-0000-0000-000000000002",
+    "vehicle_id": "a0a80101-0000-0000-0000-000000000002",
     "tenant_id": "c0a80101-0000-0000-0000-000000000001",
     "liters": 520,
     "cost": 23400.00,

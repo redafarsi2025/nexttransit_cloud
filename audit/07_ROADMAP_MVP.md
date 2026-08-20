@@ -14,6 +14,32 @@
 8. **Critère de sortie 0.9 reformulé** : « 24/24 suites chargées, 0 échec » plutôt qu'un total de tests deviné (le nombre exact de tests que contiendra la suite actuellement cassée n'est pas connu tant qu'elle ne charge pas).
 9. **Décision 2.1 tranchée dans ce document, pas laissée en délibération** : migration vers `DecisionEngine` — un score borné 0-100 avec label (`URGENT_DISPATCH`) est lisible par un Fleet Manager, `2.805` sans échelle ne l'est pas.
 10. **Effort total et calendrier corrigés** en conséquence — voir §9.
+11. **Modèle à 3 environnements nommés, ajouté le 2026-08-20** — voir §0bis ci-dessous. Décidé après que la réconciliation (`audit/08_RECONCILIATION.md`) a révélé que le projet Supabase hébergé n'avait jamais réellement fait tourner l'application (0 ligne sur les tables opérationnelles). Reconstruit et requalifié en environnement de démo, ce qui ferme la question de souveraineté pour la durée du pilote sans attendre la Phase 4.
+
+---
+
+## 0bis. Modèle à 3 environnements — pourquoi le pilote n'attend plus l'hébergement algérien
+
+Décision prise le 2026-08-20 (Option C de la réconciliation), après constat que la base hébergée
+sur supabase.com était deux générations de schéma en retard et ne contenait aucune donnée réelle
+(seulement 10 lignes de `tenants` d'inscription, 0 sur toutes les tables opérationnelles) — la
+conclusion la plus probable étant que cette base n'a jamais servi de vraie production : les démos
+ont tourné sur des fixtures côté navigateur (`seedData.ts`), pas sur des écritures réelles.
+
+Trois environnements nommés, un seul jeu de migrations qui les alimente tous :
+
+| Environnement | Rôle | Données |
+|---|---|---|
+| **LOCAL** | Développement et tests, `supabase start` (Docker) | Fixtures de développement, jetables |
+| **STAGING** | supabase.com, région Irlande — démos, jury, prospects | **Données de démonstration uniquement, jamais de données client réelles** |
+| **PROD** | Instance auto-hébergée en Algérie (Phase 4 ci-dessous) | La seule à voir des données client réelles |
+
+**Conséquence directe sur le calendrier** : la promesse de souveraineté des données (« zéro
+transfert transfrontalier ») ne dépend plus de la Phase 4 pour être tenue pendant la période de
+démarchage — elle est déjà vraie par construction, puisque STAGING n'accueille par définition
+aucune donnée client. **Le pilote de démonstration peut démarrer dès la fin des Phases 0-P**, sans
+attendre l'hébergement algérien. La Phase 4 reste nécessaire avant de **signer** un client réel
+(faire transiter ses données réelles), pas avant de le démarcher.
 
 ---
 
@@ -120,9 +146,9 @@ Chaque correctif de schéma (1.2, 1.4, 1.6/1.7 si persisté en base, 1.9) suit l
 
 ---
 
-## Phase 4 — Souveraineté de l'hébergement (≈ 11 jours + délais externes)
+## Phase 4 — Souveraineté de l'hébergement : la vraie production (≈ 11 jours + délais externes)
 
-Les données sont aujourd'hui hébergées sur `aws-0-eu-west-1` (Irlande), établi en Phase C (`supabase/.temp/pooler-url`) et documenté dans `05_SYNTHESE.md` §8. Un produit dont l'étude de marché disqualifie ses concurrents sur ce critère et revendique zéro transfert transfrontalier ne peut pas rester sur cette infrastructure sans se placer dans la même situation que ceux qu'il disqualifie.
+**Ne bloque plus le démarchage ni les démos** (voir §0bis — STAGING sur supabase.com/Irlande est désormais un environnement de démo assumé, sans données client). Reste nécessaire avant de faire transiter la première donnée client réelle, donc avant de **signer** un pilote, pas avant de le vendre.
 
 | # | Tâche | Effort |
 |---|---|---|

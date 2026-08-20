@@ -20,7 +20,7 @@ const VarianceDashboard = lazy(() => import('./components/screens/VarianceDashbo
 const FleetHealthGrid = lazy(() => import('./components/screens/FleetHealthGrid').then(m => ({ default: m.FleetHealthGrid })));
 const InventoryDashboard = lazy(() => import('./components/screens/InventoryDashboard').then(m => ({ default: m.InventoryDashboard })));
 const WorkOrderQueue = lazy(() => import('./components/screens/WorkOrderQueue').then(m => ({ default: m.WorkOrderQueue })));
-const PMSchedulesView = lazy(() => import('./components/screens/PMSchedulesView').then(m => ({ default: m.PMSchedulesView })));
+// PMSchedulesView lazy import removed: route redirected below, out of pilot scope (see comment there).
 const EdiSuppliersView = lazy(() => import('./components/screens/EdiSuppliersView').then(m => ({ default: m.EdiSuppliersView })));
 const ConflictAlerts = lazy(() => import('./components/screens/ConflictAlerts').then(m => ({ default: m.ConflictAlerts })));
 const CaeBudgetPrioritization = lazy(() => import('./components/screens/CaeBudgetPrioritization').then(m => ({ default: m.CaeBudgetPrioritization })));
@@ -148,14 +148,11 @@ const AppLayout: React.FC = () => {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/pm-schedules"
-                element={
-                  <ProtectedRoute screenId="PM_SCHEDULES">
-                    <PMSchedulesView />
-                  </ProtectedRoute>
-                }
-              />
+              {/* PM_SCHEDULES: out of pilot scope per audit/07_ROADMAP_MVP.md Phase 0
+                  décision 6 — module non typé (13 erreurs tsc dans src/services/maintenance/),
+                  jamais déployé de façon confirmée (voir audit/08_RECONCILIATION.md), rien dans
+                  le parcours pilote n'en dépend. Redirected rather than left reachable-but-broken. */}
+              <Route path="/pm-schedules" element={<Navigate to="/forbidden" replace />} />
               <Route
                 path="/edi-suppliers"
                 element={

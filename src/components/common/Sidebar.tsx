@@ -73,12 +73,11 @@ export const Sidebar: React.FC = () => {
       icon: Wrench,
       description: t('nav.work_order_desc', {}, 'Create & approve maintenance interventions'),
     },
-    {
-      id: 'PM_SCHEDULES',
-      label: 'PM Schedules (Phase 3)',
-      icon: Calendar,
-      description: 'Maintenance préventive par km, heures & jours',
-    },
+    // PM_SCHEDULES intentionally not listed here: out of pilot scope per
+    // audit/07_ROADMAP_MVP.md Phase 0 décision 6 (non typé, ~15 erreurs tsc
+    // dans src/services/maintenance/, rien dans le parcours pilote n'en dépend).
+    // Route redirected in App.tsx — do not re-add this entry without also
+    // removing that redirect and closing out the underlying type errors.
     {
       id: 'EDI_SUPPLIERS',
       label: 'EDI & Grossistes (Phase 3)',

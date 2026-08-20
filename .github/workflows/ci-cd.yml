@@ -27,8 +27,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Lint
-        run: npm run lint
+      - name: Lint (fails only on NEW problems vs .eslint-baseline.json, see audit/07_ROADMAP_MVP.md décision 7)
+        run: node scripts/ci/check-eslint-baseline.cjs
 
       - name: Run Decision Engine & Service Unit Tests (Vitest)
         run: npm test

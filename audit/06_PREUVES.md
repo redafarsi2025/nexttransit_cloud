@@ -35,6 +35,29 @@ Chaque ligne a été rouverte au fichier cité **pendant cette passe** (pas relu
 
 **Sur ces 20 vérifications : 20 confirmées, 0 infirmées, 0 requalifiées en `[NON VÉRIFIÉ]`.**
 
+> **⚠ Correction ajoutée le 2026-08-20, après obtention de l'accès à la base hébergée** : l'item 6
+> ci-dessus (`POST /api/incidents` cible une table `incidents` inexistante → C4-3) était **vrai par
+> rapport aux migrations versionnées, mais faux par rapport à la production réelle telle qu'elle
+> était déployée au moment de cet audit** — voir `audit/08_RECONCILIATION.md`. En production,
+> `incidents` **existe** (schéma ancien, simple) et `driver_incidents` **n'existe pas** — c'est
+> l'exact inverse de ce que « 20/20 confirmées » affirmait sur la base des seules migrations. Le
+> code applicatif correspondait donc à la production réelle ; ce sont les migrations locales qui
+> avaient divergé, pas le code.
+>
+> **C'est le seul finding de tout ce cycle d'audit qui s'est révélé orienté à l'envers une fois le
+> système réellement déployé consulté**, et il illustre précisément la limite structurelle de cette
+> passe de vérification : elle a re-vérifié des affirmations en relisant des fichiers, avec la même
+> rigueur que le reste de l'audit — mais aucune de ces 20 vérifications, y compris celle-ci, n'a
+> jamais consulté le système réellement déployé avant que l'accès production ne soit obtenu, bien
+> après cette section. « Confirmé » voulait dire « confirmé contre les fichiers », pas « confirmé
+> contre la réalité » — une distinction qui n'a eu aucune conséquence sur 19 des 20 items, mais qui
+> a inversé le sens du 20ᵉ.
+>
+> Le correctif de code appliqué à la suite de ce finding (`src/api/incidents.ts` : `'incidents'` →
+> `'driver_incidents'`) **reste le bon choix** malgré cette inversion — il vise le schéma **cible**
+> que les migrations décrivent et vers lequel la base hébergée a depuis été reconstruite (Option C,
+> voir la réconciliation), pas l'état vestigial qui existait au moment de l'audit.
+
 ---
 
 ## 2. Vérification mécanique de toutes les références `fichier:ligne`
