@@ -24,6 +24,7 @@ import helmet from 'helmet';
 import { vehicleRouter } from './src/api/vehicles';
 import { maintenanceRouter } from './src/api/maintenance';
 import { pmSchedulesRouter } from './src/api/pmSchedules';
+import { pmSubscriptionsRouter } from './src/api/pmSubscriptions';
 import { workOrderRouter } from './src/api/workOrders';
 import { fuelRouter } from './src/api/fuel';
 import { inventoryRouter } from './src/api/inventory';
@@ -219,7 +220,7 @@ async function startServer() {
   app.use('/api/vehicles', vehicleRouter);
   app.use('/api/maintenance', maintenanceRouter);
   app.use('/api/pm-schedules', pmSchedulesRouter);
-  app.use('/api/pm-subscriptions', require('./src/api/pmSubscriptions').pmSubscriptionsRouter);
+  app.use('/api/pm-subscriptions', pmSubscriptionsRouter);
   app.use('/api/work-orders', workOrderRouter);
   app.use('/api/fuel', fuelRouter);
   app.use('/api/inventory', inventoryRouter);
