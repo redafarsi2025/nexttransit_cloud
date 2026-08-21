@@ -115,10 +115,10 @@ INSERT INTO public.demo_seed_snapshot (table_name, snapshot_data) VALUES
     "id": "d0a80101-0000-0000-0000-000000000001",
     "vehicle_id": "a0a80101-0000-0000-0000-000000000002",
     "tenant_id": "c0a80101-0000-0000-0000-000000000001",
-    "provider": "Volvo Trucks Algérie (Constructeur)",
-    "status": "Active",
-    "expiration_date": "2027-12-31T23:59:59Z",
-    "expiration_mileage": 300000,
+    "manufacturer": "Volvo Trucks Algérie (Constructeur)",
+    "status": "active",
+    "expiry_date": "2027-12-31T23:59:59Z",
+    "expiry_mileage": 300000,
     "covered_systems": ["Engine", "Transmission", "Cold Storage Refrigeration"]
   }
 ]'::jsonb),
@@ -190,16 +190,16 @@ BEGIN
     -- Re-inject Warranties from Snapshot
     FOR rec IN SELECT jsonb_array_elements(snapshot_data) AS elem FROM public.demo_seed_snapshot WHERE table_name = 'warranties' LOOP
         INSERT INTO public.warranties (
-            id, vehicle_id, tenant_id, provider, status, expiration_date, expiration_mileage, covered_systems
+            id, vehicle_id, tenant_id, manufacturer, status, expiry_date, expiry_mileage, covered_systems
         ) VALUES (
             (rec.elem->>'id')::uuid,
             (rec.elem->>'vehicle_id')::uuid,
             DEMO_TENANT_ID,
-            rec.elem->>'provider',
-            COALESCE(rec.elem->>'status', 'Active'),
-            (rec.elem->>'expiration_date')::timestamptz,
-            (rec.elem->>'expiration_mileage')::int,
-            COALESCE(rec.elem->'covered_systems', '[]'::jsonb)
+            rec.elem->>'manufacturer',
+            COALESCE(rec.elem->>'status', 'active'),
+            (rec.elem->>'expiry_date')::timestamptz,
+            (rec.elem->>'expiry_mileage')::int,
+            ARRAY(SELECT jsonb_array_elements_text(COALESCE(rec.elem->'covered_systems', '[]'::jsonb)))::text[]
         );
     END LOOP;
 

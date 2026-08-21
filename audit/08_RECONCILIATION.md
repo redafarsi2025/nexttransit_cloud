@@ -212,5 +212,75 @@ devait trancher seule.
 
 ---
 
-*Document de réconciliation Phase 0 — angle mort RLS de la Phase C de l'audit maintenant fermé
-(§0), mais une décision de stratégie de déploiement plus large est ouverte (§5).*
+## 6. Option C exécutée — état final (2026-08-21)
+
+> **Décision de l'utilisateur** (verbatim, résumée) : Option C — reconstruire entièrement le projet
+> hébergé depuis les migrations locales, le requalifier STAGING/DÉMO (jamais « production » ; la
+> vraie production sera l'instance auto-hébergée Algérie, Phase 4). Options A et B rejetées. Exécuté
+> intégralement : archivage (`audit/_prod_*_archive_20260820.sql`), vérification des vestiges,
+> `supabase db reset --linked`, création et exécution de `supabase/seed.sql`, comparaison
+> local/distant, mise à jour de cette section.
+
+**Trois bugs supplémentaires, tous réels et tous jamais exécutés nulle part avant cette passe, ont
+été trouvés et corrigés en testant le pipeline de reset/seed de bout en bout pour la première fois :**
+
+1. `20260807000000_demo_tenant_and_anonymous_rls.sql` utilisait des préfixes d'ID pseudo-UUID non
+   hexadécimaux (`v...`, `w...`) — cast `::uuid` impossible. Corrigé (`a...`, `d...`).
+2. La même migration insérait dans `warranties` avec les colonnes `provider`/`expiration_date`/
+   `expiration_mileage`/`covered_systems (jsonb)` — le schéma de `20260804000002_consolidated_schema.sql`,
+   remplacé le même jour par `20260804000003_warranty_module.sql` qui a `DROP`/recréé la table avec
+   `manufacturer`/`expiry_date`/`expiry_mileage`/`covered_systems (text[])`. Corrigé.
+3. `20260810000003_demo_data.sql` (fichier non commité, apparu séparément) `ALTER TABLE`ait
+   `pm_schedules` avant que cette table existe dans l'ordre des migrations (elle n'est créée qu'en
+   `20260822000000`), et son préfixe de version entrait en collision avec un fichier déjà commité
+   (`20260810000003_fix_provisioning_role.sql`). Renommé `20260822000001_demo_data.sql`.
+
+**Un quatrième bug, plus large que les trois précédents, a été trouvé en relançant les tests SQL
+localement après ces corrections** — cf. §1 ci-dessus qui l'avait déjà anticipé sans le confirmer :
+`SET LOCAL ROLE authenticated; SELECT * FROM vehicles;` échouait avec
+`permission denied for table vehicles`. Audit exhaustif de `information_schema.role_table_grants` :
+**aucune table du schéma, sauf `login_attempts`, n'a jamais reçu de `GRANT SELECT/INSERT/UPDATE/DELETE`
+pour `anon`/`authenticated` dans aucune migration versionnée** — seulement `REFERENCES`/`TRIGGER`/
+`TRUNCATE`, hérités du default ACL du rôle `postgres`. RLS était donc actif partout mais
+**inatteignable** par les rôles PostgREST réels, sur la totalité du schéma, pas seulement les 3
+tables identifiées en §1. Corrigé par une migration versionnée dédiée,
+`20260826000000_baseline_table_grants.sql` : `authenticated` reçoit SELECT/INSERT/UPDATE/DELETE sur
+toutes les tables (RLS reste le vrai filtre par ligne) ; `anon` ne reçoit SELECT que sur les 8 tables
+qui ont déjà une policy RLS `TO anon` explicite (`vehicles`, `warranties`, `fuel_logs`, `work_orders`,
+`fleet_alerts`, `inventory_items`, `driver_incidents`, `tenants`).
+
+**Divergence constatée, et volontairement non alignée, entre local et distant reconstruit** : sur le
+projet hébergé, `anon` a reçu `SELECT/INSERT/UPDATE/DELETE` sur **absolument toutes les tables**,
+y compris `profiles`, `tax_profiles`, `platform_admins`, `company_bank_accounts`,
+`social_security_profiles` — confirmé par requête directe, cette fois sur l'intégralité du schéma et
+pas seulement les 3 tables de l'échantillon §1/§2. Ce n'est pas un GRANT posé par une migration ; il
+apparaît automatiquement, à l'identique sur une base tout juste reconstruite, donc c'est un
+comportement de provisioning **de la plateforme Supabase Cloud elle-même**, hors de portée des
+migrations versionnées. **Vérifié empiriquement, pas supposé sûr** : `SET ROLE anon` puis
+`SELECT count(*)` sur ces 5 tables renvoie 0 partout, et aucune policy RLS n'a de clause `USING`
+permissive pour un rôle sans JWT (`auth.uid()`/`auth.jwt()`/`get_current_tenant_id()` valent `NULL`
+en session anonyme, et une comparaison à `NULL` n'est jamais vraie) — donc pas d'exploitation
+possible aujourd'hui. Mais l'architecture réelle repose alors **entièrement** sur l'exactitude de
+chaque policy RLS, sans filet de rattrapage au niveau GRANT, sur cet environnement précis. Le futur
+environnement de production auto-hébergé (Phase 4) démarrera, lui, depuis les migrations
+versionnées — donc avec le modèle restrictif du local (`anon` limité à 8 tables), pas celui, plus
+large, du staging Irlande actuel.
+
+**Vérifications exécutées, sorties comparées ligne à ligne local vs distant reconstruit** :
+- `scripts/diag/compare-schemas.cjs` : 43 tables, RLS activée sur les 43, identique local/distant.
+- Les 3 fichiers de `supabase/tests/` (`rls-isolation-test.sql`, `rls-role-based-policies-test.sql`,
+  `verify-tenant-foreign-keys.sql`) : les trois passent, résultats identiques local/distant.
+- Clés `.env` (`VITE_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+  `SUPABASE_SERVICE_ROLE_KEY`) : les trois répondent HTTP 200 contre le projet reconstruit —
+  `db reset --linked` n'a pas régénéré les clés, confirmé par appel réel, pas supposé. Aucune
+  reconstruction/redéploiement frontend requis.
+
+**Colonne Production, mise à jour** : reconstruite depuis les migrations le 2026-08-21, identique
+au local sur le schéma/RLS/existence des tables, vérifiée par exécution. La seule divergence
+restante et documentée est le périmètre `anon` (ci-dessus), délibérément non répliquée en local et
+sans impact vérifié sur ce projet vu qu'il ne contiendra jamais que des données de démo.
+
+---
+
+*Document de réconciliation Phase 0 — angle mort RLS de la Phase C de l'audit fermé (§0), décision de
+stratégie de déploiement tranchée et exécutée par l'utilisateur : Option C (§5, §6).*

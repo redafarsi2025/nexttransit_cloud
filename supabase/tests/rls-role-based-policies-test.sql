@@ -32,11 +32,11 @@ SELECT COUNT(*) FROM public.inventory_items;
 
 
 -- 3. TEST CASE 2: MECHANIC (Assigned Work Orders & Dispatched Alerts & Needed Inventory Only)
-SELECT set_config('request.jwt.claims', '{"tenant_id": "c0a80101-0000-0000-0000-000000000001", "role": "MECHANIC", "sub": "m1000000-0000-0000-0000-000000000001"}', true);
+SELECT set_config('request.jwt.claims', '{"tenant_id": "c0a80101-0000-0000-0000-000000000001", "role": "MECHANIC", "sub": "e1000000-0000-0000-0000-000000000001"}', true);
 
 -- MECHANIC sees only assigned work orders
 SELECT COUNT(*) FROM public.work_orders 
-WHERE assigned_mechanic_id != 'm1000000-0000-0000-0000-000000000001'; -- Expected count: 0
+WHERE assigned_mechanic_id != 'e1000000-0000-0000-0000-000000000001'; -- Expected count: 0
 
 -- MECHANIC sees only alerts on dispatched vehicles
 SELECT COUNT(*) FROM public.fleet_alerts;

@@ -99,7 +99,7 @@ BEGIN
     BEGIN
         INSERT INTO public.vehicles (id, plate, name, classification, status, status_reason, tenant_id)
         VALUES (
-            'v1a1a1a1-0000-0000-0000-000000000001', 
+            'b1a1a1a1-0000-0000-0000-000000000001',
             'TEST-PLATE-1', 
             'Intruder Truck', 
             'Standard', 
