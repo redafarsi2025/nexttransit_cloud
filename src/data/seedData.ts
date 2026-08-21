@@ -332,6 +332,17 @@ export const RBAC_MATRIX: Record<ScreenId, Record<Role, PermissionLevel>> = {
     MECHANIC: 'view',
     DRIVER: 'submit',
   },
+  TIRE_MANAGEMENT: {
+    SUPER_ADMIN: 'full',
+    TENANT_ADMIN: 'full',
+    DIRECTOR: 'view',
+    FLEET_MANAGER: 'full',
+    MAINTENANCE_MANAGER: 'full',
+    FINANCE: 'view',
+    OPERATIONS: 'view',
+    MECHANIC: 'full',
+    DRIVER: 'submit',
+  },
   TELEMETRY_STREAM: {
     SUPER_ADMIN: 'full',
     TENANT_ADMIN: 'full',

@@ -70,12 +70,12 @@ export const FeaturesSection: React.FC<FeaturesSectionProps> = ({ currentLanguag
       category: 'operations',
       icon: Fuel,
       title: isAr ? 'إدارة وقود الأسطول' : currentLanguage === 'en' ? 'Fuel & Energy Monitoring' : 'Suivi Carburant & Énergie',
-      desc: isAr 
-        ? 'تسجيل استهلاك الوقود باللتر والمسافة، كشف الشذوذ والسرقة، وتحليل البصمة الكربونية.' 
+      desc: isAr
+        ? 'تسجيل استهلاك الوقود باللتر والمسافة، مع كشف تلقائي لارتفاعات الاستهلاك غير الطبيعية (+20% عن المعدل المتحرك لـ 90 يومًا).'
         : currentLanguage === 'en'
-        ? 'Fuel log entries per liter/km, automated anomaly & theft detection, and carbon footprint tracking.'
-        : 'Journal de consommation au litre/km, détection automatique des fuites/anomalies et suivi CO2.',
-      benefit: isAr ? 'خفض 15% من ضياع المحروقات' : currentLanguage === 'en' ? 'Cuts fuel wastage & theft by 15%' : 'Réduit de 15% le gaspillage carburant',
+        ? 'Fuel log entries per liter/km, with automated consumption-spike anomaly detection (+20% over a 90-day rolling baseline).'
+        : 'Journal de consommation au litre/km, avec détection automatique des pics de consommation anormaux (+20% vs moyenne glissante 90 jours).',
+      benefit: isAr ? 'يكتشف انحرافات الاستهلاك فوريًا' : currentLanguage === 'en' ? 'Flags consumption anomalies in real time' : 'Détecte les écarts de consommation en temps réel',
     },
     {
       id: 'inventory',

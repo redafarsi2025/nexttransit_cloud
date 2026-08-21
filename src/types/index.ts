@@ -37,6 +37,7 @@ export type ScreenId =
   | 'TRANSLATION_CENTER'
   | 'SAFETY_PERFORMANCE'
   | 'FUEL_LOGS'
+  | 'TIRE_MANAGEMENT'
   | 'TELEMETRY_STREAM'
   | 'AUDIT_LOG'
   | 'INVITATIONS'
@@ -422,6 +423,39 @@ export interface FuelLog {
   odometer?: number;
   date?: string;
   route_id?: string;
+}
+
+export type TirePosition = 'FL' | 'FR' | 'RL_OUTER' | 'RL_INNER' | 'RR_OUTER' | 'RR_INNER' | 'SPARE' | 'UNASSIGNED';
+export type TireStatus = 'in_service' | 'in_stock' | 'retired' | 'needs_replacement';
+
+export interface Tire {
+  id: string;
+  tenant_id: string;
+  vehicle_id?: string | null;
+  position: TirePosition;
+  brand?: string | null;
+  model?: string | null;
+  serial_number?: string | null;
+  status: TireStatus;
+  install_date?: string | null;
+  install_odometer?: number | null;
+  latest_tread_depth_mm?: number | null;
+  rotation_due_odometer?: number | null;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TireInspection {
+  id: string;
+  tenant_id: string;
+  tire_id: string;
+  vehicle_id?: string | null;
+  inspection_date: string;
+  tread_depth_mm: number;
+  pressure_bar?: number | null;
+  notes?: string | null;
+  created_at?: string;
 }
 
 export interface AuditLog {

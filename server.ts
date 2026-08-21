@@ -38,16 +38,11 @@ import { resolveFaultCode } from './src/services/faultCodeMappingService';
 import { enqueueTelemetry } from './src/services/telemetry/queue/TelemetryQueue';
 import { TelematicsProviderType } from './src/types';
 import { supabase } from './src/lib/supabaseServer';
-import { TelematicsProviderRegistry } from './src/services/telemetry/TelematicsProviderRegistry';
-import { FlespiAdapter } from './src/services/telemetry/providers/FlespiAdapter';
-import { ManualEntryAdapter } from './src/services/telemetry/providers/ManualEntryAdapter';
-import { TraccarAdapter } from './src/services/telemetry/providers/TraccarAdapter';
+import { registerTelematicsAdapters } from './src/services/telemetry/registerAdapters';
 import { WebhookSecurityService } from './src/services/security/WebhookSecurityService';
 
 // Register core telematics adapters
-TelematicsProviderRegistry.register(FlespiAdapter);
-TelematicsProviderRegistry.register(ManualEntryAdapter);
-TelematicsProviderRegistry.register(TraccarAdapter);
+registerTelematicsAdapters();
 
 let genAIClient: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI | null {

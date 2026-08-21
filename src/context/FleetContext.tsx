@@ -31,8 +31,10 @@ import {
   ActiveFaultCode,
   PMSchedule,
   EdiSupplierPurchaseOrder,
+  Tire,
 } from '../types';
 import { fuelService } from '../services/fuelService';
+import { tireService } from '../services/tireService';
 import {
   INITIAL_VEHICLES,
   INITIAL_INVENTORY,
@@ -55,6 +57,7 @@ interface FleetContextType {
   costRecords: CostRecord[];
   alerts: FleetAlert[];
   fuelLogs: FuelLog[];
+  tires: Tire[];
   pmSchedules: PMSchedule[];
   ediOrders: EdiSupplierPurchaseOrder[];
   caeAvailableBudget: number;
@@ -105,6 +108,18 @@ interface FleetContextType {
     odometer_km: number;
     logged_at?: string;
   }) => Promise<FuelLog>;
+  updateFuelLog: (id: string, updates: Partial<{
+    liters: number;
+    cost: number;
+    odometer_km: number;
+    logged_at: string;
+    route_id: string;
+  }>) => Promise<FuelLog>;
+  deleteFuelLog: (id: string) => Promise<void>;
+  addTire: (input: Parameters<typeof tireService.addTire>[0]) => Promise<Tire>;
+  updateTire: (id: string, updates: Partial<Omit<Tire, 'id' | 'tenant_id' | 'created_at'>>) => Promise<Tire>;
+  deleteTire: (id: string) => Promise<void>;
+  addTireInspection: (input: Parameters<typeof tireService.addTireInspection>[0]) => Promise<void>;
   addVehicle: (input: Omit<Vehicle, 'id' | 'active_fault_codes' | 'maintenance_history'>) => Promise<{ error: string | null }>;
   addVehiclesBulk: (inputs: Omit<Vehicle, 'id' | 'active_fault_codes' | 'maintenance_history'>[]) => Promise<{ error: string | null }>;
   updateVehicle: (vehicleId: string, patch: Partial<Omit<Vehicle, 'id' | 'active_fault_codes' | 'maintenance_history'>>) => Promise<{ error: string | null }>;
@@ -135,6 +150,7 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [costRecords, setCostRecords] = useState<CostRecord[]>([]);
   const [alerts, setAlerts] = useState<FleetAlert[]>([]);
   const [fuelLogs, setFuelLogs] = useState<FuelLog[]>([]);
+  const [tires, setTires] = useState<Tire[]>([]);
   const [pmSchedules, setPmSchedules] = useState<PMSchedule[]>([]);
   const [ediOrders, setEdiOrders] = useState<EdiSupplierPurchaseOrder[]>([]);
 
@@ -188,6 +204,14 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (logs && logs.length > 0) {
         setFuelLogs(logs);
       }
+    }).catch(() => {
+      setSyncStatus('error');
+    });
+  }, [setSyncStatus]);
+
+  useEffect(() => {
+    tireService.getTires().then((t) => {
+      setTires(t);
     }).catch(() => {
       setSyncStatus('error');
     });
@@ -253,6 +277,78 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
     setCostRecords((prev) => [...prev, costRecord]);
     return newLog;
+  };
+
+  const updateFuelLog = async (
+    id: string,
+    updates: Partial<{
+      liters: number;
+      cost: number;
+      odometer_km: number;
+      logged_at: string;
+      route_id: string;
+    }>
+  ) => {
+    const updated = await fuelService.updateFuelLog(id, updates);
+    setFuelLogs((prev) => prev.map((log) => (log.id === id ? updated : log)));
+    recordAudit(
+      'fuel_log',
+      id,
+      'UPDATE',
+      {},
+      updates,
+      currentUser?.id || 'sys',
+      currentRole,
+      activeTenantId
+    );
+    return updated;
+  };
+
+  const deleteFuelLog = async (id: string) => {
+    await fuelService.deleteFuelLog(id);
+    setFuelLogs((prev) => prev.filter((log) => log.id !== id));
+    recordAudit(
+      'fuel_log',
+      id,
+      'DELETE',
+      {},
+      {},
+      currentUser?.id || 'sys',
+      currentRole,
+      activeTenantId
+    );
+  };
+
+  const addTire = async (input: Parameters<typeof tireService.addTire>[0]) => {
+    const created = await tireService.addTire({ ...input, tenant_id: input.tenant_id || activeTenantId });
+    setTires((prev) => [created, ...prev]);
+    recordAudit('tire', created.id, 'CREATE', {}, input, currentUser?.id || 'sys', currentRole, activeTenantId);
+    return created;
+  };
+
+  const updateTire = async (id: string, updates: Partial<Omit<Tire, 'id' | 'tenant_id' | 'created_at'>>) => {
+    const updated = await tireService.updateTire(id, updates);
+    setTires((prev) => prev.map((tire) => (tire.id === id ? updated : tire)));
+    recordAudit('tire', id, 'UPDATE', {}, updates, currentUser?.id || 'sys', currentRole, activeTenantId);
+    return updated;
+  };
+
+  const deleteTire = async (id: string) => {
+    await tireService.deleteTire(id);
+    setTires((prev) => prev.filter((tire) => tire.id !== id));
+    recordAudit('tire', id, 'DELETE', {}, {}, currentUser?.id || 'sys', currentRole, activeTenantId);
+  };
+
+  const addTireInspection = async (input: Parameters<typeof tireService.addTireInspection>[0]) => {
+    const created = await tireService.addTireInspection({ ...input, tenant_id: input.tenant_id || activeTenantId });
+    // The DB trigger updates tires.latest_tread_depth_mm; reflect it locally too so the UI
+    // doesn't need a full refetch.
+    setTires((prev) =>
+      prev.map((tire) =>
+        tire.id === input.tire_id ? { ...tire, latest_tread_depth_mm: created.tread_depth_mm } : tire
+      )
+    );
+    recordAudit('tire_inspection', created.id, 'CREATE', {}, input, currentUser?.id || 'sys', currentRole, activeTenantId);
   };
 
   const DEMO_TENANT_ID = 'c0a80101-0000-0000-0000-000000000001';
@@ -1122,6 +1218,13 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         resolveConflict,
         markAlertRead,
         addFuelLog,
+        updateFuelLog,
+        deleteFuelLog,
+        tires,
+        addTire,
+        updateTire,
+        deleteTire,
+        addTireInspection,
         addVehicle,
         addVehiclesBulk,
         updateVehicle,

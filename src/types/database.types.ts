@@ -623,6 +623,7 @@ export type Database = {
       }
       device_mappings: {
         Row: {
+          capabilities: Json | null
           created_at: string
           external_device_id: string
           id: string
@@ -632,6 +633,7 @@ export type Database = {
           vehicle_id: string
         }
         Insert: {
+          capabilities?: Json | null
           created_at?: string
           external_device_id: string
           id?: string
@@ -641,6 +643,7 @@ export type Database = {
           vehicle_id: string
         }
         Update: {
+          capabilities?: Json | null
           created_at?: string
           external_device_id?: string
           id?: string
@@ -2059,6 +2062,133 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tire_inspections: {
+        Row: {
+          created_at: string
+          id: string
+          inspection_date: string
+          notes: string | null
+          pressure_bar: number | null
+          tenant_id: string
+          tire_id: string
+          tread_depth_mm: number
+          vehicle_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inspection_date?: string
+          notes?: string | null
+          pressure_bar?: number | null
+          tenant_id?: string
+          tire_id: string
+          tread_depth_mm: number
+          vehicle_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inspection_date?: string
+          notes?: string | null
+          pressure_bar?: number | null
+          tenant_id?: string
+          tire_id?: string
+          tread_depth_mm?: number
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tire_inspections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tire_inspections_tire_id_fkey"
+            columns: ["tire_id"]
+            isOneToOne: false
+            referencedRelation: "tires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tire_inspections_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tires: {
+        Row: {
+          brand: string | null
+          created_at: string
+          id: string
+          install_date: string | null
+          install_odometer: number | null
+          latest_tread_depth_mm: number | null
+          model: string | null
+          notes: string | null
+          position: string
+          rotation_due_odometer: number | null
+          serial_number: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          id?: string
+          install_date?: string | null
+          install_odometer?: number | null
+          latest_tread_depth_mm?: number | null
+          model?: string | null
+          notes?: string | null
+          position?: string
+          rotation_due_odometer?: number | null
+          serial_number?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          id?: string
+          install_date?: string | null
+          install_odometer?: number | null
+          latest_tread_depth_mm?: number | null
+          model?: string | null
+          notes?: string | null
+          position?: string
+          rotation_due_odometer?: number | null
+          serial_number?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tires_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tires_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]

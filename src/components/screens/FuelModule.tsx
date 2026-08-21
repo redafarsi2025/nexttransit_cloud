@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import Papa from 'papaparse';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useFleet } from '../../context/FleetContext';
 import { useTenant } from '../../context/TenantContext';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -17,10 +18,14 @@ import {
   Droplet,
   History,
   Upload,
+  Pencil,
+  Trash2,
+  X as XIcon,
+  Save,
 } from 'lucide-react';
 
 export const FuelModule: React.FC = () => {
-  const { vehicles, fuelLogs, addFuelLog } = useFleet();
+  const { vehicles, fuelLogs, addFuelLog, updateFuelLog, deleteFuelLog } = useFleet();
   const { activeTenant } = useTenant();
   const { t } = useLocalization();
 
@@ -41,8 +46,58 @@ export const FuelModule: React.FC = () => {
     message: string;
   } | null>(null);
 
+  // Row edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLiters, setEditLiters] = useState<string>('');
+  const [editCost, setEditCost] = useState<string>('');
+  const [editOdometer, setEditOdometer] = useState<string>('');
+  const [rowActionError, setRowActionError] = useState<string | null>(null);
+
   const currencySymbol = activeTenant?.currencySymbol || '$';
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const startEdit = (item: CalculatedFuelLog) => {
+    setEditingId(item.log.id);
+    setEditLiters(String(item.log.liters));
+    setEditCost(String(item.log.cost));
+    setEditOdometer(String(item.log.odometer_km));
+    setRowActionError(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setRowActionError(null);
+  };
+
+  const saveEdit = async (id: string) => {
+    const liters = parseFloat(editLiters);
+    const cost = parseFloat(editCost);
+    const odometer = parseInt(editOdometer, 10);
+
+    if (isNaN(liters) || liters <= 0 || isNaN(cost) || cost < 0 || isNaN(odometer) || odometer <= 0) {
+      setRowActionError(t('fuel.invalid_input', {}, 'Please enter valid positive values for Liters, Cost, and Odometer.'));
+      return;
+    }
+
+    try {
+      await updateFuelLog(id, { liters, cost, odometer_km: odometer });
+      setEditingId(null);
+      setRowActionError(null);
+    } catch (err) {
+      setRowActionError(t('fuel.update_error', {}, 'Failed to update fuel log.'));
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm(t('fuel.confirm_delete', {}, 'Delete this fuel log? This cannot be undone.'))) {
+      return;
+    }
+    try {
+      await deleteFuelLog(id);
+    } catch (err) {
+      setRowActionError(t('fuel.delete_error', {}, 'Failed to delete fuel log.'));
+    }
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -115,6 +170,17 @@ export const FuelModule: React.FC = () => {
   const anomalyLogs = useMemo(() => {
     return evaluatedLogs.filter((item) => item.isAnomalous);
   }, [evaluatedLogs]);
+
+  // Consumption trend chart data (only points with a computed L/100km value)
+  const trendChartData = useMemo(() => {
+    return filteredEvaluatedLogs
+      .filter((item) => item.consumptionLPer100Km !== null)
+      .map((item) => ({
+        date: new Date(item.log.logged_at).toLocaleDateString(),
+        consumption: item.consumptionLPer100Km,
+        baseline: item.trailing90DayAvg ?? undefined,
+      }));
+  }, [filteredEvaluatedLogs]);
 
   // High-level aggregates
   const totalLiters = useMemo(
@@ -433,6 +499,28 @@ export const FuelModule: React.FC = () => {
             </div>
           </div>
 
+          {trendChartData.length > 1 && (
+            <div className="h-48 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendChartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="date" fontSize={10} stroke="#94a3b8" />
+                  <YAxis fontSize={10} stroke="#94a3b8" unit="L" />
+                  <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px' }} />
+                  <Line type="monotone" dataKey="consumption" name="L/100km" stroke="#4f46e5" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="baseline" name="90d avg" stroke="#94a3b8" strokeWidth={1} strokeDasharray="4 4" dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {rowActionError && (
+            <div className="p-2.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-2">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              {rowActionError}
+            </div>
+          )}
+
           <div className="overflow-x-auto border border-slate-100 rounded-xl">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
@@ -443,13 +531,79 @@ export const FuelModule: React.FC = () => {
                   <th className="p-3 text-right">Distance</th>
                   <th className="p-3 text-right">Liters</th>
                   <th className="p-3 text-right">Cost</th>
+                  <th className="p-3 text-right">Cost/km</th>
                   <th className="p-3 text-right">L/100km</th>
                   <th className="p-3 text-center">Status</th>
+                  <th className="p-3 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                 {filteredEvaluatedLogs.map((item) => {
                   const vehicle = vehicles.find((v) => v.id === item.log.vehicle_id);
+                  const isEditing = editingId === item.log.id;
+                  const costPerKm =
+                    item.distanceKm && item.distanceKm > 0
+                      ? item.log.cost / item.distanceKm
+                      : null;
+
+                  if (isEditing) {
+                    return (
+                      <tr key={item.log.id} className="bg-indigo-50/40">
+                        <td className="p-2 font-mono text-slate-600" colSpan={2}>
+                          {new Date(item.log.logged_at).toLocaleDateString()} — {vehicle?.plate || item.log.vehicle_id}
+                        </td>
+                        <td className="p-2">
+                          <input
+                            type="number"
+                            value={editOdometer}
+                            onChange={(e) => setEditOdometer(e.target.value)}
+                            className="w-24 bg-white border border-slate-300 rounded-lg p-1.5 text-xs font-mono"
+                          />
+                        </td>
+                        <td className="p-2 text-right text-slate-400">—</td>
+                        <td className="p-2">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={editLiters}
+                            onChange={(e) => setEditLiters(e.target.value)}
+                            className="w-20 bg-white border border-slate-300 rounded-lg p-1.5 text-xs font-mono text-right"
+                          />
+                        </td>
+                        <td className="p-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editCost}
+                            onChange={(e) => setEditCost(e.target.value)}
+                            className="w-20 bg-white border border-slate-300 rounded-lg p-1.5 text-xs font-mono text-right"
+                          />
+                        </td>
+                        <td className="p-2 text-right text-slate-400" colSpan={2}>—</td>
+                        <td className="p-2 text-center text-slate-400">—</td>
+                        <td className="p-2">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => saveEdit(item.log.id)}
+                              title="Save"
+                              className="p-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 cursor-pointer"
+                            >
+                              <Save className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEdit}
+                              title="Cancel"
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 cursor-pointer"
+                            >
+                              <XIcon className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
 
                   return (
                     <tr
@@ -479,6 +633,9 @@ export const FuelModule: React.FC = () => {
                       <td className="p-3 text-right font-bold text-slate-900">
                         {currencySymbol}{item.log.cost.toLocaleString()}
                       </td>
+                      <td className="p-3 text-right font-mono text-slate-700">
+                        {costPerKm !== null ? `${currencySymbol}${costPerKm.toFixed(2)}/km` : '—'}
+                      </td>
                       <td className="p-3 text-right font-mono font-bold">
                         {item.consumptionLPer100Km !== null ? (
                           <span
@@ -505,6 +662,26 @@ export const FuelModule: React.FC = () => {
                             Normal
                           </span>
                         )}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => startEdit(item)}
+                            title="Edit"
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 cursor-pointer"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(item.log.id)}
+                            title="Delete"
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 cursor-pointer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

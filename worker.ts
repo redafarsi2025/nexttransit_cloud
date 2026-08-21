@@ -7,10 +7,16 @@ import './src/config/env';
 import { validateDatabaseContract } from './src/config/dbValidation';
 
 import { telemetryWorker, queueMetricsCollector } from './src/services/telemetry/queue/TelemetryWorker';
+import { registerTelematicsAdapters } from './src/services/telemetry/registerAdapters';
 import http from 'http';
 import { metricsRegistry, nexttransitBuildInfo } from './src/lib/metrics';
 
 console.log('[Worker] Starting Telemetry Worker...');
+
+// TelematicsProviderRegistry is in-process memory -- the worker is a separate process from the
+// API server, so it must register the adapters itself or every job fails with
+// "Unknown or unregistered provider".
+registerTelematicsAdapters();
 
 // Validate Database Contract asynchronously but blockingly at startup
 validateDatabaseContract();

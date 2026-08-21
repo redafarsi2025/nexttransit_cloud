@@ -32,6 +32,7 @@ const TenantConfig = lazy(() => import('./components/screens/TenantConfig').then
 const TranslationCenter = lazy(() => import('./components/screens/TranslationCenter').then(m => ({ default: m.TranslationCenter })));
 const SafetyPerformance = lazy(() => import('./components/screens/SafetyPerformance').then(m => ({ default: m.SafetyPerformance })));
 const FuelModule = lazy(() => import('./components/screens/FuelModule').then(m => ({ default: m.FuelModule })));
+const TireModule = lazy(() => import('./components/screens/TireModule').then(m => ({ default: m.TireModule })));
 const TelemetryStream = lazy(() => import('./components/screens/TelemetryStream').then(m => ({ default: m.TelemetryStream })));
 const AuditLog = lazy(() => import('./components/screens/AuditLog').then(m => ({ default: m.AuditLog })));
 const InvitationsScreen = lazy(() => import('./components/screens/InvitationsScreen').then(m => ({ default: m.InvitationsScreen })));
@@ -249,6 +250,14 @@ const AppLayout: React.FC = () => {
                 element={
                   <ProtectedRoute screenId="FUEL_LOGS">
                     <FuelModule />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tires"
+                element={
+                  <ProtectedRoute screenId="TIRE_MANAGEMENT">
+                    <TireModule />
                   </ProtectedRoute>
                 }
               />

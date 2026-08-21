@@ -20,6 +20,7 @@ import {
   Building2,
   Globe,
   Fuel,
+  CircleDot,
   Sparkles,
   Radio,
   Mail,
@@ -121,6 +122,12 @@ export const Sidebar: React.FC = () => {
       icon: Fuel,
       description: t('nav.fuel_desc', {}, 'Log fuel, consumption L/100km & R7 anomaly detection'),
       badgeCount: alerts.filter((a) => a.rule_id === 'R7' && !a.read).length,
+    },
+    {
+      id: 'TIRE_MANAGEMENT',
+      label: t('nav.tire_management', {}, 'Tire Management'),
+      icon: CircleDot,
+      description: t('nav.tire_desc', {}, 'Track tire position, tread depth & rotation schedule'),
     },
     {
       id: 'TELEMETRY_STREAM',
