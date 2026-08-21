@@ -171,8 +171,8 @@ const DICTIONARY_RAW_DATA: RawTranslationItem[] = [
   // ==========================================
   { key: 'health.header_tag', namespace: 'health', fr: 'Grille Opérationnelle & Technique', ar: 'شبكة التشغيل والتقنية للأسطول', en: 'Technical & Operations Fleet Grid' },
   { key: 'health.header_title', namespace: 'health', fr: 'Télématique de Santé & Diagnostic de la Flotte', ar: 'الاتصالات والتشخيص الفني للأسطول', en: 'Fleet Health Telemetry & Diagnostic Grid' },
-  { key: 'health.header_desc', namespace: 'health', fr: 'Suivi du statut en temps réel de l\'ensemble des véhicules avec explications en langage clair.', ar: 'متابعة مباشرة لحالة جميع المركبات مع ملخص توضيحي بسيط للجميع.', en: 'Real-time status tracking across all fleet vehicles with single-line plain language status explanations.' },
-  { key: 'health.search_placeholder', namespace: 'health', fr: 'Rechercher par plaque ou nom de véhicule...', ar: 'بحث حسب رقم اللوحة أو اسم المركبة...', en: 'Search by plate or vehicle name...' },
+  { key: 'health.header_desc', namespace: 'health', fr: 'Suivi du statut en temps réel avec explications en langage clair — ajout, modification, suppression et import en masse des véhicules.', ar: 'متابعة مباشرة لحالة جميع المركبات مع إمكانية الإضافة والتعديل والحذف والاستيراد الجماعي.', en: 'Real-time status tracking with plain-language explanations — add, edit, delete, and bulk-import vehicles.' },
+  { key: 'health.search_placeholder', namespace: 'health', fr: 'Plaque, marque, modèle ou VIN…', ar: 'رقم اللوحة، الماركة، الطراز أو رقم الهيكل...', en: 'Plate, brand, model or VIN…' },
   { key: 'health.simulate_obd', namespace: 'health', fr: 'Simuler Défaut OBD-II', ar: 'محاكاة عطل تشخيصي OBD-II', en: 'Simulate OBD-II Fault' },
   { key: 'health.vehicle_card', namespace: 'health', fr: 'Fiche Véhicule', ar: 'بطاقة المركبة', en: 'Vehicle Card' },
   { key: 'health.status_explanation', namespace: 'health', fr: 'Explication du Statut', ar: 'توضيح سبب الحالة', en: 'Status Explanation' },

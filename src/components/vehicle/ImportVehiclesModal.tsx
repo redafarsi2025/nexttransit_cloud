@@ -21,8 +21,8 @@ export const ImportVehiclesModal: React.FC<ImportVehiclesModalProps> = ({ onClos
 
   const handleDownloadTemplate = () => {
     // Template with headers and one sample row
-    const headers = ['plate', 'name', 'classification', 'status', 'mileage'];
-    const sample = ['16-01234-A', 'Transit-024', 'Standard', 'Healthy', '15000'];
+    const headers = ['plate', 'name', 'vin', 'classification', 'status', 'mileage'];
+    const sample = ['16-01234-A', 'Transit-024', 'VF1BB0J0H12345678', 'Standard', 'Healthy', '15000'];
     const csvContent = [headers.join(','), sample.join(',')].join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -68,6 +68,7 @@ export const ImportVehiclesModal: React.FC<ImportVehiclesModalProps> = ({ onClos
             validData.push({
               plate: String(row.plate).trim().toUpperCase(),
               name: String(row.name).trim(),
+              vin: row.vin ? String(row.vin).trim().toUpperCase() : undefined,
               classification: (row.classification === 'Keystone' ? 'Keystone' : 'Standard') as VehicleClassification,
               status: (['Healthy', 'Attention', 'Critical'].includes(row.status) ? row.status : 'Healthy') as VehicleStatus,
               mileage: parseInt(row.mileage) || 0,
@@ -94,9 +95,10 @@ export const ImportVehiclesModal: React.FC<ImportVehiclesModalProps> = ({ onClos
     const payload = parsedData.map(row => ({
       plate: row.plate,
       name: row.name,
+      vin: row.vin,
       classification: row.classification,
       status: row.status,
-      lifecycle_status: 'IN_SERVICE' as 'IN_SERVICE',
+      lifecycle_status: 'IN_SERVICE' as const,
       status_reason: 'Importé en masse depuis un fichier',
       mileage: row.mileage,
       next_service_mileage: row.mileage + 15000,
@@ -177,7 +179,7 @@ export const ImportVehiclesModal: React.FC<ImportVehiclesModalProps> = ({ onClos
             <p className="text-sm font-bold text-slate-700">
               {file ? file.name : "Cliquez pour sélectionner un fichier CSV"}
             </p>
-            <p className="text-xs text-slate-500 mt-1">Colonnes requises: plate, name</p>
+            <p className="text-xs text-slate-500 mt-1">Colonnes requises: plate, name · optionnelles: vin, classification, status, mileage</p>
           </div>
 
           {/* Errors */}

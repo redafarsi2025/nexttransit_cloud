@@ -20,6 +20,7 @@ import { useLocalization } from '../../context/LocalizationContext';
 // -------------------------------------------------------
 type VehicleFormInput = {
   plate: string;
+  vin: string;
   name: string;
   classification: VehicleClassification;
   status: VehicleStatus;
@@ -46,6 +47,7 @@ type VehicleFormInput = {
 
 const DEFAULT_FORM: VehicleFormInput = {
   plate: '',
+  vin: '',
   name: '',
   classification: 'Standard',
   status: 'Healthy',
@@ -86,6 +88,7 @@ interface AddEditVehicleModalProps {
 function toFormInput(v: Vehicle): VehicleFormInput {
   return {
     plate: v.plate,
+    vin: v.vin || '',
     name: v.name,
     classification: v.classification,
     status: v.status,
@@ -184,6 +187,7 @@ export const AddEditVehicleModal: React.FC<AddEditVehicleModalProps> = ({
 
     const payload: Omit<Vehicle, 'id' | 'active_fault_codes' | 'maintenance_history'> = {
       plate: form.plate.trim().toUpperCase(),
+      vin: form.vin.trim().toUpperCase() || undefined,
       name: form.name.trim(),
       classification: form.classification,
       status: form.status,
@@ -333,6 +337,19 @@ export const AddEditVehicleModal: React.FC<AddEditVehicleModalProps> = ({
                   disabled={isReadOnly}
                   placeholder="ex: Transit-024"
                   className={inputCls(errors.name)}
+                />
+              </Field>
+
+              <Field label={t('vehicle.modal.vin', {}, 'Numéro de châssis (VIN)')} error={errors.vin}>
+                <input
+                  id="vehicle-vin"
+                  type="text"
+                  value={form.vin}
+                  onChange={e => set('vin', e.target.value)}
+                  disabled={isReadOnly}
+                  placeholder="ex: VF1BB0J0H12345678"
+                  maxLength={32}
+                  className={`${inputCls(errors.vin)} font-mono uppercase`}
                 />
               </Field>
 

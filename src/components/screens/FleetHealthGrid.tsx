@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useFleet } from '../../context/FleetContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
+import { RBAC_MATRIX } from '../../data/seedData';
 import { KPIBadge } from '../common/KPIBadge';
 import { AddEditVehicleModal } from '../vehicle/AddEditVehicleModal';
 import { ImportVehiclesModal } from '../vehicle/ImportVehiclesModal';
@@ -39,10 +40,13 @@ export const FleetHealthGrid: React.FC = () => {
   const [showSubscores, setShowSubscores] = useState<Record<string, boolean>>({});
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
 
-  // RBAC Guards for CRUD
-  const canAdd = ['SUPER_ADMIN', 'FLEET_MANAGER', 'MAINTENANCE_MANAGER'].includes(currentRole);
-  const canEdit = ['SUPER_ADMIN', 'FLEET_MANAGER', 'MAINTENANCE_MANAGER'].includes(currentRole);
-  const canDelete = ['SUPER_ADMIN', 'FLEET_MANAGER'].includes(currentRole);
+  // RBAC Guards for CRUD — derived from the central RBAC_MATRIX (single source of truth) rather
+  // than a locally-hardcoded role list, which had drifted out of sync and silently excluded
+  // TENANT_ADMIN (whose RBAC_MATRIX entry for this screen is 'full') from every CRUD action.
+  const hasFullFleetAccess = RBAC_MATRIX.FLEET_HEALTH_GRID[currentRole] === 'full';
+  const canAdd = hasFullFleetAccess;
+  const canEdit = hasFullFleetAccess;
+  const canDelete = hasFullFleetAccess;
 
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -88,7 +92,11 @@ export const FleetHealthGrid: React.FC = () => {
     if (classificationFilter !== 'ALL' && v.classification !== classificationFilter) return false;
     if (searchQuery.trim() !== '') {
       const q = searchQuery.toLowerCase();
-      return v.plate.toLowerCase().includes(q) || v.name.toLowerCase().includes(q);
+      return (
+        v.plate.toLowerCase().includes(q) ||
+        v.name.toLowerCase().includes(q) ||
+        (v.vin || '').toLowerCase().includes(q)
+      );
     }
     return true;
   });
@@ -189,7 +197,7 @@ export const FleetHealthGrid: React.FC = () => {
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search plate or model..."
+              placeholder={t('health.search_placeholder', {}, 'Plaque, marque, modèle ou VIN…')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
@@ -312,8 +320,15 @@ export const FleetHealthGrid: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50/60 px-2.5 py-1 rounded-lg w-max">
-                  Plate: {vehicle.plate}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50/60 px-2.5 py-1 rounded-lg w-max">
+                    Plate: {vehicle.plate}
+                  </div>
+                  {vehicle.vin && (
+                    <div className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg w-max">
+                      VIN: {vehicle.vin}
+                    </div>
+                  )}
                 </div>
 
                 {/* Plain-Language Status Reason */}
