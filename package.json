@@ -17,6 +17,8 @@
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "seed:demo-account": "tsx --env-file=.env scripts/seed-demo-account.ts",
+    "sync:demo-snapshot": "tsx --env-file=.env scripts/sync-demo-snapshot.ts",
     "smoke:docker": "bash scripts/smoke/docker-healthcheck.sh && bash scripts/smoke/smoke-api.sh && bash scripts/smoke/smoke-telemetry.sh && bash scripts/smoke/smoke-idempotency.sh && bash scripts/smoke/smoke-worker-restart.sh && bash scripts/smoke/smoke-redis-recovery.sh"
   },
   "dependencies": {

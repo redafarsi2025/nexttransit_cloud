@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Role, ScreenId, UserProfile, Subscription } from '../types';
 import { screenToRouteMap, getRoleDefaultRoute } from '../routes/routeMap';
 import { ensureTenantProvisioned } from '../services/authService';
+import { DEMO_TENANT_ID } from '../config/demoAccount';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -15,8 +16,7 @@ interface AuthContextType {
   isPlatformAdmin: boolean;
   syncStatus: 'online' | 'offline' | 'syncing' | 'error';
   isDemoMode: boolean;
-  enterDemoMode: () => void;
-  exitDemoMode: () => void;
+  exitDemoMode: () => Promise<void>;
   navigate: ((path: string) => void) | null;
   setNavigate: (fn: (path: string) => void) => void;
   refreshUserSession: () => Promise<void>;
@@ -37,7 +37,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isRoleSelectorOpen, setIsRoleSelectorOpen] = useState<boolean>(false);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<'online' | 'offline' | 'syncing' | 'error'>('online');
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
+  // Demo mode is derived from the authenticated user's tenant, not a separate flag — the demo
+  // "account" is a real Supabase Auth login (see src/config/demoAccount.ts), not a client-only
+  // simulation, so there is nothing to toggle independently of who is actually logged in.
+  const isDemoMode = userProfile?.tenant_id === DEMO_TENANT_ID;
   // navigateRef holds the react-router navigate function injected by AppLayout
   const navigateRef = useRef<((path: string) => void) | null>(null);
 
@@ -106,7 +109,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (isAdmin) {
               // Platform admins always land on the platform admin panel
               navigateRef.current('/admin');
-            } else if (profile.tenant_id && profile.tenant_id !== 'c0a80101-0000-0000-0000-000000000001') {
+            } else if (profile.tenant_id && profile.tenant_id !== DEMO_TENANT_ID) {
               // Query tenant to check onboarding / workspace configuration status
               const { data: tenant } = await supabase
                 .from('tenants')
@@ -195,16 +198,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [refreshUserSession]);
 
 
-  const enterDemoMode = useCallback(() => {
-    setIsDemoMode(true);
-    setCurrentRole('DIRECTOR');
-    if (navigateRef.current) {
-      navigateRef.current('/dashboard');
-    }
-  }, []);
-
-  const exitDemoMode = useCallback(() => {
-    setIsDemoMode(false);
+  const exitDemoMode = useCallback(async () => {
+    await supabase.auth.signOut();
     if (navigateRef.current) {
       navigateRef.current('/');
     }
@@ -222,7 +217,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isPlatformAdmin,
         syncStatus,
         isDemoMode,
-        enterDemoMode,
         exitDemoMode,
         navigate: navigateRef.current,
         setNavigate,

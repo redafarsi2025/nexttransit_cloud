@@ -15,7 +15,7 @@ describe('demoSeedService Smoke Test', () => {
   });
 
   describe('generateLargeFleetDemoData', () => {
-    it('generates a full enterprise dataset for Numilog with 200 heavy trucks', () => {
+    it('generates a heterogeneous transport & logistics fleet for Numilog (~83 vehicles)', () => {
       const dataset = generateLargeFleetDemoData(DEMO_TENANT_UUID);
 
       // Verify tenant config
@@ -23,16 +23,23 @@ describe('demoSeedService Smoke Test', () => {
       expect(dataset.tenantConfig.societyName).toContain('Numilog Logistics Spa');
 
       // Verify row counts
-      expect(dataset.vehicles).toHaveLength(200);
-      expect(dataset.warranties.length).toBeGreaterThanOrEqual(200);
-      expect(dataset.fuelLogs.length).toBeGreaterThanOrEqual(200);
+      expect(dataset.vehicles).toHaveLength(83);
+      expect(dataset.warranties.length).toBeGreaterThanOrEqual(83);
+      // Trailers (RM-*) are non-motorized and excluded from fuel logs.
+      expect(dataset.fuelLogs.length).toBeGreaterThanOrEqual(75);
       expect(dataset.inventoryItems.length).toBeGreaterThanOrEqual(10);
       expect(dataset.workOrders.length).toBeGreaterThanOrEqual(5);
-      expect(dataset.deviceMappings.length).toBeGreaterThanOrEqual(200);
+      expect(dataset.deviceMappings.length).toBeGreaterThanOrEqual(75);
       expect(dataset.auditLogs.length).toBeGreaterThanOrEqual(3);
       expect(dataset.incidents.length).toBeGreaterThanOrEqual(2);
       expect(dataset.costRecords.length).toBeGreaterThanOrEqual(4);
       expect(dataset.alerts.length).toBeGreaterThanOrEqual(7);
+    });
+
+    it('covers every heterogeneous vehicle category (trucks, vans, reefers, buses, forklifts, trailers)', () => {
+      const dataset = generateLargeFleetDemoData(DEMO_TENANT_UUID);
+      const prefixes = new Set(dataset.vehicles.map((v) => v.id.split('-')[0]));
+      expect(prefixes).toEqual(new Set(['SR', 'CP', 'FG', 'FR', 'BU', 'CE', 'RM']));
     });
 
     it('guarantees that at least one alert exists for each rule R1 through R7 out of the box', () => {
@@ -69,9 +76,9 @@ describe('demoSeedService Smoke Test', () => {
 
       expect(result.success).toBe(true);
       expect(result.tenantId).toBe(DEMO_TENANT_UUID);
-      expect(result.counts.vehicles).toBe(200);
-      expect(result.counts.warranties).toBeGreaterThanOrEqual(200);
-      expect(result.counts.fuel_logs).toBeGreaterThanOrEqual(200);
+      expect(result.counts.vehicles).toBe(83);
+      expect(result.counts.warranties).toBeGreaterThanOrEqual(83);
+      expect(result.counts.fuel_logs).toBeGreaterThanOrEqual(75);
       expect(result.counts.alerts).toBeGreaterThanOrEqual(7);
       expect(result.counts.work_orders).toBeGreaterThanOrEqual(5);
       expect(result.counts.inventory_items).toBeGreaterThanOrEqual(10);

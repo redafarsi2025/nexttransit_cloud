@@ -2,6 +2,8 @@ import React, { Suspense, lazy, useState, useMemo } from 'react';
 import { useLocalization } from '../../context/LocalizationContext';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { loginUser } from '../../services/authService';
+import { DEMO_EMAIL, DEMO_PASSWORD } from '../../config/demoAccount';
 import { AuthModal } from '../common/AuthModal';
 import { LanguageSelector } from '../localization/LanguageSelector';
 
@@ -53,6 +55,8 @@ import {
   Send,
   Check,
   Calendar,
+  Loader2,
+  Copy,
 } from 'lucide-react';
 
 // Scenario interface for dynamic KPI preview
@@ -69,13 +73,32 @@ interface Scenario {
 
 export const LandingPage: React.FC = () => {
   const { currentLanguage, setLanguage, dir } = useLocalization();
-  const { currentRole, changeScreen, setIsRoleSelectorOpen, currentUser, enterDemoMode } = useAuth();
+  const { currentRole, changeScreen, setIsRoleSelectorOpen, currentUser, refreshUserSession } = useAuth();
 
   // Active scenario for dynamic KPI visualization
   const [activeScenarioId, setActiveScenarioId] = useState<string>('sahara');
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [authModalIsSignUp, setAuthModalIsSignUp] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [isDemoLoading, setIsDemoLoading] = useState<boolean>(false);
+  const [demoLoginError, setDemoLoginError] = useState<string | null>(null);
+
+  const handleTryLiveDemo = async () => {
+    setIsDemoLoading(true);
+    setDemoLoginError(null);
+    try {
+      await loginUser(DEMO_EMAIL, DEMO_PASSWORD);
+      await refreshUserSession();
+    } catch (e) {
+      setDemoLoginError(
+        currentLanguage === 'en'
+          ? 'Live demo temporarily unavailable, please try again.'
+          : "Démo en direct temporairement indisponible, réessayez."
+      );
+    } finally {
+      setIsDemoLoading(false);
+    }
+  };
 
   // Hero Interactive Card active tab ('cae' | 'obd' | 'fuel' | 'ai')
   const [heroTab, setHeroTab] = useState<'cae' | 'obd' | 'fuel' | 'ai'>('cae');
@@ -472,23 +495,44 @@ export const LandingPage: React.FC = () => {
               <ArrowRight className="h-4 w-4" />
             </button>
 
-            {/* Demo CTA — no auth required, read-only anon RLS tenant */}
-            <button
-              id="hero-try-demo-btn"
-              onClick={() => enterDemoMode()}
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border border-emerald-400/40 bg-emerald-400/10 hover:bg-emerald-400/20 text-emerald-300 text-sm font-bold transition-all hover:scale-[1.02] cursor-pointer backdrop-blur-xs shadow-sm shadow-emerald-500/10"
-            >
-              <Zap className="h-4 w-4" />
-              <span>
-                {currentLanguage === 'ar'
-                  ? 'تجربة النظام مجاناً'
-                  : currentLanguage === 'en'
-                  ? 'Try Live Demo'
-                  : 'Essayer la Démo'}
-              </span>
-            </button>
+            {/* Live demo CTA — real Supabase Auth login into the shared demo tenant (see
+                src/config/demoAccount.ts). Credentials are intentionally public; the demo
+                tenant is read-only at the database level regardless of who holds the JWT. */}
+            <div className="flex flex-col gap-1.5">
+              <button
+                id="hero-try-demo-btn"
+                onClick={handleTryLiveDemo}
+                disabled={isDemoLoading}
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border border-emerald-400/40 bg-emerald-400/10 hover:bg-emerald-400/20 text-emerald-300 text-sm font-bold transition-all hover:scale-[1.02] cursor-pointer backdrop-blur-xs shadow-sm shadow-emerald-500/10 disabled:opacity-70 disabled:cursor-wait disabled:hover:scale-100"
+              >
+                {isDemoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                <span>
+                  {isDemoLoading
+                    ? (currentLanguage === 'ar' ? 'اتصال...' : currentLanguage === 'en' ? 'Signing in…' : 'Connexion…')
+                    : currentLanguage === 'ar'
+                    ? 'تجربة النظام مجاناً'
+                    : currentLanguage === 'en'
+                    ? 'Try Live Demo'
+                    : 'Essayer la Démo en Direct'}
+                </span>
+              </button>
+              <div className="flex items-center gap-1.5 px-1 text-[11px] text-white/50">
+                <span className="font-mono">{DEMO_EMAIL} / {DEMO_PASSWORD}</span>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard?.writeText(`${DEMO_EMAIL} / ${DEMO_PASSWORD}`)}
+                  title={currentLanguage === 'en' ? 'Copy credentials' : 'Copier les identifiants'}
+                  className="inline-flex items-center justify-center rounded p-0.5 hover:bg-white/10 hover:text-white/80 transition cursor-pointer"
+                >
+                  <Copy className="h-3 w-3" />
+                </button>
+              </div>
+              {demoLoginError && (
+                <span className="px-1 text-[11px] text-red-300">{demoLoginError}</span>
+              )}
+            </div>
 
-            <button 
+            <button
               onClick={() => setShowContactModal(true)} 
               className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border border-white/20 hover:border-white bg-white/5 hover:bg-white/10 text-white text-sm font-bold transition-all cursor-pointer backdrop-blur-xs"
             >
@@ -1033,8 +1077,11 @@ export const LandingPage: React.FC = () => {
       </div>
 
       {/* 9b. ADVANCED ROI CALCULATOR COMPONENT */}
-      <Suspense fallback={<div className="h-40" />}>
-        <RoiCalculator 
+      {/* Fallback is sized to roughly match the real component (heading + 12-col grid of
+          sliders/outputs/chart) so the lazy chunk resolving doesn't snap the rest of the page
+          down by several hundred pixels once it loads. */}
+      <Suspense fallback={<div className="min-h-[820px] rounded-3xl bg-white/5 animate-pulse" />}>
+        <RoiCalculator
           currentLanguage={currentLanguage} 
           onExploreDemo={() => changeScreen('STRATEGIC_DASHBOARD')} 
         />

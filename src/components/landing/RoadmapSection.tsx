@@ -1,4 +1,5 @@
 import React from 'react';
+import { ControlPanelVisual } from './ControlPanelVisual';
 
 interface RoadmapSectionProps {
   currentLanguage: string;
@@ -38,6 +39,18 @@ export const RoadmapSection: React.FC<RoadmapSectionProps> = ({ currentLanguage 
           {currentLanguage === 'ar' ? 'البدء صغيراً ليس غياب الطموح — إنه الطريقة الوحيدة لتسليم نظام قابل للتدقيق منذ اليوم الأول.' : currentLanguage === 'en' ? 'Starting small is not the absence of ambition — it is the only way to ship an auditable system from day one.' : 'Commencer petit n\'est pas l\'absence d\'ambition — c\'est la seule façon de livrer un système auditable dès le jour 1.'}
         </p>
       </div>
+
+      <ControlPanelVisual
+        className="max-w-xl"
+        windowLabel={currentLanguage === 'ar' ? 'مراقب مراحل التطوير' : currentLanguage === 'en' ? 'DELIVERY PHASE MONITOR' : 'MONITEUR DES PHASES DE LIVRAISON'}
+        badgeLabel={`${PHASES.length} ${currentLanguage === 'ar' ? 'مراحل' : currentLanguage === 'en' ? 'PHASES' : 'PHASES'}`}
+        badgeTone="ochre"
+        rows={PHASES.map((p) => ({
+          label: p.title[lang as 'fr' | 'en' | 'ar'],
+          value: p.status[lang as 'fr' | 'en' | 'ar'],
+          status: p.active ? 'ok' : 'neutral',
+        }))}
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {PHASES.map((p, i) => (

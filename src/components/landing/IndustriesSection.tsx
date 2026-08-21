@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { 
-  Building2, Factory, Truck, ShoppingBag, Briefcase, 
-  HeartPulse, Shield, Landmark, HardHat, CheckCircle2 
+import {
+  Building2, Factory, Truck, ShoppingBag, Briefcase,
+  HeartPulse, Shield, Landmark, HardHat, CheckCircle2
 } from 'lucide-react';
+import { ControlPanelVisual } from './ControlPanelVisual';
 
 interface IndustriesSectionProps {
   currentLanguage: string;
@@ -170,6 +171,22 @@ export const IndustriesSection: React.FC<IndustriesSectionProps> = ({ currentLan
           {subheading}
         </p>
       </div>
+
+      <ControlPanelVisual
+        className="max-w-xl mx-auto"
+        windowLabel={isAr ? 'مراقب التغطية القطاعية' : currentLanguage === 'en' ? 'SECTOR COVERAGE MONITOR' : 'MONITEUR DE COUVERTURE SECTORIELLE'}
+        badgeLabel={`${industries.length} ${isAr ? 'قطاعات' : currentLanguage === 'en' ? 'SECTORS' : 'SECTEURS'}`}
+        badgeTone="amber"
+        rows={industries.slice(0, 4).map((ind) => ({
+          label: ind.title,
+          value: ind.id === activeIndustry ? (isAr ? 'محدد' : currentLanguage === 'en' ? 'Selected' : 'Sélectionné') : (isAr ? 'مغطى' : currentLanguage === 'en' ? 'Covered' : 'Couvert'),
+          status: ind.id === activeIndustry ? 'ok' : 'neutral',
+        }))}
+        footer={[
+          { label: isAr ? 'الامتثال الضريبي' : currentLanguage === 'en' ? 'TAX COMPLIANCE' : 'CONFORMITÉ FISCALE', value: '100%', tone: 'emerald' },
+          { label: isAr ? 'وقت التفعيل' : currentLanguage === 'en' ? 'SETUP TIME' : 'MISE EN ROUTE', value: '< 48h', tone: 'ochre' },
+        ]}
+      />
 
       {/* Responsive Industry Selectors (Vertical sidebar on desktop, slider on mobile) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">

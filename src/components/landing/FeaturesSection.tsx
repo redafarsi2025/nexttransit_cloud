@@ -5,6 +5,7 @@ import {
   Construction, BarChart3, Sparkles, ArrowRight, CheckCircle2,
   ShieldCheck, Fuel, LayoutDashboard
 } from 'lucide-react';
+import { ControlPanelVisual } from './ControlPanelVisual';
 
 interface FeaturesSectionProps {
   currentLanguage: string;
@@ -249,6 +250,22 @@ export const FeaturesSection: React.FC<FeaturesSectionProps> = ({ currentLanguag
           {subheading}
         </p>
       </div>
+
+      <ControlPanelVisual
+        className="max-w-xl mx-auto"
+        windowLabel={isAr ? 'مراقب حالة الوحدات' : currentLanguage === 'en' ? 'MODULE STATUS MONITOR' : 'MONITEUR D’ÉTAT DES MODULES'}
+        badgeLabel={`${modules.length} ${isAr ? 'وحدة نشطة' : currentLanguage === 'en' ? 'MODULES LIVE' : 'MODULES ACTIFS'}`}
+        badgeTone="ochre"
+        rows={tabs.map((t) => ({
+          label: t.label,
+          value: `${modules.filter((m) => m.category === t.id).length} ${isAr ? 'وحدات' : currentLanguage === 'en' ? 'modules' : 'modules'}`,
+          status: t.id === activeTab ? 'ok' : 'neutral',
+        }))}
+        footer={[
+          { label: isAr ? 'وحدات متصلة' : currentLanguage === 'en' ? 'CONNECTED' : 'CONNECTÉS', value: '100%', tone: 'emerald' },
+          { label: isAr ? 'إعداد يدوي' : currentLanguage === 'en' ? 'MANUAL SETUP' : 'CONFIG MANUELLE', value: '0', tone: 'ochre' },
+        ]}
+      />
 
       {/* Tab Selectors */}
       <div className="flex flex-wrap items-center justify-center gap-2 border-b border-white/10 pb-2 max-w-xl mx-auto">

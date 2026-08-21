@@ -18,7 +18,7 @@ export const DemoBanner: React.FC = () => {
             Mode Démo Numilog
           </span>
           <span className="text-slate-200">
-            Vous explorez le SaaS en mode démonstration sans authentification. Les données sont réinitialisées toutes les 6h.
+            Vous explorez le SaaS avec un compte de démonstration partagé. Les actions sont simulées localement (rien n’est enregistré) et les données affichées sont réinitialisées toutes les 45 minutes.
           </span>
         </div>
 

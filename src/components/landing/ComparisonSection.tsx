@@ -1,5 +1,6 @@
 import React from 'react';
 import { Check, X, Minus, Info } from 'lucide-react';
+import { ControlPanelVisual } from './ControlPanelVisual';
 
 interface ComparisonSectionProps {
   currentLanguage: string;
@@ -85,6 +86,33 @@ export const ComparisonSection: React.FC<ComparisonSectionProps> = ({ currentLan
           {subheading}
         </p>
       </div>
+
+      <ControlPanelVisual
+        className="max-w-xl mx-auto"
+        windowLabel={isAr ? 'مراقب النتيجة المقارنة' : currentLanguage === 'en' ? 'COMPARISON SCORE MONITOR' : 'MONITEUR DE SCORE COMPARATIF'}
+        badgeLabel={`${features.length} ${isAr ? 'معايير' : currentLanguage === 'en' ? 'CRITERIA' : 'CRITÈRES'}`}
+        badgeTone="emerald"
+        rows={[
+          {
+            label: 'NextTransit ERP',
+            value: `${features.filter((f) => f.saas === 'yes').length} / ${features.length}`,
+            status: 'ok',
+          },
+          {
+            label: isAr ? 'الأنظمة القديمة' : currentLanguage === 'en' ? 'Legacy Desktop ERP' : 'Ancien ERP',
+            value: `${features.filter((f) => f.legacy === 'yes').length} / ${features.length}`,
+            status: 'warning',
+          },
+          {
+            label: 'Excel / Google Sheets',
+            value: `${features.filter((f) => f.excel === 'yes').length} / ${features.length}`,
+            status: 'critical',
+          },
+        ]}
+        footer={[
+          { label: isAr ? 'الفارق' : currentLanguage === 'en' ? 'ADVANTAGE' : 'AVANTAGE', value: 'NextTransit', tone: 'emerald' },
+        ]}
+      />
 
       <div className="rounded-3xl border border-white/10 bg-ink-2 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">

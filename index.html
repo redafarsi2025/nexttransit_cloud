@@ -4,7 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- display=optional (not swap): the browser paints with the fallback font immediately and
+         only swaps in the webfont if it's already ready within its short block window — it never
+         swaps in later on a slow connection. This trades "custom font might not appear on a very
+         first, very slow load" for "text never visibly reflows/vibrates after paint". -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=optional" rel="stylesheet">
     <title>NextTransit — Fleet Operations & Maintenance Decision Engine</title>
     <meta name="description" content="NextTransit is an enterprise fleet operations, telemetry reconciliation, and maintenance decision platform with 7 role-based access views." />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚛</text></svg>" />

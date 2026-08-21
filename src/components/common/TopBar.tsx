@@ -27,6 +27,7 @@ import {
   AlertCircle,
   RefreshCw,
   Building2,
+  Menu,
 } from 'lucide-react';
 import { AlertFeedModal } from './AlertFeedModal';
 import { GoldenPathModal } from './GoldenPathModal';
@@ -34,7 +35,11 @@ import { RoleSelectorModal } from './RoleSelectorModal';
 import { AuthModal } from './AuthModal';
 import { LanguageSelector } from '../localization/LanguageSelector';
 
-export const TopBar: React.FC = () => {
+interface TopBarProps {
+  onMenuClick?: () => void;
+}
+
+export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const { alerts, resetSeedData } = useFleet();
   const { activeTenant } = useTenant();
   const { userProfile, currentRole, changeRole, isRoleSelectorOpen, setIsRoleSelectorOpen, currentUser, syncStatus, isPlatformAdmin, isDemoMode } = useAuth();
@@ -95,6 +100,16 @@ export const TopBar: React.FC = () => {
       <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/95 px-4 lg:px-6 backdrop-blur-md">
         {/* Left: Brand & Demo Scenarios */}
         <div className="flex items-center gap-4">
+          {onMenuClick && (
+            <button
+              onClick={onMenuClick}
+              className="flex md:hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
+              title={t('topbar.open_menu', {}, 'Ouvrir le menu')}
+              aria-label={t('topbar.open_menu', {}, 'Ouvrir le menu')}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          )}
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white font-bold text-base shadow-sm">
               NX

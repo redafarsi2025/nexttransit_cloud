@@ -48,6 +48,7 @@ import {
 import { useAuth } from './AuthContext';
 import { useTenant } from './TenantContext';
 import { recordAudit } from '../services/auditService';
+import { DEMO_TENANT_ID } from '../config/demoAccount';
 
 interface FleetContextType {
   vehicles: Vehicle[];
@@ -248,10 +249,25 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       currentRole,
       activeTenantId
     );
-    const newLog = await fuelService.addFuelLog({
-      ...logInput,
-      tenant_id: activeTenantId,
-    });
+
+    // SECURITY — Demo tenant: never write to backend, use local state only. The demo tenant is
+    // also read-only at the RLS level (see supabase/migrations/*_demo_tenant_readonly_lockdown.sql),
+    // so this is a UX nicety (no failed round-trip / rollback flicker), not the security boundary.
+    let newLog: FuelLog;
+    if (isDemoMode) {
+      newLog = {
+        ...logInput,
+        id: `FL-DEMO-${Date.now()}`,
+        tenant_id: activeTenantId,
+        anomaly_flag: false,
+        logged_at: logInput.logged_at || new Date().toISOString(),
+      };
+    } else {
+      newLog = await fuelService.addFuelLog({
+        ...logInput,
+        tenant_id: activeTenantId,
+      });
+    }
     setFuelLogs((prev) => [...prev, newLog]);
 
     if (newLog.anomaly_flag) {
@@ -289,7 +305,13 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       route_id: string;
     }>
   ) => {
-    const updated = await fuelService.updateFuelLog(id, updates);
+    let updated: FuelLog;
+    if (isDemoMode) {
+      const existing = fuelLogs.find((log) => log.id === id);
+      updated = { ...(existing as FuelLog), ...updates };
+    } else {
+      updated = await fuelService.updateFuelLog(id, updates);
+    }
     setFuelLogs((prev) => prev.map((log) => (log.id === id ? updated : log)));
     recordAudit(
       'fuel_log',
@@ -305,7 +327,9 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deleteFuelLog = async (id: string) => {
-    await fuelService.deleteFuelLog(id);
+    if (!isDemoMode) {
+      await fuelService.deleteFuelLog(id);
+    }
     setFuelLogs((prev) => prev.filter((log) => log.id !== id));
     recordAudit(
       'fuel_log',
@@ -320,26 +344,51 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const addTire = async (input: Parameters<typeof tireService.addTire>[0]) => {
-    const created = await tireService.addTire({ ...input, tenant_id: input.tenant_id || activeTenantId });
+    const created: Tire = isDemoMode
+      ? {
+          ...input,
+          id: `TIRE-DEMO-${Date.now()}`,
+          tenant_id: input.tenant_id || activeTenantId,
+          position: input.position || 'UNASSIGNED',
+          status: input.status || 'in_stock',
+        }
+      : await tireService.addTire({ ...input, tenant_id: input.tenant_id || activeTenantId });
     setTires((prev) => [created, ...prev]);
     recordAudit('tire', created.id, 'CREATE', {}, input, currentUser?.id || 'sys', currentRole, activeTenantId);
     return created;
   };
 
   const updateTire = async (id: string, updates: Partial<Omit<Tire, 'id' | 'tenant_id' | 'created_at'>>) => {
-    const updated = await tireService.updateTire(id, updates);
+    let updated: Tire;
+    if (isDemoMode) {
+      const existing = tires.find((t) => t.id === id);
+      updated = { ...(existing as Tire), ...updates };
+    } else {
+      updated = await tireService.updateTire(id, updates);
+    }
     setTires((prev) => prev.map((tire) => (tire.id === id ? updated : tire)));
     recordAudit('tire', id, 'UPDATE', {}, updates, currentUser?.id || 'sys', currentRole, activeTenantId);
     return updated;
   };
 
   const deleteTire = async (id: string) => {
-    await tireService.deleteTire(id);
+    if (!isDemoMode) {
+      await tireService.deleteTire(id);
+    }
     setTires((prev) => prev.filter((tire) => tire.id !== id));
     recordAudit('tire', id, 'DELETE', {}, {}, currentUser?.id || 'sys', currentRole, activeTenantId);
   };
 
   const addTireInspection = async (input: Parameters<typeof tireService.addTireInspection>[0]) => {
+    if (isDemoMode) {
+      setTires((prev) =>
+        prev.map((tire) =>
+          tire.id === input.tire_id ? { ...tire, latest_tread_depth_mm: input.tread_depth_mm } : tire
+        )
+      );
+      recordAudit('tire_inspection', `TIRE-INSP-DEMO-${Date.now()}`, 'CREATE', {}, input, currentUser?.id || 'sys', currentRole, activeTenantId);
+      return;
+    }
     const created = await tireService.addTireInspection({ ...input, tenant_id: input.tenant_id || activeTenantId });
     // The DB trigger updates tires.latest_tread_depth_mm; reflect it locally too so the UI
     // doesn't need a full refetch.
@@ -350,8 +399,6 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
     recordAudit('tire_inspection', created.id, 'CREATE', {}, input, currentUser?.id || 'sys', currentRole, activeTenantId);
   };
-
-  const DEMO_TENANT_ID = 'c0a80101-0000-0000-0000-000000000001';
 
   const loadData = useCallback(async () => {
     // Wait for TenantContext to resolve the real tenant ID before loading.
@@ -628,8 +675,9 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     try {
-      const insertedWO = await syncCreateWorkOrderToSupabase(newWO);
-      
+      // SECURITY — Demo tenant: never write to backend, use local state only (see addFuelLog).
+      const insertedWO = isDemoMode ? null : await syncCreateWorkOrderToSupabase(newWO);
+
       recordAudit(
         'work_order',
         insertedWO?.id || 'WO-NEW',
@@ -1050,6 +1098,21 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Optimistic insert — immediately visible in UI
     setVehicles(prev => [optimisticVehicle, ...prev]);
 
+    // SECURITY — Demo tenant: never write to backend, use local state only (see addFuelLog).
+    if (isDemoMode) {
+      recordAudit(
+        'vehicle',
+        optimisticId,
+        'CREATE',
+        {},
+        { plate: input.plate, name: input.name, classification: input.classification },
+        currentUser?.id || 'sys',
+        currentRole,
+        activeTenantId
+      );
+      return { error: null };
+    }
+
     const { data, error } = await createVehicleInSupabase(input, activeTenantId);
 
     if (error || !data) {
@@ -1073,7 +1136,7 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
 
     return { error: null };
-  }, [activeTenantId, currentUser, currentRole]);
+  }, [activeTenantId, currentUser, currentRole, isDemoMode]);
 
   const addVehiclesBulk = useCallback(async (
     inputs: Omit<Vehicle, 'id' | 'active_fault_codes' | 'maintenance_history'>[]
@@ -1089,6 +1152,21 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     })) as Vehicle[];
 
     setVehicles(prev => [...optimisticVehicles, ...prev]);
+
+    // SECURITY — Demo tenant: never write to backend, use local state only (see addFuelLog).
+    if (isDemoMode) {
+      recordAudit(
+        'vehicle',
+        'bulk-import',
+        'CREATE_BULK' as any,
+        {},
+        { count: optimisticVehicles.length },
+        currentUser?.id || 'sys',
+        currentRole,
+        activeTenantId
+      );
+      return { error: null };
+    }
 
     const { data, error } = await createVehiclesBulkInSupabase(inputs, activeTenantId);
 
@@ -1118,7 +1196,7 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
 
     return { error: null };
-  }, [activeTenantId, currentUser, currentRole]);
+  }, [activeTenantId, currentUser, currentRole, isDemoMode]);
 
   const updateVehicle = useCallback(async (
     vehicleId: string,
@@ -1126,6 +1204,21 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   ): Promise<{ error: string | null }> => {
     // Optimistic update
     setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, ...patch } : v));
+
+    // SECURITY — Demo tenant: never write to backend, use local state only (see addFuelLog).
+    if (isDemoMode) {
+      recordAudit(
+        'vehicle',
+        vehicleId,
+        'UPDATE',
+        {},
+        { ...patch },
+        currentUser?.id || 'sys',
+        currentRole,
+        activeTenantId
+      );
+      return { error: null };
+    }
 
     const { data, error } = await updateVehicleInSupabase(vehicleId, patch, activeTenantId);
 
@@ -1150,7 +1243,7 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
 
     return { error: null };
-  }, [activeTenantId, currentUser, currentRole]);
+  }, [activeTenantId, currentUser, currentRole, isDemoMode]);
 
   const deleteVehicle = useCallback(async (
     vehicleId: string
@@ -1166,6 +1259,21 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const targetVehicle = vehicles.find(v => v.id === vehicleId);
     // Optimistic removal
     setVehicles(prev => prev.filter(v => v.id !== vehicleId));
+
+    // SECURITY — Demo tenant: never write to backend, use local state only (see addFuelLog).
+    if (isDemoMode) {
+      recordAudit(
+        'vehicle',
+        vehicleId,
+        'DELETE' as any,
+        { plate: targetVehicle?.plate, name: targetVehicle?.name },
+        {},
+        currentUser?.id || 'sys',
+        currentRole,
+        activeTenantId
+      );
+      return { error: null };
+    }
 
     const { error } = await deleteVehicleInSupabase(vehicleId, activeTenantId);
 
@@ -1187,7 +1295,7 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
 
     return { error: null };
-  }, [activeTenantId, currentUser, currentRole, workOrders, vehicles]);
+  }, [activeTenantId, currentUser, currentRole, workOrders, vehicles, isDemoMode]);
 
   return (
     <FleetContext.Provider

@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Sun, HelpCircle, Package, Wifi } from 'lucide-react';
+import { ControlPanelVisual } from './ControlPanelVisual';
 
 interface ProblemsSectionProps {
   currentLanguage: string;
@@ -81,6 +82,37 @@ export const ProblemsSection: React.FC<ProblemsSectionProps> = ({ currentLanguag
           {subheading}
         </p>
       </div>
+
+      <ControlPanelVisual
+        className="max-w-xl mx-auto"
+        windowLabel={isAr ? 'مراقبة العمليات — بعد نيكس ترانزيت' : currentLanguage === 'en' ? 'OPERATIONS MONITOR — POST NEXTTRANSIT' : 'MONITEUR OPÉRATIONS — APRÈS NEXTTRANSIT'}
+        badgeLabel={isAr ? '0 حادثة غير معالجة' : currentLanguage === 'en' ? '0 UNRESOLVED INCIDENT' : '0 INCIDENT NON TRAITÉ'}
+        badgeTone="emerald"
+        rows={[
+          {
+            label: isAr ? 'مطابقة المخزون والورشة' : currentLanguage === 'en' ? 'Stock ↔ Workshop Sync' : 'Synchronisation Stock ↔ Atelier',
+            value: isAr ? 'متصل' : currentLanguage === 'en' ? 'Connected' : 'Connecté',
+            detail: isAr ? 'لا مزيد من Excel المشتت' : currentLanguage === 'en' ? 'No more scattered spreadsheets' : 'Fini les tableurs éparpillés',
+            status: 'ok',
+          },
+          {
+            label: isAr ? 'تنبيهات المناخ الصحراوي' : currentLanguage === 'en' ? 'Desert Climate Alerts' : 'Alertes Climat Désertique',
+            value: isAr ? 'نشط' : currentLanguage === 'en' ? 'Active' : 'Actives',
+            detail: isAr ? 'صيانة معدلة حسب الإقليم' : currentLanguage === 'en' ? 'Region-adjusted maintenance' : 'Maintenance ajustée par région',
+            status: 'ok',
+          },
+          {
+            label: isAr ? 'حجز قطع الغيار R3' : currentLanguage === 'en' ? 'R3 Parts Reservation' : 'Réservation Pièces R3',
+            value: isAr ? 'تلقائي' : currentLanguage === 'en' ? 'Automated' : 'Automatique',
+            detail: isAr ? 'فور فتح أمر الصيانة' : currentLanguage === 'en' ? 'Triggered on work order creation' : 'Déclenchée à l’ouverture du bon',
+            status: 'ok',
+          },
+        ]}
+        footer={[
+          { label: isAr ? 'قبل' : currentLanguage === 'en' ? 'BEFORE' : 'AVANT', value: isAr ? 'ملفات متفرقة' : currentLanguage === 'en' ? 'Scattered files' : 'Fichiers dispersés', tone: 'red' },
+          { label: isAr ? 'مع نيكس ترانزيت' : currentLanguage === 'en' ? 'WITH NEXTTRANSIT' : 'AVEC NEXTTRANSIT', value: isAr ? 'قاعدة موحدة' : currentLanguage === 'en' ? '1 unified base' : '1 base unifiée', tone: 'emerald' },
+        ]}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {problems.map((p, idx) => {

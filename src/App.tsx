@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useFleet } from './context/FleetContext';
 import { AppProviders } from './context/AppProviders';
@@ -82,6 +82,7 @@ const AppLayout: React.FC = () => {
   const { dir } = useLocalization();
   const location = useLocation();
   const navigate = useNavigate();
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Inject the router navigate function into AuthContext so changeScreen can drive URL navigation
   useEffect(() => {
@@ -96,6 +97,12 @@ const AppLayout: React.FC = () => {
     }
   }, [location.pathname, currentScreen, changeScreen]);
 
+  // Belt-and-suspenders: close the mobile drawer on any route change, not just nav-item clicks
+  // inside Sidebar (e.g. browser back/forward, or a link elsewhere in the page).
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [location.pathname]);
+
   const isPublicRoute = location.pathname === '/';
   const isControlRoom = location.pathname.startsWith('/control-room');
   const showNavigation = !isPublicRoute && !isControlRoom;
@@ -108,10 +115,15 @@ const AppLayout: React.FC = () => {
       }`}
     >
       <DemoBanner />
-      {showNavigation && <TopBar />}
+      {showNavigation && <TopBar onMenuClick={() => setIsMobileSidebarOpen((v) => !v)} />}
 
       <div className="flex flex-1 overflow-hidden">
-        {showNavigation && <Sidebar />}
+        {showNavigation && (
+          <Sidebar
+            isMobileOpen={isMobileSidebarOpen}
+            onMobileClose={() => setIsMobileSidebarOpen(false)}
+          />
+        )}
 
         <main className={`flex-1 overflow-y-auto min-w-0 ${isControlRoom ? '' : 'p-4 lg:p-6 pb-12'}`}>
           <Suspense fallback={<RouteFallback />}>
