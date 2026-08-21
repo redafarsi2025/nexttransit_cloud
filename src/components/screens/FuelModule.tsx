@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Papa from 'papaparse';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useFleet } from '../../context/FleetContext';
@@ -33,7 +33,7 @@ export const FuelModule: React.FC = () => {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('ALL');
 
   // Form State
-  const [formVehicleId, setFormVehicleId] = useState<string>(vehicles[0]?.id || 'V-024');
+  const [formVehicleId, setFormVehicleId] = useState<string>(vehicles[0]?.id || '');
   const [formLiters, setFormLiters] = useState<string>('120');
   const [formCost, setFormCost] = useState<string>('180');
   const [formOdometer, setFormOdometer] = useState<string>('126500');
@@ -55,6 +55,18 @@ export const FuelModule: React.FC = () => {
 
   const currencySymbol = activeTenant?.currencySymbol || '$';
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Vehicles can load asynchronously after mount (e.g. demo mode) — keep the
+  // form selection valid instead of submitting against a stale/hardcoded id.
+  useEffect(() => {
+    if (vehicles.length === 0) {
+      if (formVehicleId !== '') setFormVehicleId('');
+      return;
+    }
+    if (!vehicles.some((v) => v.id === formVehicleId)) {
+      setFormVehicleId(vehicles[0].id);
+    }
+  }, [vehicles, formVehicleId]);
 
   const startEdit = (item: CalculatedFuelLog) => {
     setEditingId(item.log.id);
@@ -208,6 +220,15 @@ export const FuelModule: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitFeedback(null);
+
+    if (!formVehicleId) {
+      setSubmitFeedback({
+        type: 'error',
+        message: t('fuel.no_vehicle', {}, 'No vehicle available to log fuel against.'),
+      });
+      setIsSubmitting(false);
+      return;
+    }
 
     const liters = parseFloat(formLiters);
     const cost = parseFloat(formCost);
@@ -460,7 +481,7 @@ export const FuelModule: React.FC = () => {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !formVehicleId}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <PlusCircle className="h-4 w-4" />
