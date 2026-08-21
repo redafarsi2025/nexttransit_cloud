@@ -160,13 +160,13 @@ export const IndustriesSection: React.FC<IndustriesSectionProps> = ({ currentLan
   return (
     <div className="space-y-8 py-4">
       <div className="space-y-2 text-center max-w-2xl mx-auto">
-        <span className="text-[10px] uppercase text-indigo-600 font-extrabold tracking-wider block">
+        <span className="text-[10px] uppercase text-ochre font-extrabold tracking-wider block">
           {isAr ? 'تخصص قطاعي دقيق' : currentLanguage === 'en' ? 'SECTORAL EXPERTISE' : 'EXPERTISE SECTORIELLE'}
         </span>
         <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
           {heading}
         </h2>
-        <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-doc leading-relaxed">
           {subheading}
         </p>
       </div>
@@ -184,12 +184,12 @@ export const IndustriesSection: React.FC<IndustriesSectionProps> = ({ currentLan
                 onClick={() => setActiveIndustry(ind.id)}
                 className={`p-3.5 rounded-2xl border text-left flex items-center gap-3 transition-all cursor-pointer ${
                   activeIndustry === ind.id
-                    ? 'border-indigo-600 bg-indigo-50/50 shadow-xs text-indigo-950 font-bold'
-                    : 'border-slate-200/60 bg-white text-slate-600 hover:border-slate-300'
+                    ? 'border-ochre bg-ochre/10 shadow-xs text-white font-bold'
+                    : 'border-white/10 bg-ink-2 text-slate-doc hover:border-white/20'
                 }`}
               >
                 <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${
-                  activeIndustry === ind.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'
+                  activeIndustry === ind.id ? 'bg-ochre text-ink' : 'bg-white/5 text-slate-doc'
                 }`}>
                   <IconComp className="h-4.5 w-4.5" />
                 </div>
@@ -202,38 +202,38 @@ export const IndustriesSection: React.FC<IndustriesSectionProps> = ({ currentLan
         </div>
 
         {/* Selected Industry Details */}
-        <div className="lg:col-span-8 rounded-3xl border border-indigo-100 bg-white p-6 sm:p-8 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-8 rounded-3xl border border-white/10 bg-ink-2 p-6 sm:p-8 shadow-xs flex flex-col justify-between">
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-[10px] font-extrabold uppercase bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full">
+              <span className="text-[10px] font-extrabold uppercase bg-ochre/10 text-ochre border border-ochre/30 px-3 py-1 rounded-full">
                 {currentInd.title}
               </span>
-              <span className="text-xs font-black text-emerald-700">
+              <span className="text-xs font-black text-emerald-400">
                 {currentInd.metric}
               </span>
             </div>
 
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed pt-2">
+            <p className="text-xs sm:text-sm text-slate-doc leading-relaxed pt-2">
               {currentInd.desc}
             </p>
 
             <div className="space-y-2 pt-4">
-              <h4 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+              <h4 className="text-[10px] uppercase font-bold text-slate-doc-2 tracking-wider">
                 {isAr ? 'مميزات لوجستية حيوية' : currentLanguage === 'en' ? 'Core Deliverables' : 'Fonctionnalités Clés'}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {currentInd.points.map((pt, idx) => (
-                  <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span className="text-[11px] font-bold text-slate-700 leading-tight">{pt}</span>
+                  <div key={idx} className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <span className="text-[11px] font-bold text-slate-doc leading-tight">{pt}</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <span className="text-[11px] text-slate-400">
+          <div className="mt-6 pt-4 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <span className="text-[11px] text-slate-doc-2">
               {isAr ? 'الامتثال التام للأنظمة الضريبية واللوائح الجزائرية' : currentLanguage === 'en' ? '100% compliant with Algerian tax & labor codes' : '100% conforme aux codes fiscaux et du travail algériens'}
             </span>
           </div>

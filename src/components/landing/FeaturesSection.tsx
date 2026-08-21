@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { 
-  Calculator, Warehouse, Truck, Wrench, Users, CreditCard, 
-  UserCheck, ShoppingCart, TrendingUp, Landmark, Calendar, 
+import {
+  Calculator, Warehouse, Truck, Wrench, Users, CreditCard,
+  UserCheck, ShoppingCart, TrendingUp, Landmark, Calendar,
   Construction, BarChart3, Sparkles, ArrowRight, CheckCircle2,
-  ShieldCheck, Fuel
+  ShieldCheck, Fuel, LayoutDashboard
 } from 'lucide-react';
 
 interface FeaturesSectionProps {
@@ -22,10 +22,10 @@ export const FeaturesSection: React.FC<FeaturesSectionProps> = ({ currentLanguag
     : 'Plateforme ERP & Gestion Complète Intégrée';
 
   const subheading = isAr
-    ? '14 وحدة برمجية مترابطة صممت لتلبي احتياجات الشركات الجزائرية وتحسين كفاءتها التشغيلية والمالية.'
+    ? '15 وحدة برمجية مترابطة صممت لتلبي احتياجات الشركات الجزائرية وتحسين كفاءتها التشغيلية والمالية.'
     : currentLanguage === 'en'
-    ? '14 fully-integrated SaaS modules customized for Algerian regulations, labor laws, and operational severe climates.'
-    : '14 modules connectés pour automatiser l\'ensemble de votre activité selon la réglementation et les défis nationaux.';
+    ? '15 fully-integrated SaaS modules customized for Algerian regulations, labor laws, and operational severe climates.'
+    : '15 modules connectés pour automatiser l\'ensemble de votre activité selon la réglementation et les défis nationaux.';
 
   const modules = [
     // Operations Category
@@ -88,6 +88,19 @@ export const FeaturesSection: React.FC<FeaturesSectionProps> = ({ currentLanguag
         ? 'Real-time spare parts stock, automatic parts reservation upon work order creation, and auto purchase alerts.'
         : 'Stocks en temps réel, réservation automatique des pièces sur bon de travail et alertes réapprovisionnement.',
       benefit: isAr ? 'تصفير فترات انتظار القطع بالأسبوع' : currentLanguage === 'en' ? 'Eliminates weeks of parts delivery lag' : 'Élimine les ruptures de stock de filtres/freins',
+    },
+    {
+      id: 'control-room',
+      category: 'operations',
+      icon: LayoutDashboard,
+      isNew: true,
+      title: isAr ? 'غرفة التحكم ولوحات الجدران' : currentLanguage === 'en' ? 'Control Room & Wallboards' : 'Salle de Contrôle & Wallboards',
+      desc: isAr
+        ? 'أربع لوحات جدارية مخصصة (المؤشرات، التنبيهات الحرجة، الصيانة، الخريطة الحية) متصلة بآخر إحداثيات GPS المسجلة لكل مركبة.'
+        : currentLanguage === 'en'
+        ? 'Four dedicated wallboards (KPI, Critical Alerts, Maintenance, Live Map) wired to the latest recorded GPS position per vehicle for command-center-style monitoring.'
+        : 'Quatre wallboards dédiés (KPI, Alertes Critiques, Maintenance, Carte en Direct) connectés aux dernières positions GPS enregistrées par véhicule pour une supervision type centre de contrôle.',
+      benefit: isAr ? 'إشراف مركزي متعدد الشاشات' : currentLanguage === 'en' ? 'Centralized multi-screen supervision' : 'Supervision centralisée multi-écrans',
     },
     // Finance Category
     {
@@ -226,13 +239,13 @@ export const FeaturesSection: React.FC<FeaturesSectionProps> = ({ currentLanguag
   return (
     <div className="space-y-8 py-4">
       <div className="space-y-2 text-center max-w-2xl mx-auto">
-        <span className="text-[10px] uppercase text-indigo-600 font-extrabold tracking-wider block">
+        <span className="text-[10px] uppercase text-ochre font-extrabold tracking-wider block">
           {isAr ? 'قوة التسيير المتكامل' : currentLanguage === 'en' ? 'MODULAR POWER' : 'MODULES SAAS CONNECTÉS'}
         </span>
         <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
           {heading}
         </h2>
-        <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-doc leading-relaxed">
           {subheading}
         </p>
       </div>
@@ -268,8 +281,13 @@ export const FeaturesSection: React.FC<FeaturesSectionProps> = ({ currentLanguag
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-ochre/10 border border-ochre/30 text-ochre group-hover:bg-ochre group-hover:text-ink transition-all">
                     <IconComp className="h-5 w-5" />
                   </div>
-                  <h3 className="text-sm font-bold text-white group-hover:text-ochre transition">
+                  <h3 className="text-sm font-bold text-white group-hover:text-ochre transition flex items-center gap-2">
                     {m.title}
+                    {(m as { isNew?: boolean }).isNew && (
+                      <span className="text-[9px] uppercase font-extrabold tracking-wider px-1.5 py-0.5 rounded bg-ochre/20 text-ochre">
+                        {isAr ? 'جديد' : currentLanguage === 'en' ? 'New' : 'Nouveau'}
+                      </span>
+                    )}
                   </h3>
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed">

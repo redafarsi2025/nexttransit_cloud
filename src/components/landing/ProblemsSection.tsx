@@ -77,7 +77,7 @@ export const ProblemsSection: React.FC<ProblemsSectionProps> = ({ currentLanguag
         <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
           {heading}
         </h2>
-        <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-doc leading-relaxed">
           {subheading}
         </p>
       </div>
@@ -86,39 +86,39 @@ export const ProblemsSection: React.FC<ProblemsSectionProps> = ({ currentLanguag
         {problems.map((p, idx) => {
           const IconComp = p.icon;
           return (
-            <div 
-              key={idx} 
-              className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs flex flex-col justify-between hover:border-indigo-100 transition duration-300"
+            <div
+              key={idx}
+              className="rounded-3xl border border-white/10 bg-ink-2 p-6 shadow-xs flex flex-col justify-between hover:border-ochre/40 transition duration-300"
             >
               <div className="space-y-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-slate-doc">
                   <IconComp className="h-5 w-5" />
                 </div>
 
                 {/* Problem definition */}
-                <div className="space-y-1.5 pb-4 border-b border-slate-100">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-red-600">
+                <div className="space-y-1.5 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-danger-doc">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span>{isAr ? 'المشكلة الشائعة' : currentLanguage === 'en' ? 'COMMON PROBLEM' : 'PROBLÈME COURANT'}</span>
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900 leading-snug">
+                  <h3 className="text-sm font-bold text-white leading-snug">
                     {p.problemTitle}
                   </h3>
-                  <p className="text-xs text-slate-500 leading-normal">
+                  <p className="text-xs text-slate-doc leading-normal">
                     {p.problemDesc}
                   </p>
                 </div>
 
                 {/* Solution definition */}
                 <div className="space-y-1.5 pt-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
                     <span>{isAr ? 'حل نيكس ترانزيت' : currentLanguage === 'en' ? 'NEXTTRANSIT SOLUTION' : 'NOTRE SOLUTION'}</span>
                   </div>
-                  <h4 className="text-xs font-extrabold text-slate-900 leading-snug">
+                  <h4 className="text-xs font-extrabold text-white leading-snug">
                     {p.solutionTitle}
                   </h4>
-                  <p className="text-xs text-slate-600 leading-relaxed">
+                  <p className="text-xs text-slate-doc leading-relaxed">
                     {p.solutionDesc}
                   </p>
                 </div>

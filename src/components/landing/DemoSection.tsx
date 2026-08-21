@@ -92,13 +92,13 @@ export const DemoSection: React.FC<DemoSectionProps> = ({ currentLanguage }) => 
   return (
     <div className="space-y-8 py-4">
       <div className="space-y-2 text-center max-w-2xl mx-auto">
-        <span className="text-[10px] uppercase text-indigo-600 font-extrabold tracking-wider block">
+        <span className="text-[10px] uppercase text-ochre font-extrabold tracking-wider block">
           {isAr ? 'بيئة تشغيلية تفاعلية' : currentLanguage === 'en' ? 'LIVE DEMO SIMULATOR' : 'WORKFLOWS EN TEMPS RÉEL'}
         </span>
         <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
           {heading}
         </h2>
-        <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-doc leading-relaxed">
           {subheading}
         </p>
       </div>
@@ -121,7 +121,7 @@ export const DemoSection: React.FC<DemoSectionProps> = ({ currentLanguage }) => 
       </div>
 
       {/* Workflow Simulation Terminal Container */}
-      <div className="rounded-3xl border border-slate-200/80 bg-slate-950 text-slate-300 p-5 sm:p-6 shadow-lg max-w-3xl mx-auto font-mono text-xs">
+      <div className="rounded-3xl border border-white/10 bg-slate-950 text-slate-300 p-5 sm:p-6 shadow-lg max-w-3xl mx-auto font-mono text-xs">
         
         {/* Terminal Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
@@ -146,16 +146,16 @@ export const DemoSection: React.FC<DemoSectionProps> = ({ currentLanguage }) => 
           {currentWf.steps.map((st, i) => (
             <div key={i} className="flex gap-3 leading-relaxed items-start">
               <span className="text-slate-600 shrink-0">[{st.time}]</span>
-              <span className="text-indigo-400 font-bold shrink-0">➜</span>
+              <span className="text-ochre font-bold shrink-0">➜</span>
               <span className="text-slate-100 flex-1">{st.text}</span>
             </div>
           ))}
         </div>
 
         {/* Terminal Success Banner */}
-        <div className="mt-6 p-3 bg-indigo-950/40 rounded-xl border border-indigo-900/40 text-[11px] text-indigo-300 flex items-center justify-between">
+        <div className="mt-6 p-3 bg-ochre/10 rounded-xl border border-ochre/30 text-[11px] text-ochre flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-indigo-400 shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-ochre shrink-0" />
             <span>{isAr ? 'تم التحقق وتطبيق القوانين بنجاح' : currentLanguage === 'en' ? 'Telemetry rules reconciled with 0 execution lag.' : 'Règles appliquées et comptabilité consolidée.'}</span>
           </div>
           <span className="text-[9px] text-emerald-400 font-bold">100% OK</span>

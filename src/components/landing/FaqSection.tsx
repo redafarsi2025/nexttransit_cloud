@@ -29,10 +29,10 @@ export const FaqSection: React.FC<FaqSectionProps> = ({ currentLanguage }) => {
         ? 'Where is our data hosted? Does it comply with Algerian national guidelines?'
         : 'Où sont hébergées nos données ? Est-ce conforme à la souveraineté nationale ?',
       a: isAr
-        ? 'نوفر خيارات استضافة مرنة للغاية. الخطة القياسية تستخدم حاويات سحابية مشفرة ومؤمنة بالكامل، بينما نوفر لشركات القطاع العام والمحروقات خيار تثبيت السيرفرات محلياً (On-Premise) في الجزائر، لضمان توافق تام بنسبة 100% مع لوائح سيادة البيانات.'
+        ? 'بيئتنا الحالية تعتمد على بنية تحتية سحابية مؤمنة ومشفرة (نشر تجريبي/عرض توضيحي). أما النشر السيادي المحلي (On-Premise) في الجزائر لعملائنا المستقبليين في القطاع العام وقطاع الطاقة، فهو قيد التطوير ضمن خارطة طريقنا، وسيكون متاحاً عند الانتقال إلى الإنتاج.'
         : currentLanguage === 'en'
-        ? 'We support both secured cloud containers with high-grade encryption and on-premises local hardware deployment in Algeria for our public sector, energy, and defense clients to guarantee absolute data sovereignty compliance.'
-        : 'Nous proposons deux modes d\'hébergement : un cloud souverain hautement sécurisé et chiffré, ainsi qu\'un déploiement physique On-Premise en Algérie pour nos clients étatiques ou du secteur de l\'énergie.',
+        ? 'Our current environment runs on secured, encrypted cloud infrastructure (pilot/demo deployment). Sovereign On-Premise deployment in Algeria for future public-sector and energy clients is a capability under active development on our roadmap, available at production go-live.'
+        : 'Notre environnement actuel s\'appuie sur une infrastructure cloud sécurisée et chiffrée (déploiement pilote/démo). Le déploiement On-Premise souverain en Algérie pour nos futurs clients étatiques et du secteur de l\'énergie est une capacité en cours de construction sur notre feuille de route, disponible au passage en production.',
     },
     {
       q: isAr
@@ -91,13 +91,13 @@ export const FaqSection: React.FC<FaqSectionProps> = ({ currentLanguage }) => {
   return (
     <div className="space-y-8 py-4">
       <div className="space-y-2 text-center max-w-2xl mx-auto">
-        <span className="text-[10px] uppercase text-indigo-600 font-extrabold tracking-wider block">
+        <span className="text-[10px] uppercase text-ochre font-extrabold tracking-wider block">
           {isAr ? 'إجابات شفافة وموثوقة' : currentLanguage === 'en' ? 'COMMON OBJECTIONS' : 'FOIRE AUX QUESTIONS'}
         </span>
         <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
           {heading}
         </h2>
-        <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-doc leading-relaxed">
           {subheading}
         </p>
       </div>
@@ -106,24 +106,24 @@ export const FaqSection: React.FC<FaqSectionProps> = ({ currentLanguage }) => {
         {faqs.map((faq, idx) => {
           const isOpen = openIndex === idx;
           return (
-            <div 
-              key={idx} 
-              className="rounded-2xl border border-slate-200 bg-white overflow-hidden transition duration-200 hover:border-indigo-100"
+            <div
+              key={idx}
+              className="rounded-2xl border border-white/10 bg-ink-2 overflow-hidden transition duration-200 hover:border-ochre/40"
             >
               <button
                 onClick={() => toggle(idx)}
-                className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 font-bold text-slate-900 text-xs sm:text-sm cursor-pointer"
+                className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 font-bold text-white text-xs sm:text-sm cursor-pointer"
               >
                 <span className="flex-1 leading-snug">{faq.q}</span>
                 {isOpen ? (
-                  <ChevronUp className="h-4 w-4 text-indigo-600 shrink-0" />
+                  <ChevronUp className="h-4 w-4 text-ochre shrink-0" />
                 ) : (
-                  <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
+                  <ChevronDown className="h-4 w-4 text-slate-doc-2 shrink-0" />
                 )}
               </button>
 
               {isOpen && (
-                <div className="px-5 pb-5 pt-1 text-xs text-slate-600 leading-relaxed border-t border-slate-100/60 bg-slate-50/50">
+                <div className="px-5 pb-5 pt-1 text-xs text-slate-doc leading-relaxed border-t border-white/10 bg-white/5">
                   {faq.a}
                 </div>
               )}

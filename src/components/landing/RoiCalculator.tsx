@@ -233,33 +233,33 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
   return (
     <div className="w-full max-w-7xl mx-auto my-12" id="advanced-roi-calculator">
       <div className="text-center mb-10 space-y-3">
-        <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full text-indigo-700 text-xs font-black uppercase tracking-wider">
+        <div className="inline-flex items-center gap-2 bg-ochre/10 border border-ochre/30 px-3 py-1 rounded-full text-ochre text-xs font-black uppercase tracking-wider">
           <Calculator className="h-3.5 w-3.5" />
           <span>{isAr ? "محاكاة الفعالية الاقتصادية" : isEn ? "Financial Impact Simulation" : "Simulateur de Performance Financière"}</span>
         </div>
         <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none">
           {getTranslation('title')}
         </h2>
-        <p className="text-sm text-slate-500 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-sm text-slate-doc max-w-2xl mx-auto leading-relaxed">
           {getTranslation('subtitle')}
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-        
+
         {/* LEFT COLUMN: Inputs & Sliders (5 cols) */}
-        <div className="lg:col-span-5 bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xs">
+        <div className="lg:col-span-5 bg-ink-2 border border-white/10 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xs">
           <div className="space-y-6">
-            <h3 className="text-base font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Sparkles className="h-4.5 w-4.5 text-indigo-600" />
+            <h3 className="text-base font-bold text-white flex items-center gap-2 border-b border-white/10 pb-3">
+              <Sparkles className="h-4.5 w-4.5 text-ochre" />
               {isAr ? "المدخلات التشغيلية لأسطولك" : isEn ? "Your Operational Parameters" : "Paramètres de votre Flotte"}
             </h3>
 
             {/* Input 1: Fleet Size */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700">{getTranslation('fleetSizeLabel')}</span>
-                <span className="bg-indigo-50 text-indigo-700 font-extrabold px-2.5 py-1 rounded-lg border border-indigo-100">
+                <span className="font-bold text-white">{getTranslation('fleetSizeLabel')}</span>
+                <span className="bg-ochre/10 text-ochre font-extrabold px-2.5 py-1 rounded-lg border border-ochre/30">
                   {fleetSize}
                 </span>
               </div>
@@ -270,9 +270,9 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
                 step="5"
                 value={fleetSize}
                 onChange={(e) => setFleetSize(parseInt(e.target.value, 10))}
-                className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-slate-100 rounded-lg"
+                className="w-full accent-ochre cursor-pointer h-1.5 bg-white/10 rounded-lg"
               />
-              <div className="flex justify-between text-[10px] text-slate-400">
+              <div className="flex justify-between text-[10px] text-slate-doc-2">
                 <span>5</span>
                 <span>150</span>
                 <span>300</span>
@@ -282,8 +282,8 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
             {/* Input 2: Repair Cost */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700">{getTranslation('repairCostLabel')}</span>
-                <span className="bg-indigo-50 text-indigo-700 font-extrabold px-2.5 py-1 rounded-lg border border-indigo-100">
+                <span className="font-bold text-white">{getTranslation('repairCostLabel')}</span>
+                <span className="bg-ochre/10 text-ochre font-extrabold px-2.5 py-1 rounded-lg border border-ochre/30">
                   {averageMonthlyRepair.toLocaleString()} {getTranslation('currency')} <span className="text-[10px] font-medium opacity-80">{getTranslation('perMonth')}</span>
                 </span>
               </div>
@@ -294,9 +294,9 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
                 step="5000"
                 value={averageMonthlyRepair}
                 onChange={(e) => setAverageMonthlyRepair(parseInt(e.target.value, 10))}
-                className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-slate-100 rounded-lg"
+                className="w-full accent-ochre cursor-pointer h-1.5 bg-white/10 rounded-lg"
               />
-              <div className="flex justify-between text-[10px] text-slate-400">
+              <div className="flex justify-between text-[10px] text-slate-doc-2">
                 <span>10,000</span>
                 <span>100,000</span>
                 <span>200,000 {getTranslation('currency')}</span>
@@ -306,8 +306,8 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
             {/* Input 3: Downtime Days */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700">{getTranslation('downtimeDaysLabel')}</span>
-                <span className="bg-indigo-50 text-indigo-700 font-extrabold px-2.5 py-1 rounded-lg border border-indigo-100">
+                <span className="font-bold text-white">{getTranslation('downtimeDaysLabel')}</span>
+                <span className="bg-ochre/10 text-ochre font-extrabold px-2.5 py-1 rounded-lg border border-ochre/30">
                   {downtimeDays} {isAr ? "أيام" : isEn ? "days" : "jours"}
                 </span>
               </div>
@@ -318,9 +318,9 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
                 step="1"
                 value={downtimeDays}
                 onChange={(e) => setDowntimeDays(parseInt(e.target.value, 10))}
-                className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-slate-100 rounded-lg"
+                className="w-full accent-ochre cursor-pointer h-1.5 bg-white/10 rounded-lg"
               />
-              <div className="flex justify-between text-[10px] text-slate-400">
+              <div className="flex justify-between text-[10px] text-slate-doc-2">
                 <span>2 {isAr ? "أيام" : "days"}</span>
                 <span>30</span>
                 <span>60 {isAr ? "يوم" : "days"}</span>
@@ -330,8 +330,8 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
             {/* Input 4: Daily Downtime Cost */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700">{getTranslation('downtimeCostLabel')}</span>
-                <span className="bg-indigo-50 text-indigo-700 font-extrabold px-2.5 py-1 rounded-lg border border-indigo-100">
+                <span className="font-bold text-white">{getTranslation('downtimeCostLabel')}</span>
+                <span className="bg-ochre/10 text-ochre font-extrabold px-2.5 py-1 rounded-lg border border-ochre/30">
                   {dailyDowntimeCost.toLocaleString()} {getTranslation('currency')} <span className="text-[10px] font-medium opacity-80">{getTranslation('perDay')}</span>
                 </span>
               </div>
@@ -342,9 +342,9 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
                 step="5000"
                 value={dailyDowntimeCost}
                 onChange={(e) => setDailyDowntimeCost(parseInt(e.target.value, 10))}
-                className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-slate-100 rounded-lg"
+                className="w-full accent-ochre cursor-pointer h-1.5 bg-white/10 rounded-lg"
               />
-              <div className="flex justify-between text-[10px] text-slate-400">
+              <div className="flex justify-between text-[10px] text-slate-doc-2">
                 <span>10,000</span>
                 <span>80,000</span>
                 <span>150,000 {getTranslation('currency')}</span>
@@ -352,16 +352,16 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
             </div>
           </div>
 
-          <div className="mt-8 pt-4 border-t border-slate-100 flex items-start gap-3 bg-indigo-50/50 p-4 rounded-2xl border border-indigo-50">
-            <Info className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" />
+          <div className="mt-8 pt-4 border-t border-white/10 flex items-start gap-3 bg-ochre/5 p-4 rounded-2xl border border-ochre/20">
+            <Info className="h-5 w-5 text-ochre shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <h4 className="text-xs font-extrabold text-indigo-950">
+              <h4 className="text-xs font-extrabold text-white">
                 {getTranslation('ruleEnforcement')}
               </h4>
-              <p className="text-[11px] text-indigo-900 leading-normal">
-                {isAr 
+              <p className="text-[11px] text-slate-doc leading-normal">
+                {isAr
                   ? "يتم تطبيق خصم 32٪ على نفقات الورشة والمخزون بفضل خوارزميات الصيانة وتدقيق المشتريات، وتقليل أيام توقف الشاحنات بنسبة 45٪ عبر حجز قطع الغيار التلقائي."
-                  : isEn 
+                  : isEn
                   ? "Applies an immediate 32% reduction to maintenance costs via optimized labor formulas & fiscal health reviews, and 45% shorter idle durations through predictive inventory reservation."
                   : "Modélisation stricte : réduction de 32% des frais d'atelier (calculateur main d'œuvre/pièces et audit budgétaire) et de 45% des durées d'arrêt (gestion prédictive et réservation de stock)."}
               </p>
@@ -370,60 +370,60 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
         </div>
 
         {/* RIGHT COLUMN: Output Dashboard & Recharts Chart (7 cols) */}
-        <div className="lg:col-span-7 bg-slate-900 text-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xs border border-slate-850 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-900/10 rounded-full blur-3xl -z-10" />
-          
+        <div className="lg:col-span-7 bg-ink-3 text-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xs border border-white/10 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-ochre/10 rounded-full blur-3xl -z-10" />
+
           <div className="space-y-6">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+            <div className="flex justify-between items-center border-b border-white/10 pb-3">
               <h3 className="text-base font-extrabold tracking-tight text-white flex items-center gap-2">
-                <TrendingUp className="h-4.5 w-4.5 text-indigo-400" />
+                <TrendingUp className="h-4.5 w-4.5 text-ochre" />
                 {isAr ? "عائد الاستثمار والوفورات المقدرة" : isEn ? "Dynamic ROI Dashboard" : "Tableau de Bord de Rentabilité"}
               </h3>
               <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-400 bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-900/30 flex items-center gap-1">
                 <ShieldCheck className="h-3 w-3" />
-                100% {isAr ? "موثوق" : "Verified"}
+                {isAr ? "منهجية شفافة" : isEn ? "Transparent Method" : "Méthode Transparente"}
               </span>
             </div>
 
             {/* Core Savings Hero Section */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-slate-850 border border-slate-800/60 rounded-2xl p-4 flex flex-col justify-between">
-                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">
+              <div className="bg-ink-2 border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
+                <span className="text-[10px] uppercase tracking-wider text-slate-doc-2 font-bold block">
                   {getTranslation('yearlySavings')}
                 </span>
                 <div className="mt-2">
                   <span className="text-lg sm:text-xl font-black text-emerald-400 block leading-none">
                     {Math.round(calculations.totalSavings).toLocaleString()} DA
                   </span>
-                  <span className="text-[10px] text-slate-500 block mt-1">
+                  <span className="text-[10px] text-slate-doc-2 block mt-1">
                     {isAr ? "وفورات حقيقية سنوياً" : isEn ? "Annual Net Savings" : "Économies annuelles nettes"}
                   </span>
                 </div>
               </div>
 
-              <div className="bg-slate-850 border border-slate-800/60 rounded-2xl p-4 flex flex-col justify-between">
-                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">
+              <div className="bg-ink-2 border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
+                <span className="text-[10px] uppercase tracking-wider text-slate-doc-2 font-bold block">
                   {getTranslation('roiFactor')}
                 </span>
                 <div className="mt-2">
-                  <span className="text-lg sm:text-xl font-black text-indigo-400 block leading-none">
+                  <span className="text-lg sm:text-xl font-black text-ochre block leading-none">
                     {calculations.roiMultiplier.toFixed(1)}x
                   </span>
-                  <span className="text-[10px] text-slate-500 block mt-1 flex items-center gap-1">
+                  <span className="text-[10px] text-slate-doc-2 block mt-1 flex items-center gap-1">
                     {isAr ? "مضاعف الاستثمار" : isEn ? "Value multiplier" : "Multiplicateur de valeur"}
                   </span>
                 </div>
               </div>
 
-              <div className="bg-slate-850 border border-slate-800/60 rounded-2xl p-4 flex flex-col justify-between">
-                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">
+              <div className="bg-ink-2 border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
+                <span className="text-[10px] uppercase tracking-wider text-slate-doc-2 font-bold block">
                   {getTranslation('paybackPeriod')}
                 </span>
                 <div className="mt-2">
-                  <span className="text-lg sm:text-xl font-black text-slate-100 block leading-none">
+                  <span className="text-lg sm:text-xl font-black text-white block leading-none">
                     {calculations.paybackMonths.toFixed(1)} {isAr ? "أشهر" : "mois"}
                   </span>
-                  <span className="text-[10px] text-slate-500 block mt-1">
+                  <span className="text-[10px] text-slate-doc-2 block mt-1">
                     {isAr ? "استرجاع التكاليف سريعاً" : isEn ? "Instant amortization" : "Seuil de rentabilité atteint"}
                   </span>
                 </div>
@@ -432,10 +432,10 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
 
             {/* Dynamic Charts visualizer */}
             <div className="space-y-2 mt-4">
-              <h4 className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+              <h4 className="text-[11px] font-bold text-slate-doc uppercase tracking-wider">
                 {getTranslation('costBreakdownChart')}
               </h4>
-              <div className="h-60 w-full bg-slate-950/40 border border-slate-800 rounded-2xl p-3 pt-5">
+              <div className="h-60 w-full bg-ink border border-white/10 rounded-2xl p-3 pt-5">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={chartData}
@@ -444,48 +444,48 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
                   >
                     <XAxis 
                       type="number" 
-                      stroke="#64748b" 
+                      stroke="#5C6670"
                       fontSize={10} 
                       tickFormatter={(val) => `${(val / 1000000).toFixed(1)}M`}
                     />
                     <YAxis 
                       dataKey="name" 
                       type="category" 
-                      stroke="#64748b" 
+                      stroke="#5C6670"
                       fontSize={11} 
                       width={80}
                       tickLine={false}
                     />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
+                      contentStyle={{ backgroundColor: '#1F2830', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}
                       itemStyle={{ color: '#f8fafc', fontSize: '12px' }}
-                      labelStyle={{ color: '#94a3b8', fontSize: '11px', fontWeight: 'bold' }}
+                      labelStyle={{ color: '#8B95A0', fontSize: '11px', fontWeight: 'bold' }}
                       formatter={(value: any, name: any) => [`${Number(value).toLocaleString()} DA`, String(name)]}
                     />
-                    <Legend 
-                      verticalAlign="top" 
-                      height={30} 
-                      iconSize={10} 
+                    <Legend
+                      verticalAlign="top"
+                      height={30}
+                      iconSize={10}
                       iconType="circle"
-                      wrapperStyle={{ fontSize: '10px', color: '#94a3b8' }}
+                      wrapperStyle={{ fontSize: '10px', color: '#8B95A0' }}
                     />
-                    <Bar 
-                      dataKey={getTranslation('maintenanceTitle')} 
-                      stackId="a" 
-                      fill="#6366f1" 
-                      radius={[0, 0, 0, 0]} 
+                    <Bar
+                      dataKey={getTranslation('maintenanceTitle')}
+                      stackId="a"
+                      fill="#C1793C"
+                      radius={[0, 0, 0, 0]}
                     />
-                    <Bar 
-                      dataKey={getTranslation('downtimeTitle')} 
-                      stackId="a" 
-                      fill="#f43f5e" 
-                      radius={[0, 8, 8, 0]} 
+                    <Bar
+                      dataKey={getTranslation('downtimeTitle')}
+                      stackId="a"
+                      fill="#B4432F"
+                      radius={[0, 8, 8, 0]}
                     />
-                    <Bar 
-                      dataKey={getTranslation('savingsTitle')} 
-                      stackId="b" 
-                      fill="#10b981" 
-                      radius={[0, 8, 8, 0]} 
+                    <Bar
+                      dataKey={getTranslation('savingsTitle')}
+                      stackId="b"
+                      fill="#10b981"
+                      radius={[0, 8, 8, 0]}
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -493,14 +493,14 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
             </div>
 
             {/* Breakdown details list */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 text-xs border-t border-slate-800">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 text-xs border-t border-white/10">
               <div className="space-y-1.5">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                <span className="text-[10px] text-slate-doc-2 font-bold uppercase tracking-wider block">
                   {getTranslation('maintenanceSavings')}
                 </span>
-                <div className="flex justify-between items-center text-slate-200">
+                <div className="flex justify-between items-center text-slate-doc">
                   <span className="flex items-center gap-1.5 font-bold">
-                    <Wrench className="h-3.5 w-3.5 text-indigo-400" />
+                    <Wrench className="h-3.5 w-3.5 text-ochre" />
                     -{Math.round(calculations.maintenanceSavings).toLocaleString()} DA
                   </span>
                   <span className="text-emerald-400 font-extrabold">-32%</span>
@@ -508,10 +508,10 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
               </div>
 
               <div className="space-y-1.5">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                <span className="text-[10px] text-slate-doc-2 font-bold uppercase tracking-wider block">
                   {getTranslation('downtimeSavings')}
                 </span>
-                <div className="flex justify-between items-center text-slate-200">
+                <div className="flex justify-between items-center text-slate-doc">
                   <span className="flex items-center gap-1.5 font-bold">
                     <Clock className="h-3.5 w-3.5 text-rose-400" />
                     -{Math.round(calculations.downtimeSavings).toLocaleString()} DA
@@ -522,19 +522,19 @@ export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ currentLanguage, o
             </div>
           </div>
 
-          <div className="mt-8 pt-4 border-t border-slate-800 flex flex-col sm:flex-row gap-3 items-center justify-between">
-            <span className="text-[10px] text-slate-400 text-center sm:text-left leading-normal">
-              {isAr 
-                ? "* تعتمد الحسابات على إحصاءات حقيقية من شركات نقل جزائرية قلصت معدل تعطل مركباتها واسترجعت التكاليف في أقل من شهرين."
+          <div className="mt-8 pt-4 border-t border-white/10 flex flex-col sm:flex-row gap-3 items-center justify-between">
+            <span className="text-[10px] text-slate-doc-2 text-center sm:text-left leading-normal">
+              {isAr
+                ? "* تقدير مبني على معدلات المكاسب التي يحسبها محرك القواعد لدينا (خفض تحليلي بنسبة 32٪ للصيانة، 45٪ للتوقف) — للتأكيد على بياناتكم الحقيقية خلال تدقيق مجاني."
                 : isEn
-                ? "* Calculations are based on real-world statistics from Algerian fleet operators who achieved immediate amortization in < 2 months."
-                : "* Modélisation basée sur des cas réels d'entreprises algériennes ayant réduit leur taux de panne et amorti NextTransit en moins de 2 mois."}
+                ? "* Estimate based on the gain rates modeled by our rules engine (32% analytical reduction on maintenance, 45% on downtime) — to be confirmed against your real data during a free audit."
+                : "* Estimation basée sur les taux de gain modélisés par notre moteur de règles (réduction analytique de 32% sur la maintenance, 45% sur l'immobilisation) — à confirmer sur vos données réelles lors d'un audit gratuit."}
             </span>
             <button
               onClick={onExploreDemo}
-              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white text-slate-900 font-extrabold text-xs hover:bg-slate-100 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-ochre text-ink font-extrabold text-xs hover:bg-amber-400 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
             >
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <CheckCircle2 className="h-4 w-4 text-ink" />
               {getTranslation('actionBtn')}
             </button>
           </div>

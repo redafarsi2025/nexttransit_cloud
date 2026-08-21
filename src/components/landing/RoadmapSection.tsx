@@ -16,7 +16,7 @@ const PHASES = [
     desc: { fr: 'Commandes fournisseurs automatisées, RFID atelier, calendriers PM.', en: 'Automated supplier orders, workshop RFID, PM schedules.', ar: 'طلبات موردين آلية، تتبع RFID، جداول الصيانة.' } },
   { phase: 'Phase 4', active: false, status: { fr: 'Roadmap', en: 'Roadmap', ar: 'خارطة الطريق' },
     title: { fr: 'Conformité SCF & CNAS', en: 'SCF & CNAS compliance', ar: 'الامتثال المحاسبي والاجتماعي' },
-    desc: { fr: 'Export comptable SAP/Odoo/Sage, déclarations sociales, bilan carbone.', en: 'SAP/Odoo/Sage export, social filings, carbon reporting.', ar: 'تصدير محاسبي، تصريحات اجتماعية، تقرير كربوني.' } },
+    desc: { fr: 'Export comptable SAP/Odoo/Sage, déclarations sociales, bilan carbone, hébergement souverain On-Premise en Algérie.', en: 'SAP/Odoo/Sage export, social filings, carbon reporting, sovereign On-Premise hosting in Algeria.', ar: 'تصدير محاسبي، تصريحات اجتماعية، تقرير كربوني، استضافة سيادية محلية في الجزائر.' } },
   { phase: 'Phase 5', active: false, status: { fr: 'Vision', en: 'Vision', ar: 'رؤية' },
     title: { fr: 'ERP logistique complet', en: 'Full logistics ERP', ar: 'نظام تخطيط موارد لوجستي كامل' },
     desc: { fr: 'Offline-first atelier, portail garages partenaires, API ouvertes TMS/WMS.', en: 'Offline-first workshop, partner garage portal, open TMS/WMS APIs.', ar: 'عمل بدون اتصال، بوابة الشركاء، واجهات برمجية مفتوحة.' } },

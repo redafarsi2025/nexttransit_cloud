@@ -12,7 +12,6 @@ import { FeaturesSection } from '../landing/FeaturesSection';
 import { IndustriesSection } from '../landing/IndustriesSection';
 import { DemoSection } from '../landing/DemoSection';
 import { ComparisonSection } from '../landing/ComparisonSection';
-import { PricingSection } from '../landing/PricingSection';
 import { FaqSection } from '../landing/FaqSection';
 import { ContactModal } from '../landing/ContactModal';
 import { RoadmapSection } from '../landing/RoadmapSection';
@@ -55,8 +54,6 @@ import {
   Check,
   Calendar,
 } from 'lucide-react';
-
-import landingBg from '../../assets/images/landing_page_bg_1785625768294.jpg';
 
 // Scenario interface for dynamic KPI preview
 interface Scenario {
@@ -295,12 +292,12 @@ export const LandingPage: React.FC = () => {
       const textLower = userMsg.toLowerCase();
       if (textLower.includes('prix') || textLower.includes('tarif') || textLower.includes('سعر') || textLower.includes('تكلفة')) {
         reply = currentLanguage === 'ar'
-          ? 'تبدأ أسعارنا من 28,000 دج شهرياً للأسطول الصغير. يمكننا تحضير كشف مالي مفصل لشركتك، هل ترغب بحجز مكالمة؟'
-          : 'Nos tarifs débutent à partir de 28 000 DA/mois pour les petites flottes. Souhaitez-vous planifier une démo ou recevoir un devis personnalisé par email ?';
+          ? 'لا نعرض شبكة أسعار عامة حالياً — تعتمد تكلفة الاشتراك على حجم أسطولكم. هل ترغبون في أن يُعدّ لكم مستشارنا عرض سعر مخصص؟'
+          : 'Nous n\'affichons pas de grille tarifaire publique pour le moment — nos tarifs dépendent de la taille de votre flotte. Souhaitez-vous qu\'un conseiller vous prépare un devis personnalisé ?';
       } else if (textLower.includes('heberg') || textLower.includes('donnee') || textLower.includes('سيرفر') || textLower.includes('بيانات')) {
         reply = currentLanguage === 'ar'
-          ? 'نحن ندعم الاستضافة السحابية الآمنة وكذلك خيار تثبيت السيرفرات محلياً داخل الجزائر للشركات الوطنية الكبرى.'
-          : 'Nous proposons l\'hébergement en Algérie (On-Premise) pour garantir la souveraineté totale de vos données d\'exploitation.';
+          ? 'بيئتنا الحالية تعتمد على استضافة سحابية آمنة (نشر تجريبي/عرض توضيحي). الاستضافة المحلية السيادية داخل الجزائر قيد التطوير على خارطة طريقنا لعملائنا المستقبليين الكبار.'
+          : 'Notre environnement actuel s\'appuie sur un hébergement cloud sécurisé (déploiement pilote/démo). L\'hébergement souverain local en Algérie (On-Premise) est en cours de développement sur notre feuille de route pour nos futurs grands comptes.';
       } else {
         reply = currentLanguage === 'ar'
           ? 'شكراً لتواصلك! لقد تلقينا استفسارك وسيقوم أحد مهندسي النقل لدينا بالاتصال بك قريباً جداً لتوضيح التفاصيل.'
@@ -362,15 +359,6 @@ export const LandingPage: React.FC = () => {
               className="text-left py-1 hover:text-ochre transition font-bold cursor-pointer"
             >
               {currentLanguage === 'ar' ? 'الوحدات والمميزات' : currentLanguage === 'en' ? 'ERP Modules' : 'Modules ERP'}
-            </button>
-            <button
-              onClick={() => {
-                document.getElementById('pricing-plans')?.scrollIntoView({ behavior: 'smooth' });
-                setIsMobileMenuOpen(false);
-              }}
-              className="text-left py-1 hover:text-ochre transition font-bold cursor-pointer"
-            >
-              {currentLanguage === 'ar' ? 'الأسعار' : currentLanguage === 'en' ? 'Pricing' : 'Tarifs'}
             </button>
           </nav>
 
@@ -513,7 +501,7 @@ export const LandingPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-6 text-[11px] text-slate-400 pt-3 border-t border-white/10">
             <span className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /><strong className="font-data text-white">{currentLanguage === 'ar' ? 'عزلة كاملة للمؤسسات' : currentLanguage === 'en' ? 'Enterprise Multi-tenant' : 'Multi-Tenant Isolé'}</strong></span>
             <span className="flex items-center gap-1.5"><Award className="h-3.5 w-3.5 text-amber-400" /><strong className="font-data text-white">{currentLanguage === 'ar' ? 'تحليل التكلفة الإجمالية TCO' : currentLanguage === 'en' ? 'TCO Analytics' : 'Analyse TCO & Coûts'}</strong></span>
-            <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5 text-indigo-400" /><strong className="font-data text-white">FR · AR · EN (RTL Native)</strong></span>
+            <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5 text-ochre" /><strong className="font-data text-white">FR · AR · EN (RTL Native)</strong></span>
           </div>
         </div>
 
@@ -618,7 +606,7 @@ export const LandingPage: React.FC = () => {
               <div className="space-y-3.5 animate-in fade-in duration-200">
                 <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
                   <div>
-                    <span className="text-[10px] uppercase font-data text-indigo-400 font-bold block">
+                    <span className="text-[10px] uppercase font-data text-ochre font-bold block">
                       DECODER TELTONIKA CAN-RAW (SAE J1939)
                     </span>
                     <h4 className="text-sm font-bold text-white mt-0.5">Boîtier Teltonika FMC650 • Codec 8Extended</h4>
@@ -691,31 +679,31 @@ export const LandingPage: React.FC = () => {
               <div className="space-y-3.5 animate-in fade-in duration-200">
                 <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
                   <div>
-                    <span className="text-[10px] uppercase font-data text-purple-400 font-bold block flex items-center gap-1">
-                      <Sparkles className="h-3 w-3 text-purple-400" />
-                      GEMINI 3.6 FLASH PREDICTIVE ENGINE
+                    <span className="text-[10px] uppercase font-data text-estime font-bold block flex items-center gap-1">
+                      <Sparkles className="h-3 w-3 text-estime" />
+                      APERÇU CONCEPT · PHASE 3 ROADMAP
                     </span>
                     <h4 className="text-sm font-bold text-white mt-0.5">Prévision d'Usure Saharienne (Climat Extrême & Poussière)</h4>
                   </div>
-                  <span className="text-[10px] font-bold font-data bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded">
-                    Confiance 94.2%
+                  <span className="text-[10px] font-bold font-data bg-estime/20 text-estime border border-estime/40 px-2 py-0.5 rounded">
+                    Non actif en production
                   </span>
                 </div>
 
-                <div className="p-3 bg-purple-950/30 border border-purple-500/30 rounded-xl space-y-2 text-xs">
-                  <div className="font-bold text-purple-200">Pronostic IA d'Infaillibilité Moteur:</div>
+                <div className="p-3 bg-estime/10 border border-estime/30 rounded-xl space-y-2 text-xs">
+                  <div className="font-bold text-estime">Illustration de la Phase 3 (analyse prédictive) :</div>
                   <p className="text-[11px] text-slate-300 leading-relaxed">
-                    Sur la base de l'exposition prolongée au sable à In Salah (températures &gt; 48°C), le filtre à air atteindra le colmatage critique dans <strong>340 km</strong>.
+                    Une fois les données terrain accumulées, ce module visera à anticiper, sur la base de l'exposition prolongée au sable et à la chaleur, le colmatage critique d'un filtre à air avant qu'il ne survienne.
                   </p>
                 </div>
 
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex justify-between items-center text-xs">
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-data">Maintenance Préventive Suggérée</span>
+                    <span className="text-[10px] text-slate-400 block font-data">Maintenance Préventive Suggérée (exemple)</span>
                     <span className="text-white font-bold">Changement Filtre à Air & Vidange Synthétique</span>
                   </div>
-                  <button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="px-3 py-1.5 rounded bg-purple-600 hover:bg-purple-500 text-white font-bold text-[10px] cursor-pointer">
-                    Valider le Plan IA
+                  <button onClick={() => document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 rounded bg-ochre hover:bg-amber-400 text-ink font-bold text-[10px] cursor-pointer">
+                    Découvrir la Roadmap
                   </button>
                 </div>
               </div>
@@ -727,11 +715,11 @@ export const LandingPage: React.FC = () => {
       {/* 1B. IMPACT METRICS STRIP */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-2">
         <div className="p-4 rounded-2xl bg-[#0F1420] border border-white/10 flex flex-col justify-between">
-          <span className="text-[10px] font-data uppercase tracking-wider text-slate-400">Diminution Coûts Immobilisation</span>
+          <span className="text-[10px] font-data uppercase tracking-wider text-slate-400">Réduction Coûts Immobilisation</span>
           <div className="my-1.5">
             <span className="text-2xl sm:text-3xl font-black text-emerald-400 font-data tracking-tight">-18.4%</span>
           </div>
-          <span className="text-[10px] text-slate-400">Économie constatée sur 30 jours</span>
+          <span className="text-[10px] text-slate-400">Objectif modélisé par notre moteur de règles</span>
         </div>
 
         <div className="p-4 rounded-2xl bg-[#0F1420] border border-white/10 flex flex-col justify-between">
@@ -743,17 +731,17 @@ export const LandingPage: React.FC = () => {
         </div>
 
         <div className="p-4 rounded-2xl bg-[#0F1420] border border-white/10 flex flex-col justify-between">
-          <span className="text-[10px] font-data uppercase tracking-wider text-slate-400">Latence Traitement CAN Teltonika</span>
+          <span className="text-[10px] font-data uppercase tracking-wider text-slate-400">Pipeline d'Ingestion Télémétrie</span>
           <div className="my-1.5">
-            <span className="text-2xl sm:text-3xl font-black text-indigo-400 font-data tracking-tight">&lt; 50ms</span>
+            <span className="text-2xl sm:text-3xl font-black text-ochre font-data tracking-tight">Async</span>
           </div>
-          <span className="text-[10px] text-slate-400">Ingestion EMQX Broker Directe</span>
+          <span className="text-[10px] text-slate-400">File d'attente Redis + BullMQ</span>
         </div>
 
         <div className="p-4 rounded-2xl bg-[#0F1420] border border-white/10 flex flex-col justify-between">
           <span className="text-[10px] font-data uppercase tracking-wider text-slate-400">Modules ERP Flotte Interconnectés</span>
           <div className="my-1.5">
-            <span className="text-2xl sm:text-3xl font-black text-white font-data tracking-tight">14</span>
+            <span className="text-2xl sm:text-3xl font-black text-white font-data tracking-tight">15</span>
           </div>
           <span className="text-[10px] text-slate-400">Attribution rôle par rôle (RBAC)</span>
         </div>
@@ -770,14 +758,14 @@ export const LandingPage: React.FC = () => {
       {/* 4. DYNAMIC LIVE ENVIRONMENT SCENARIO SIMULATOR (KPI HIGHLIGHTS) */}
       <div id="scenarios-simulation" className="space-y-6">
         <div className="space-y-2 text-center max-w-2xl mx-auto">
-          <span className="text-[10px] uppercase text-indigo-600 font-extrabold tracking-wider block">
+          <span className="text-[10px] uppercase text-ochre font-extrabold tracking-wider block">
             {currentLanguage === 'ar' ? 'تتبع فوري ومحاكاة' : currentLanguage === 'en' ? 'GEOGRAPHIC REALITY' : 'CONSEILS D\'ÉCONOMIE TERRITORIALE'}
           </span>
           <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center justify-center gap-2">
-            <Activity className="h-5 w-5 text-indigo-600" />
+            <Activity className="h-5 w-5 text-ochre" />
             {currentT('scenariosTitle')}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500">
+          <p className="text-xs sm:text-sm text-slate-doc">
             {currentT('scenariosSubtitle')}
           </p>
         </div>
@@ -790,22 +778,22 @@ export const LandingPage: React.FC = () => {
               onClick={() => setActiveScenarioId(sc.id)}
               className={`p-4 rounded-2xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${
                 activeScenarioId === sc.id
-                  ? 'border-indigo-600 bg-indigo-50/40 shadow-xs'
-                  : 'border-slate-200 bg-white hover:border-slate-300'
+                  ? 'border-ochre bg-ochre/10 shadow-xs'
+                  : 'border-white/10 bg-ink-2 hover:border-white/20'
               }`}
             >
               <div className="flex justify-between items-center w-full">
-                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide">
+                <span className="text-[10px] font-bold text-ochre uppercase tracking-wide">
                   {sc.id === 'sahara' ? 'Zone Sud' : sc.id === 'atlas' ? 'Zone Nord' : 'Zone Urbaine'}
                 </span>
                 {activeScenarioId === sc.id && (
-                  <CheckCircle2 className="h-4 w-4 text-indigo-600" />
+                  <CheckCircle2 className="h-4 w-4 text-ochre" />
                 )}
               </div>
-              <h3 className="text-xs font-bold text-slate-950">
+              <h3 className="text-xs font-bold text-white">
                 {sc.name[currentLanguage as 'fr'|'ar'|'en'] || sc.name.fr}
               </h3>
-              <p className="text-[11px] text-slate-500 leading-normal">
+              <p className="text-[11px] text-slate-doc leading-normal">
                 {sc.region[currentLanguage as 'fr'|'ar'|'en'] || sc.region.fr}
               </p>
             </button>
@@ -813,33 +801,33 @@ export const LandingPage: React.FC = () => {
         </div>
 
         {/* Live Scenario Telemetry & Decision KPI Output */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-xs relative">
-          
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 rounded-3xl border border-white/10 bg-ink-2 p-6 shadow-xs relative">
+
           {/* Active scenario description */}
           <div className="lg:col-span-4 flex flex-col justify-between space-y-4">
             <div className="space-y-3">
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-950/30 px-2.5 py-1 rounded-lg">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 NextTransit Diagnostic Mode
               </span>
-              <h4 className="text-sm font-bold text-slate-900 leading-snug">
+              <h4 className="text-sm font-bold text-white leading-snug">
                 {activeScenario.name[currentLanguage as 'fr'|'ar'|'en'] || activeScenario.name.fr}
               </h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-slate-doc leading-relaxed">
                 {activeScenario.description[currentLanguage as 'fr'|'ar'|'en'] || activeScenario.description.fr}
               </p>
             </div>
 
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+            <div className="bg-white/5 p-3 rounded-xl border border-white/10 space-y-1">
+              <span className="text-[10px] font-bold text-slate-doc-2 uppercase tracking-wider block">
                 {currentLanguage === 'ar' ? 'شبكة التتبع المتصلة' : currentLanguage === 'en' ? 'Active Network Stream' : 'Flux Réseau Actif'}
               </span>
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                <Wifi className="h-3.5 w-3.5 text-emerald-600" />
-                {activeScenarioId === 'sahara' 
-                  ? 'Mobilis / Djezzy Edge Compression' 
-                  : activeScenarioId === 'atlas' 
-                    ? 'Multi-SIM Redundant (3G/4G Atlas)' 
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-doc">
+                <Wifi className="h-3.5 w-3.5 text-emerald-400" />
+                {activeScenarioId === 'sahara'
+                  ? 'Mobilis / Djezzy Edge Compression'
+                  : activeScenarioId === 'atlas'
+                    ? 'Multi-SIM Redundant (3G/4G Atlas)'
                     : 'Alger Center 4G - Ultra High Frequency'}
               </div>
             </div>
@@ -849,66 +837,66 @@ export const LandingPage: React.FC = () => {
           <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
             {/* KPI 1 */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-slate-doc-2 uppercase tracking-wider">
                 {currentLanguage === 'ar' ? 'جاهزية الأسطول' : currentLanguage === 'en' ? 'Fleet Availability' : 'Disponibilité Flotte'}
               </span>
               <div className="my-2">
-                <span className="text-3xl font-black text-slate-900 tracking-tight">
+                <span className="text-3xl font-black text-white tracking-tight">
                   {activeScenario.operationalEfficiency}%
                 </span>
               </div>
-              <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-700">
+              <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 {currentLanguage === 'ar' ? 'فوق حد الأمان' : currentLanguage === 'en' ? 'Above Target limit' : 'Supérieur à l\'objectif'}
               </div>
             </div>
 
             {/* KPI 2 */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-slate-doc-2 uppercase tracking-wider">
                 {currentLanguage === 'ar' ? 'الإنفاق الشهري المقدر' : currentLanguage === 'en' ? 'Simulated Monthly Expense' : 'Dépense Mensuelle Estimée'}
               </span>
               <div className="my-2">
-                <span className="text-xl font-extrabold text-slate-900 tracking-tight">
+                <span className="text-xl font-extrabold text-white tracking-tight">
                   {activeScenario.monthlyExpenditure.toLocaleString()} DA
                 </span>
               </div>
-              <div className="flex items-center gap-1 text-[10px] font-semibold text-indigo-700">
+              <div className="flex items-center gap-1 text-[10px] font-semibold text-ochre">
                 <Scale className="h-3 w-3" />
                 {currentLanguage === 'ar' ? 'ضمن ميزانية الإقليم' : currentLanguage === 'en' ? 'Within territorial budget' : 'Inclus dans le budget territorial'}
               </div>
             </div>
 
             {/* KPI 3 */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-slate-doc-2 uppercase tracking-wider">
                 {currentLanguage === 'ar' ? 'الحوادث الحرجة' : currentLanguage === 'en' ? 'Critical Faults' : 'Défauts Critiques'}
               </span>
               <div className="my-2">
-                <span className={`text-3xl font-black tracking-tight ${activeScenario.criticalBreakdowns > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
+                <span className={`text-3xl font-black tracking-tight ${activeScenario.criticalBreakdowns > 0 ? 'text-estime' : 'text-white'}`}>
                   {activeScenario.criticalBreakdowns}
                 </span>
               </div>
-              <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-500">
-                {activeScenario.criticalBreakdowns > 0 
+              <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-doc-2">
+                {activeScenario.criticalBreakdowns > 0
                   ? (currentLanguage === 'ar' ? 'تحتاج تدخل طارئ' : currentLanguage === 'en' ? 'Emergency intervention' : 'Intervention urgente requise')
                   : (currentLanguage === 'ar' ? 'أمان تام' : currentLanguage === 'en' ? 'Zero hazards detected' : 'Aucun danger détecté')}
               </div>
             </div>
 
             {/* KPI 4 */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-slate-doc-2 uppercase tracking-wider">
                 {currentLanguage === 'ar' ? 'مطابقة التقرير (R6)' : currentLanguage === 'en' ? 'R6 Reconciliation Cases' : 'Cas de Réconciliation R6'}
               </span>
               <div className="my-2">
-                <span className={`text-3xl font-black tracking-tight ${activeScenario.unreconciledIncidents > 0 ? 'text-orange-600' : 'text-slate-900'}`}>
+                <span className={`text-3xl font-black tracking-tight ${activeScenario.unreconciledIncidents > 0 ? 'text-danger-doc' : 'text-white'}`}>
                   {activeScenario.unreconciledIncidents}
                 </span>
               </div>
-              <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-500">
-                {activeScenario.unreconciledIncidents > 0 
+              <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-doc-2">
+                {activeScenario.unreconciledIncidents > 0
                   ? (currentLanguage === 'ar' ? 'تحقيقات مفتوحة للفرامل' : currentLanguage === 'en' ? 'Open audit investigations' : 'Enquêtes mécaniques ouvertes')
                   : (currentLanguage === 'ar' ? 'متطابق كلياً' : currentLanguage === 'en' ? '100% telemetry synced' : 'Télémétrie 100% alignée')}
               </div>
@@ -919,7 +907,7 @@ export const LandingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. FEATURES BREAKDOWN (14 SAAS MODULES) */}
+      {/* 5. FEATURES BREAKDOWN (15 SAAS MODULES) */}
       <div id="features-list">
         <FeaturesSection 
           currentLanguage={currentLanguage} 
@@ -934,13 +922,13 @@ export const LandingPage: React.FC = () => {
       <DemoSection currentLanguage={currentLanguage} />
 
       {/* 8. DETERMINISTIC DECISION ENGINE SHOWCASE */}
-      <div className="rounded-3xl border border-indigo-500/80 bg-slate-950 text-white p-6 sm:p-8 lg:p-12 relative overflow-hidden shadow-xl space-y-6">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -z-10" />
+      <div className="rounded-3xl border border-ochre/40 bg-ink-3 text-white p-6 sm:p-8 lg:p-12 relative overflow-hidden shadow-xl space-y-6">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-ochre/10 rounded-full blur-3xl -z-10" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -z-10" />
 
         <div className="space-y-3 text-center max-w-3xl mx-auto">
-          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full">
-            <Zap className="h-3 w-3 text-indigo-400" />
+          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase bg-ochre/20 text-ochre px-3 py-1 rounded-full">
+            <Zap className="h-3 w-3 text-ochre" />
             NextTransit Decision Engine
           </span>
           <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
@@ -959,52 +947,52 @@ export const LandingPage: React.FC = () => {
           
           {/* Feature 1 */}
           <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ochre/20 text-ochre">
               <FileText className="h-4.5 w-4.5" />
             </div>
             <h4 className="text-xs font-extrabold text-white">
               {currentLanguage === 'ar' ? 'تقارير تنفيذية حتمية' : currentLanguage === 'en' ? 'Deterministic Executive Reports' : 'Rapports Exécutifs Déterministes'}
             </h4>
-            <p className="text-[11px] text-slate-400 leading-normal">
+            <p className="text-[11px] text-slate-doc leading-normal">
               {currentLanguage === 'ar' ? 'ملخص دقيق للميزانيات وحساب الفروقات التشغيلية عبر محرك القواعد métier.' : currentLanguage === 'en' ? 'Generates clear summaries of budget variances and operational bottlenecks calculated via métier rules engine.' : 'Génère un résumé clair des variations budgétaires et des goulots d\'étranglement calculé par le moteur de règles métier.'}
             </p>
           </div>
 
           {/* Feature 2 */}
           <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ochre/20 text-ochre">
               <Wrench className="h-4.5 w-4.5" />
             </div>
             <h4 className="text-xs font-extrabold text-white">
               {currentLanguage === 'ar' ? 'حساب وقائي للتآكل' : currentLanguage === 'en' ? 'Predictive Wear Calculation' : 'Calcul Prédictif d\'Usure'}
             </h4>
-            <p className="text-[11px] text-slate-400 leading-normal">
+            <p className="text-[11px] text-slate-doc leading-normal">
               {currentLanguage === 'ar' ? 'حساب معدل تآكل الزيوت والفلاتر بناءً على قواعد تشغيلية صحراوية.' : currentLanguage === 'en' ? 'Calculates oil and filter degradation rates based on business rules for desert and climate exposure.' : 'Calcule le niveau de dégradation des lubrifiants selon des règles métier d\'exposition au sable et au climat.'}
             </p>
           </div>
 
           {/* Feature 3 */}
           <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ochre/20 text-ochre">
               <Globe className="h-4.5 w-4.5" />
             </div>
             <h4 className="text-xs font-extrabold text-white">
               {currentLanguage === 'ar' ? 'ترجمة وتوحيد المصطلحات الفنية' : currentLanguage === 'en' ? 'Technical Translation & Standard' : 'Traduction Technique & Normalisation'}
             </h4>
-            <p className="text-[11px] text-slate-400 leading-normal">
+            <p className="text-[11px] text-slate-doc leading-normal">
               {currentLanguage === 'ar' ? 'ترجمة وتوحيد التقارير الفنية المكتوبة بالعامية أو الفرنسية إلى لغات النظام.' : currentLanguage === 'en' ? 'Translates and normalizes driver fault logs between dialectal Arabic and technical French into standard codes.' : 'Traduite et normalise automatiquement les notes de panne rédigées en arabe dialectal ou français technique vers le référentiel métier.'}
             </p>
           </div>
 
           {/* Feature 4 */}
           <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ochre/20 text-ochre">
               <CheckCircle2 className="h-4.5 w-4.5" />
             </div>
             <h4 className="text-xs font-extrabold text-white">
               {currentLanguage === 'ar' ? 'توصيات الشراء المؤتمتة' : currentLanguage === 'en' ? 'Automated Procurement Rules' : 'Recommandations d\'Achat Automatisées'}
             </h4>
-            <p className="text-[11px] text-slate-400 leading-normal">
+            <p className="text-[11px] text-slate-doc leading-normal">
               {currentLanguage === 'ar' ? 'كشف انخفاض المباشر للمخزون واستخراج الفروقات السعرية لتفعيل أمر الشراء R3.' : currentLanguage === 'en' ? 'Detects inventory buffer breaches and price variance against benchmark rates to trigger automated R3 purchase orders.' : 'Détecte les dépassements de seuil de stock et les écarts de prix par rapport au barème de référence pour déclencher le réapprovisionnement R3.'}
             </p>
           </div>
@@ -1013,32 +1001,32 @@ export const LandingPage: React.FC = () => {
       </div>
 
       {/* 9. WHY CHOOSE US (SaaS vs LEGACY DESKTOP ERP vs MANUAL PAPER) */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
+      <div className="rounded-3xl border border-white/10 bg-ink-2 p-6 sm:p-8 shadow-xs">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           <div className="space-y-4">
-            <span className="text-[10px] uppercase text-indigo-600 font-extrabold tracking-wider block">
+            <span className="text-[10px] uppercase text-ochre font-extrabold tracking-wider block">
               {currentLanguage === 'ar' ? 'لماذا تختار منصتنا؟' : currentLanguage === 'en' ? 'PROVEN VALUE' : 'NOTRE PROPOSITION DE VALEUR'}
             </span>
-            <h3 className="text-xl sm:text-2xl font-black text-slate-950 leading-tight">
+            <h3 className="text-xl sm:text-2xl font-black text-white leading-tight">
               {currentLanguage === 'ar' ? 'أكثر من مجرد برنامج تتبع - نظام ذكاء مالي وتشغيلي متكامل' : currentLanguage === 'en' ? 'A Sovereign Decision Engine Built for Total Fiscal Control' : 'Un ERP qui automatise l\'audit de votre rentabilité'}
             </h3>
-            <p className="text-sm text-slate-600 leading-relaxed">
+            <p className="text-sm text-slate-doc leading-relaxed">
               {currentLanguage === 'ar' ? 'تجمع منصتنا بين المحاسبة المتوافقة مع الـ SCF، تتبع المركبات، إدارة المخزن وصيانة الورشة في مكان واحد معتمد ومطابق للقوانين الضريبية الجزائرية.' : currentLanguage === 'en' ? 'We sync workshop workflows, parts inventory, state CNAS payroll and fuel metrics into one single database conforming to Algerian legal audits.' : 'NextTransit réconcilie en direct l\'usure réelle de vos pneus ou moteurs avec l\'état des stocks de pièces détachées et les finances.'}
             </p>
           </div>
 
           <div className="space-y-3">
-            <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <div className="h-2 w-2 rounded-full bg-indigo-600 shrink-0" />
-              <span className="text-xs font-bold text-slate-800">{currentLanguage === 'ar' ? 'توافق كامل مع المخطط الوطني للمحاسبة SCF' : currentLanguage === 'en' ? 'Full Compatibility with Algerian SCF Guidelines' : 'Imputation comptable automatisée aux normes SCF'}</span>
+            <div className="flex items-center gap-3 bg-white/5 p-4 rounded-xl border border-white/10">
+              <div className="h-2 w-2 rounded-full bg-ochre shrink-0" />
+              <span className="text-xs font-bold text-white">{currentLanguage === 'ar' ? 'توافق كامل مع المخطط الوطني للمحاسبة SCF' : currentLanguage === 'en' ? 'Full Compatibility with Algerian SCF Guidelines' : 'Imputation comptable automatisée aux normes SCF'}</span>
             </div>
-            <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <div className="h-2 w-2 rounded-full bg-indigo-600 shrink-0" />
-              <span className="text-xs font-bold text-slate-800">{currentLanguage === 'ar' ? 'استضافة سحابية خاصة مخصصة داخل الجزائر لحفظ السيادة' : currentLanguage === 'en' ? 'Dedicated Sovereign Local Hosting Options available' : 'Souveraineté absolue et hébergement local agréé'}</span>
+            <div className="flex items-center gap-3 bg-white/5 p-4 rounded-xl border border-white/10">
+              <div className="h-2 w-2 rounded-full bg-ochre shrink-0" />
+              <span className="text-xs font-bold text-white">{currentLanguage === 'ar' ? 'استضافة سيادية محلية — قيد التطوير لعملائنا المستقبليين في القطاع العام' : currentLanguage === 'en' ? 'Sovereign local hosting — under active deployment for future public-sector clients' : 'Hébergement souverain local — en cours de déploiement pour nos futurs clients étatiques'}</span>
             </div>
-            <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <div className="h-2 w-2 rounded-full bg-indigo-600 shrink-0" />
-              <span className="text-xs font-bold text-slate-800">{currentLanguage === 'ar' ? 'تطبيق صارم للقواعد الرياضية métier لتنظيم العمليات' : currentLanguage === 'en' ? 'Mathematical Enforcement of strict métier Rules' : 'Respect mathématique des règles métier métier'}</span>
+            <div className="flex items-center gap-3 bg-white/5 p-4 rounded-xl border border-white/10">
+              <div className="h-2 w-2 rounded-full bg-ochre shrink-0" />
+              <span className="text-xs font-bold text-white">{currentLanguage === 'ar' ? 'تطبيق صارم للقواعد الرياضية métier لتنظيم العمليات' : currentLanguage === 'en' ? 'Mathematical Enforcement of strict métier Rules' : 'Respect mathématique des règles métier'}</span>
             </div>
           </div>
         </div>
@@ -1058,14 +1046,14 @@ export const LandingPage: React.FC = () => {
       {/* 11. PILOT PROGRAM (REPLACES TESTIMONIALS) */}
       <div className="space-y-8 py-4">
         <div className="space-y-3 text-center max-w-3xl mx-auto">
-          <span className="text-[10px] uppercase text-indigo-600 font-extrabold tracking-wider bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full inline-block">
+          <span className="text-[10px] uppercase text-ochre font-extrabold tracking-wider bg-ochre/10 border border-ochre/30 px-3 py-1 rounded-full inline-block">
             {currentLanguage === 'ar' ? 'البرنامج التجريبي - المرحلة 0' : currentLanguage === 'en' ? 'PHASE 0 PILOT PROGRAM' : 'PROGRAMME PILOTE PHASE 0'}
           </span>
           <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
             {currentLanguage === 'ar' ? 'انضم إلى برنامجنا التجريبي' : currentLanguage === 'en' ? 'Join Our Pilot Program' : 'Rejoignez notre programme pilote'}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
-            {currentLanguage === 'ar' 
+          <p className="text-xs sm:text-sm text-slate-doc leading-relaxed font-normal">
+            {currentLanguage === 'ar'
               ? 'نيكست ترانزيت في مرحلة الإطلاق. أول 3 أساطيل تنضم إلى البرنامج التجريبي تستفيد من تجربة مجانية لمدة 30 يومًا على بياناتها الخاصة، مع هدف تعاقدي لتقليل تكاليف التوقف بنسبة 15%.'
               : currentLanguage === 'en'
               ? 'NextTransit is in launch phase. The first 3 fleets joining the pilot program get a free 30-day POC on their own data, with a contractual target of -15% downtime costs.'
@@ -1074,60 +1062,60 @@ export const LandingPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
+
           {/* Card 1 */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:border-indigo-200 transition-all">
+          <div className="bg-ink-2 border border-white/10 rounded-3xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:border-ochre/40 transition-all">
             <div className="space-y-2">
-              <span className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider block">
+              <span className="text-[10px] font-extrabold text-ochre uppercase tracking-wider block">
                 {currentLanguage === 'ar' ? '1. تدقيق سريع' : currentLanguage === 'en' ? '1. Overnight Audit' : '1. Audit Overnight'}
               </span>
-              <h3 className="text-sm font-extrabold text-slate-900">
+              <h3 className="text-sm font-extrabold text-white">
                 {currentLanguage === 'ar' ? 'أرسل ملف إكسل الخاص بك الليلة' : currentLanguage === 'en' ? 'Send your Excel export tonight' : 'Envoyez votre export Excel ce soir'}
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-slate-doc leading-relaxed">
                 {currentLanguage === 'ar' ? 'تحليل ليلي، وتقرير تفصيلي خلال 24 ساعة.' : currentLanguage === 'en' ? 'Overnight analysis, full report within 24h.' : 'Analyse overnight, rapport sous 24h.'}
               </p>
             </div>
-            <div className="pt-3 border-t border-slate-100 flex items-center gap-2 text-[11px] font-semibold text-indigo-600">
+            <div className="pt-3 border-t border-white/10 flex items-center gap-2 text-[11px] font-semibold text-ochre">
               <CheckCircle2 className="h-4 w-4" />
               <span>{currentLanguage === 'ar' ? 'رأي فوري' : currentLanguage === 'en' ? 'Instant insights' : 'Diagnostic rapide'}</span>
             </div>
           </div>
 
           {/* Card 2 */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:border-indigo-200 transition-all">
+          <div className="bg-ink-2 border border-white/10 rounded-3xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:border-ochre/40 transition-all">
             <div className="space-y-2">
-              <span className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider block">
+              <span className="text-[10px] font-extrabold text-ochre uppercase tracking-wider block">
                 {currentLanguage === 'ar' ? '2. عرض مخصص' : currentLanguage === 'en' ? '2. Custom Demo' : '2. Démo Sur-Mesure'}
               </span>
-              <h3 className="text-sm font-extrabold text-slate-900">
+              <h3 className="text-sm font-extrabold text-white">
                 {currentLanguage === 'ar' ? 'عرض توضيحي على بياناتك الخاصة' : currentLanguage === 'en' ? 'Demo on your own data' : 'Démo sur vos propres données'}
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-slate-doc leading-relaxed">
                 {currentLanguage === 'ar' ? 'بدون بيانات وهمية، أسطولك الحقيقي ومساراتك.' : currentLanguage === 'en' ? 'No dummy data, your actual fleet and routes.' : 'Pas de données fictives, votre flotte réelle.'}
               </p>
             </div>
-            <div className="pt-3 border-t border-slate-100 flex items-center gap-2 text-[11px] font-semibold text-indigo-600">
+            <div className="pt-3 border-t border-white/10 flex items-center gap-2 text-[11px] font-semibold text-ochre">
               <CheckCircle2 className="h-4 w-4" />
               <span>{currentLanguage === 'ar' ? 'بيانات حقيقية' : currentLanguage === 'en' ? 'Real data' : 'Souveraineté des données'}</span>
             </div>
           </div>
 
           {/* Card 3 */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:border-indigo-200 transition-all">
+          <div className="bg-ink-2 border border-white/10 rounded-3xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:border-ochre/40 transition-all">
             <div className="space-y-2">
-              <span className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider block">
+              <span className="text-[10px] font-extrabold text-ochre uppercase tracking-wider block">
                 {currentLanguage === 'ar' ? '3. تجربة معتمدة' : currentLanguage === 'en' ? '3. Contracted POC' : '3. POC Contractualisé'}
               </span>
-              <h3 className="text-sm font-extrabold text-slate-900">
+              <h3 className="text-sm font-extrabold text-white">
                 {currentLanguage === 'ar' ? 'تجربة مجانية لمدة 30 يومًا' : currentLanguage === 'en' ? 'Free 30-day POC' : 'POC 30 jours gratuit'}
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-slate-doc leading-relaxed">
                 {currentLanguage === 'ar' ? '10 مركبات، هدف خفض تكاليف التوقف بنسبة 15%.' : currentLanguage === 'en' ? '10 vehicles, target -15% downtime costs.' : '10 véhicules, objectif -15% coûts d\'immobilisation.'}
               </p>
             </div>
-            <div className="pt-3 border-t border-slate-100 flex items-center gap-2 text-[11px] font-semibold text-emerald-600">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <div className="pt-3 border-t border-white/10 flex items-center gap-2 text-[11px] font-semibold text-emerald-400">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
               <span>{currentLanguage === 'ar' ? 'مردود مضمون' : currentLanguage === 'en' ? 'Target guaranteed' : 'Objectif mesurable'}</span>
             </div>
           </div>
@@ -1149,53 +1137,46 @@ export const LandingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 12. PRICING PLANS */}
-      <div id="pricing-plans">
-        <PricingSection 
-          currentLanguage={currentLanguage}
-          onExploreDemo={() => changeScreen('STRATEGIC_DASHBOARD')}
-          onRequestDemo={() => setShowContactModal(true)}
-        />
-      </div>
-
       {/* 12b. ROADMAP SECTION */}
-      <RoadmapSection currentLanguage={currentLanguage} />
+      <div id="roadmap">
+        <RoadmapSection currentLanguage={currentLanguage} />
+      </div>
 
       {/* 13. FAQ ACCORDION SECTION (ADDRESS OBJECTIONS) */}
       <FaqSection currentLanguage={currentLanguage} />
 
       {/* 14. FINAL CALL TO ACTION BOX */}
-      <div className="rounded-3xl border border-indigo-200 bg-gradient-to-br from-indigo-950 to-slate-950 text-white p-8 sm:p-12 text-center space-y-6 relative overflow-hidden shadow-xl">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e1b4b_1px,transparent_1px),linear-gradient(to_bottom,#1e1b4b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30" />
-        
+      <div className="rounded-3xl border border-ochre/30 bg-gradient-to-br from-ink-3 to-ink text-white p-8 sm:p-12 text-center space-y-6 relative overflow-hidden shadow-xl">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#2A2015_1px,transparent_1px),linear-gradient(to_bottom,#2A2015_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30" />
+
         <div className="relative z-10 max-w-2xl mx-auto space-y-4">
           <h2 className="text-xl sm:text-3xl font-black tracking-tight leading-tight">
             {currentLanguage === 'ar' ? 'ابدأ في التحكم في كل دينار من ميزانية صيانة أسطولك اليوم' : currentLanguage === 'en' ? 'Take Absolute Fiscal Control Over Every Single Maintenance Dinar' : 'Prenez le contrôle de chaque dinar de maintenance dès aujourd\'hui'}
           </h2>
-          <p className="text-xs sm:text-sm text-indigo-200 max-w-xl mx-auto">
-            {currentLanguage === 'ar' ? 'انضم إلى المؤسسات الجزائرية الرائدة التي تستخدم نيكس ترانزيت لتفادي الأعطال، خفض نفقات قطع الغيار، ومطابقة المحاسبة SCF.' : currentLanguage === 'en' ? 'Deploy predictive métier rules and optimize stock reservation to boost your bottom line.' : 'Instaurez les règles d\'or de maintenance métier et automatisez le suivi de vos ateliers.'}
+          <p className="text-xs sm:text-sm text-slate-doc max-w-xl mx-auto">
+            {currentLanguage === 'ar' ? 'انضموا إلى برنامجنا التجريبي واستخدموا نيكس ترانزيت لتفادي الأعطال، خفض نفقات قطع الغيار، ومطابقة المحاسبة SCF.' : currentLanguage === 'en' ? 'Deploy predictive métier rules and optimize stock reservation to boost your bottom line.' : 'Instaurez les règles d\'or de maintenance métier et automatisez le suivi de vos ateliers.'}
           </p>
         </div>
 
         <div className="relative z-10 flex flex-col sm:flex-row gap-4 items-center justify-center pt-2">
           <button
             onClick={() => changeScreen('STRATEGIC_DASHBOARD')}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-900/30 transition-all cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-ochre hover:bg-amber-400 text-ink text-xs font-bold shadow-lg shadow-amber-900/30 transition-all cursor-pointer"
           >
             <span>{currentLanguage === 'ar' ? 'دخول التطبيق التوضيحي' : currentLanguage === 'en' ? 'Launch demo workspace' : 'Lancer la démonstration'}</span>
             <ArrowRight className="h-4 w-4" />
           </button>
-          
+
           <button
             onClick={() => setShowContactModal(true)}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white text-xs font-bold transition-all cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/20 text-white text-xs font-bold transition-all cursor-pointer"
           >
-            <Calendar className="h-4 w-4 text-indigo-400" />
+            <Calendar className="h-4 w-4 text-ochre" />
             <span>{currentLanguage === 'ar' ? 'احجز مكالمة فنية مجانية' : currentLanguage === 'en' ? 'Schedule Private Consultation' : 'Prendre rendez-vous expert'}</span>
           </button>
         </div>
 
-        <div className="relative z-10 pt-4 flex items-center justify-center gap-6 text-[10px] text-indigo-300 font-medium">
+        <div className="relative z-10 pt-4 flex items-center justify-center gap-6 text-[10px] text-slate-doc font-medium">
           <span className="flex items-center gap-1">
             <Check className="h-3.5 w-3.5 text-emerald-400" />
             {currentLanguage === 'ar' ? 'لا تتطلب بطاقة ائتمان' : 'Sans carte de crédit'}
@@ -1206,74 +1187,74 @@ export const LandingPage: React.FC = () => {
           </span>
           <span className="flex items-center gap-1">
             <Check className="h-3.5 w-3.5 text-emerald-400" />
-            {currentLanguage === 'ar' ? 'تجربة مجانية لمدة 14 يوماً' : '14 jours d\'essai gratuit'}
+            {currentLanguage === 'ar' ? 'تجربة مجانية (POC) لمدة 30 يوماً' : currentLanguage === 'en' ? '30-day free POC' : 'POC gratuit de 30 jours'}
           </span>
         </div>
       </div>
 
       {/* 15. COMPREHENSIVE ENTERPRISE FOOTER */}
-      <footer className="border-t border-slate-200 pt-12 pb-6 space-y-10 text-xs text-slate-500">
-        
+      <footer className="border-t border-white/10 pt-12 pb-6 space-y-10 text-xs text-slate-doc">
+
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 items-start">
-          
+
           {/* Logo, pitch & address */}
           <div className="md:col-span-2 space-y-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-xs">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-ochre text-ink shadow-xs">
                 <Truck className="h-4.5 w-4.5" />
               </div>
-              <span className="font-extrabold text-sm text-slate-900 tracking-tight">NextTransit ERP</span>
-              <span className="text-[8px] bg-emerald-50 text-emerald-700 font-bold px-1 rounded font-mono">DZ</span>
+              <span className="font-extrabold text-sm text-white tracking-tight">NextTransit ERP</span>
+              <span className="text-[8px] bg-ochre/20 text-ochre font-bold px-1 rounded font-mono">DZ</span>
             </div>
-            
-            <p className="text-[11px] text-slate-500 leading-relaxed max-w-sm">
+
+            <p className="text-[11px] text-slate-doc leading-relaxed max-w-sm">
               {currentLanguage === 'ar'
                 ? 'منصة تخطيط موارد المؤسسات المتكاملة لحساب ميزانية صيانة أساطيل النقل، الورشات الميكانيكية، وحجز قطع غيار السيارات والشاحنات بالجزائر.'
                 : 'La plateforme de décision et ERP de référence en Algérie pour la réconciliation télématique de flotte, la gestion d\'atelier, les stocks R3 et la comptabilité analytique SCF.'}
             </p>
 
             <div className="space-y-1 text-[11px]">
-              <span className="font-bold text-slate-800 block">NextTransit Algérie S.A.R.L.</span>
-              <span className="flex items-center gap-1 text-slate-500">
-                <MapPin className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+              <span className="font-bold text-white block">NextTransit Algérie S.A.R.L.</span>
+              <span className="flex items-center gap-1 text-slate-doc">
+                <MapPin className="h-3.5 w-3.5 text-ochre shrink-0" />
                 12, Rue Didouche Mourad, Alger Centre, Algérie
               </span>
-              <span className="block text-slate-500">Tél : +213 (0) 21 50 51 52 | E-mail : contact@nexttransit.dz</span>
+              <span className="block text-slate-doc">Tél : +213 (0) 21 50 51 52 | E-mail : contact@nexttransit.dz</span>
             </div>
           </div>
 
           {/* Module Links */}
           <div className="space-y-3">
-            <h5 className="font-bold text-slate-900 uppercase tracking-wider text-[10px]">{currentLanguage === 'ar' ? 'الوحدات البرمجية' : 'Modules ERP'}</h5>
+            <h5 className="font-bold text-white uppercase tracking-wider text-[10px]">{currentLanguage === 'ar' ? 'الوحدات البرمجية' : 'Modules ERP'}</h5>
             <ul className="space-y-1.5 font-medium text-[11px]">
-              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-indigo-600 transition text-left">Comptabilité SCF</button></li>
-              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-indigo-600 transition text-left">Gestion d\'Atelier </button></li>
-              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-indigo-600 transition text-left">Stocks de Pièces R3</button></li>
-              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-indigo-600 transition text-left">Paie & DAS CNAS</button></li>
-              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-indigo-600 transition text-left">BTP & Chantiers</button></li>
+              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-ochre transition text-left">Comptabilité SCF</button></li>
+              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-ochre transition text-left">Gestion d\'Atelier </button></li>
+              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-ochre transition text-left">Stocks de Pièces R3</button></li>
+              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-ochre transition text-left">Paie & DAS CNAS</button></li>
+              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-ochre transition text-left">BTP & Chantiers</button></li>
             </ul>
           </div>
 
           {/* Industry Links */}
           <div className="space-y-3">
-            <h5 className="font-bold text-slate-900 uppercase tracking-wider text-[10px]">{currentLanguage === 'ar' ? 'الحلول القطاعية' : 'Secteurs d\'Activité'}</h5>
+            <h5 className="font-bold text-white uppercase tracking-wider text-[10px]">{currentLanguage === 'ar' ? 'الحلول القطاعية' : 'Secteurs d\'Activité'}</h5>
             <ul className="space-y-1.5 font-medium text-[11px]">
-              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-indigo-600 transition text-left">Bâtiment & Travaux Publics (BTP)</button></li>
-              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-indigo-600 transition text-left">Transport de Fret & Logistique</button></li>
-              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-indigo-600 transition text-left">Industries & Manufacturier</button></li>
-              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-indigo-600 transition text-left">Distribution de Grossistes</button></li>
-              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-indigo-600 transition text-left">Santé & Services</button></li>
+              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-ochre transition text-left">Bâtiment & Travaux Publics (BTP)</button></li>
+              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-ochre transition text-left">Transport de Fret & Logistique</button></li>
+              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-ochre transition text-left">Industries & Manufacturier</button></li>
+              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-ochre transition text-left">Distribution de Grossistes</button></li>
+              <li><button onClick={() => changeScreen('STRATEGIC_DASHBOARD')} className="hover:text-ochre transition text-left">Santé & Services</button></li>
             </ul>
           </div>
 
           {/* Legal / Sovereign validations */}
           <div className="space-y-3">
-            <h5 className="font-bold text-slate-900 uppercase tracking-wider text-[10px]">{currentLanguage === 'ar' ? 'السيادة والامتثال المالي' : 'Gouvernance & Paiement'}</h5>
+            <h5 className="font-bold text-white uppercase tracking-wider text-[10px]">{currentLanguage === 'ar' ? 'السيادة والامتثال المالي' : 'Gouvernance & Paiement'}</h5>
             <div className="space-y-2 text-[10px]">
-              <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-800 font-semibold leading-normal">
-                {currentLanguage === 'ar' ? 'معتمد من وزارة المالية والمصالح الضريبية الجزائرية لإنتاج اللياقة الضريبية.' : 'Agréé par la Direction Générale des Impôts (DGI) pour les bilans fiscaux.'}
+              <div className="p-2 bg-ochre/10 rounded-xl border border-ochre/30 text-ochre font-semibold leading-normal">
+                {currentLanguage === 'ar' ? 'محاسبة منظمة وفق المرجع المحاسبي المالي الجزائري (SCF).' : 'Comptabilité structurée selon le référentiel SCF algérien.'}
               </div>
-              <div className="p-2 bg-indigo-50 rounded-xl border border-indigo-100 text-indigo-800 font-semibold leading-normal">
+              <div className="p-2 bg-white/5 rounded-xl border border-white/10 text-slate-doc font-semibold leading-normal">
                 {currentLanguage === 'ar' ? 'دفع آمن بالدينار الجزائري عبر التحويل المصرفي أو شيك بريدي (CCP).' : 'Facturation nationale en DZD, paiements acceptés par virement ou CCP.'}
               </div>
             </div>
@@ -1282,14 +1263,14 @@ export const LandingPage: React.FC = () => {
         </div>
 
         {/* Bottom copyright bar */}
-        <div className="pt-6 border-t border-slate-200/60 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-slate-400">
+        <div className="pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-slate-doc-2">
           <span>NextTransit Premium Decision ERP Platform S.A.R.L. © 2026. {currentLanguage === 'ar' ? 'كل الحقوق محفوظة.' : 'Tous droits réservés.'}</span>
-          <div className="flex gap-4 font-bold text-slate-500">
-            <a href="#" className="hover:text-indigo-600">{currentLanguage === 'ar' ? 'سياسة الخصوصية السيادية' : 'Confidentialité'}</a>
+          <div className="flex gap-4 font-bold text-slate-doc">
+            <a href="#" className="hover:text-ochre">{currentLanguage === 'ar' ? 'سياسة الخصوصية السيادية' : 'Confidentialité'}</a>
             <span>•</span>
-            <a href="#" className="hover:text-indigo-600">{currentLanguage === 'ar' ? 'شروط الخدمة والاستخدام' : 'Conditions Générales'}</a>
+            <a href="#" className="hover:text-ochre">{currentLanguage === 'ar' ? 'شروط الخدمة والاستخدام' : 'Conditions Générales'}</a>
             <span>•</span>
-            <a href="#" className="hover:text-indigo-600">Algeria Security Center</a>
+            <a href="#" className="hover:text-ochre">Algeria Security Center</a>
           </div>
         </div>
 

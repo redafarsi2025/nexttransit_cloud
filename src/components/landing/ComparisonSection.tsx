@@ -64,7 +64,7 @@ export const ComparisonSection: React.FC<ComparisonSectionProps> = ({ currentLan
       manual: 'no',
     },
     {
-      name: isAr ? '6 واجهات مختلفة للأدوار والمسؤوليات (RBAC)' : currentLanguage === 'en' ? '6 Role-Based Dedicated Views (Director, Driver...)' : '6 Vues Métiers dédiées (Rôles RBAC)',
+      name: isAr ? '9 واجهات مختلفة للأدوار والمسؤوليات (RBAC)' : currentLanguage === 'en' ? '9 Role-Based Dedicated Views (Director, Driver...)' : '9 Vues Métiers dédiées (Rôles RBAC)',
       saas: 'yes',
       legacy: 'no',
       excel: 'no',
@@ -75,50 +75,50 @@ export const ComparisonSection: React.FC<ComparisonSectionProps> = ({ currentLan
   return (
     <div className="space-y-8 py-4">
       <div className="space-y-2 text-center max-w-2xl mx-auto">
-        <span className="text-[10px] uppercase text-indigo-600 font-extrabold tracking-wider block">
+        <span className="text-[10px] uppercase text-ochre font-extrabold tracking-wider block">
           {isAr ? 'عائد استثماري فوري' : currentLanguage === 'en' ? 'MARKET COMPARISON' : 'COMPARAISON RATIONNELLE'}
         </span>
         <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
           {heading}
         </h2>
-        <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-doc leading-relaxed">
           {subheading}
         </p>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-xs">
+      <div className="rounded-3xl border border-white/10 bg-ink-2 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-xs text-slate-600">
+          <table className="w-full border-collapse text-left text-xs text-slate-doc">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="p-4 sm:p-5 font-bold text-slate-900 w-[40%]">
+              <tr className="bg-ink-3 border-b border-white/10">
+                <th className="p-4 sm:p-5 font-bold text-white w-[40%]">
                   {isAr ? 'المميزات والوظائف' : currentLanguage === 'en' ? 'Core Platform Capabilities' : 'Fonctionnalités'}
                 </th>
-                <th className="p-4 text-center font-black text-indigo-700 bg-indigo-50/50">
+                <th className="p-4 text-center font-black text-ochre bg-ochre/10">
                   NextTransit ERP
                 </th>
-                <th className="p-4 text-center font-bold text-slate-600">
+                <th className="p-4 text-center font-bold text-slate-doc">
                   {isAr ? 'البرمجيات القديمة' : currentLanguage === 'en' ? 'Legacy Desktop ERP' : 'Ancien ERP'}
                 </th>
-                <th className="p-4 text-center font-bold text-slate-600">
+                <th className="p-4 text-center font-bold text-slate-doc">
                   Excel / Google Sheets
                 </th>
-                <th className="p-4 text-center font-bold text-slate-600">
+                <th className="p-4 text-center font-bold text-slate-doc">
                   {isAr ? 'الطرق التقليدية الورقية' : currentLanguage === 'en' ? 'Manual Procedures' : 'Méthode Papier'}
                 </th>
               </tr>
             </thead>
             <tbody>
               {features.map((f, idx) => (
-                <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50/50 transition duration-150">
-                  <td className="p-4 sm:p-5 font-bold text-slate-900 leading-snug">
+                <tr key={idx} className="border-b border-white/10 hover:bg-white/5 transition duration-150">
+                  <td className="p-4 sm:p-5 font-bold text-white leading-snug">
                     {f.name}
                   </td>
-                  
+
                   {/* NextTransit */}
-                  <td className="p-4 text-center bg-indigo-50/30">
+                  <td className="p-4 text-center bg-ochre/5">
                     <div className="flex justify-center">
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-ochre text-ink">
                         <Check className="h-3.5 w-3.5 font-bold" />
                       </div>
                     </div>
@@ -128,11 +128,11 @@ export const ComparisonSection: React.FC<ComparisonSectionProps> = ({ currentLan
                   <td className="p-4 text-center">
                     <div className="flex justify-center">
                       {f.legacy === 'yes' ? (
-                        <Check className="h-4 w-4 text-emerald-600" />
+                        <Check className="h-4 w-4 text-emerald-400" />
                       ) : f.legacy === 'partial' ? (
-                        <Minus className="h-4 w-4 text-amber-500" />
+                        <Minus className="h-4 w-4 text-estime" />
                       ) : (
-                        <X className="h-4 w-4 text-slate-300" />
+                        <X className="h-4 w-4 text-slate-doc-2" />
                       )}
                     </div>
                   </td>
@@ -141,11 +141,11 @@ export const ComparisonSection: React.FC<ComparisonSectionProps> = ({ currentLan
                   <td className="p-4 text-center">
                     <div className="flex justify-center">
                       {f.excel === 'yes' ? (
-                        <Check className="h-4 w-4 text-emerald-600" />
+                        <Check className="h-4 w-4 text-emerald-400" />
                       ) : f.excel === 'partial' ? (
-                        <Minus className="h-4 w-4 text-amber-500" />
+                        <Minus className="h-4 w-4 text-estime" />
                       ) : (
-                        <X className="h-4 w-4 text-slate-300" />
+                        <X className="h-4 w-4 text-slate-doc-2" />
                       )}
                     </div>
                   </td>
@@ -154,11 +154,11 @@ export const ComparisonSection: React.FC<ComparisonSectionProps> = ({ currentLan
                   <td className="p-4 text-center">
                     <div className="flex justify-center">
                       {f.manual === 'yes' ? (
-                        <Check className="h-4 w-4 text-emerald-600" />
+                        <Check className="h-4 w-4 text-emerald-400" />
                       ) : f.manual === 'partial' ? (
-                        <Minus className="h-4 w-4 text-amber-500" />
+                        <Minus className="h-4 w-4 text-estime" />
                       ) : (
-                        <X className="h-4 w-4 text-slate-300" />
+                        <X className="h-4 w-4 text-slate-doc-2" />
                       )}
                     </div>
                   </td>
