@@ -7,13 +7,13 @@ import { ScreenId, PermissionLevel } from '../../types';
 import {
   TrendingUp,
   BarChart3,
-  Activity,
   Package,
   Wrench,
   AlertTriangle,
   Calculator,
   FileText,
   Truck,
+  Map as MapIcon,
   Smartphone,
   ShieldAlert,
   ShieldCheck,
@@ -57,9 +57,15 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'FLEET_HEALTH_GRID',
-      label: t('nav.fleet_health_grid', {}, 'Fleet Health Grid'),
-      icon: Activity,
+      label: t('nav.fleet_health_grid', {}, 'Gestion des véhicules (Flotte)'),
+      icon: Truck,
       description: t('nav.fleet_health_desc', {}, 'Status filter counts & diagnostic snapshots'),
+    },
+    {
+      id: 'FLEET_MAP',
+      label: 'Carte GPS Flotte',
+      icon: MapIcon,
+      description: 'Suivi géographique en temps réel',
     },
     {
       id: 'INVENTORY_DASHBOARD',

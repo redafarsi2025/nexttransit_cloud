@@ -1,0 +1,71 @@
+# NextTransit Control Room (Phase 3C)
+
+Ce document définit la stratégie d'implémentation validée pour le module "Control Room / Command Center" de NextTransit, permettant d'alimenter des murs d'écrans (Wallboards) dans des centres de supervision.
+
+## Décisions Architecturales
+
+1. **Authentification** : Utilisation de la session utilisateur existante (`TENANT_ADMIN`) pour la phase initiale. L'infrastructure pour les `screen_token` n'est pas utilisée pour sécuriser les routes Wallboard pour le moment.
+2. **Design System** : Dark Mode strict orienté lisibilité opérationnelle, avec de grands contrastes pour les alertes, mais sans effet "néon" excessif.
+3. **Realtime** : Le Wallboard ne s'abonne pas au flux brut de la télémétrie, mais aux états consolidés (`vehicles.current_location`, `vehicles.status`) ou aux alertes critiques filtrées. 
+
+---
+
+## Modèle de Données (Database Foundation)
+
+Création de la structure de base de données pour gérer les salles de contrôle et les écrans associés.
+
+- **`control_rooms`**
+  - `id` (uuid, PK)
+  - `tenant_id` (uuid, FK)
+  - `name` (text)
+  - `description` (text, nullable)
+  - `is_active` (boolean, default true)
+  - `created_at`, `updated_at`
+  - *Constraint*: `UNIQUE (tenant_id, name)`
+
+- **`control_room_screens`**
+  - `id` (uuid, PK)
+  - `tenant_id` (uuid, FK) - *Pour faciliter RLS et requêtes*
+  - `control_room_id` (uuid, FK)
+  - `screen_number` (integer)
+  - `name` (text)
+  - `dashboard_type` (text)
+    - *Constraint*: `CHECK (dashboard_type IN ('live_map', 'critical_alerts', 'fleet_kpi', 'maintenance_queue', 'operations'))`
+  - `configuration` (jsonb, default '{}')
+  - `is_active` (boolean, default true)
+  - `last_seen_at` (timestamp, nullable) - *Source de vérité pour l'état online/offline*
+  - `created_at`, `updated_at`
+  - *Constraint*: `UNIQUE (control_room_id, screen_number)`
+
+---
+
+## Plan d'Implémentation Séquentiel
+
+L'implémentation suivra rigoureusement ces 8 étapes :
+
+### 3C-01 — Forensic Audit
+Vérifier le routing réel, l'emplacement du layout principal, le système Auth/RBAC, la structure des tables (`vehicles`, `alerts`, `work_orders`), et la configuration actuelle de Supabase Realtime.
+
+### 3C-02 — Database Foundation
+Créer les migrations pour `control_rooms` et `control_room_screens` avec RLS, index et contraintes.
+
+### 3C-03 — Wallboard UI Foundation
+Créer l'infrastructure frontend :
+- `WallboardLayout.tsx` (indépendant du layout classique)
+- `WallboardHeader.tsx`, `ScreenClock.tsx`, `ConnectionStatus.tsx`, `WallboardCard.tsx`
+- Créer les pages vides pour `/control-room/map`, `/control-room/alerts`, etc.
+
+### 3C-04 — Live Map
+Connecter la carte (`/control-room/map`) aux données consolidées des véhicules et appliquer le thème sombre.
+
+### 3C-05 — Critical Alerts
+Ajouter le flux d'alertes critiques (`/control-room/alerts`) filtrant uniquement les priorités élevées.
+
+### 3C-06 — Fleet KPI
+Ajouter les indicateurs agrégés (`/control-room/kpi`) avec des fréquences de mise à jour plus lentes (15-60s).
+
+### 3C-07 — Maintenance Queue
+Ajouter la file d'attente de maintenance (`/control-room/maintenance`).
+
+### 3C-08 — Realtime & Performance Hardening
+Optimisation finale : throttling, batching, gestion des reconnexions, backoff, et nettoyage strict des abonnements React.

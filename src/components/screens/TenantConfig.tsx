@@ -39,9 +39,9 @@ import {
 } from 'lucide-react';
 import { DeviceMapping, TelematicsProviderType } from '../../types';
 import { fetchDeviceMappings, saveDeviceMapping } from '../../services/telematicsService';
-import { seedDemoTenant } from '../../services/demoSeedService';
-import { CompanyDossier } from '../tenant/CompanyDossier';
+import { Loader2, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { CompanyDossier } from '../tenant/CompanyDossier';
 
 const BRAND_COLOR_PRESETS = [
   { name: 'Indigo (Default)', hex: '#4f46e5', bg: 'bg-indigo-600', ring: 'ring-indigo-500' },
@@ -138,6 +138,7 @@ export const TenantConfig: React.FC = () => {
   const [isCreatingNew, setIsCreatingNew] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSeedingDemo, setIsSeedingDemo] = useState<boolean>(false);
+  const [isCleaningDemo, setIsCleaningDemo] = useState<boolean>(false);
 
   const allowDemoSeed =
     (typeof process !== 'undefined' &&
@@ -147,16 +148,64 @@ export const TenantConfig: React.FC = () => {
   const handleLoadDemoData = async () => {
     setIsSeedingDemo(true);
     try {
-      const res = await seedDemoTenant(activeTenant.id);
-      showToast(`Loaded realistic demo fleet for ${res.data.tenantConfig.societyName} (${res.counts.vehicles} heavy trucks, Rules R1-R7 active)`);
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      
+      const res = await fetch('/api/platform/seed-demo', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to seed demo data');
+      }
+      
+      showToast(`Données de démonstration (véhicules, entretiens, coûts) générées avec succès !`);
       setTimeout(() => {
         window.location.reload();
       }, 1500);
     } catch (err) {
       console.warn('Failed to seed demo data', err);
-      showToast('Failed to load demo data. Please check logs.');
+      showToast(`Erreur: ${err instanceof Error ? err.message : 'Échec de la génération'}`);
     } finally {
       setIsSeedingDemo(false);
+    }
+  };
+
+  const handleCleanupDemoData = async () => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer TOUTES les données de démonstration ? Vos vraies données ne seront pas affectées.")) {
+      return;
+    }
+    
+    setIsCleaningDemo(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      
+      const res = await fetch('/api/platform/cleanup-demo', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to cleanup demo data');
+      }
+      
+      showToast(`Toutes les données de démonstration ont été supprimées avec succès !`);
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      console.warn('Failed to cleanup demo data', err);
+      showToast(`Erreur: ${err instanceof Error ? err.message : 'Échec de la suppression'}`);
+    } finally {
+      setIsCleaningDemo(false);
     }
   };
 
@@ -1338,6 +1387,58 @@ export const TenantConfig: React.FC = () => {
               <CompanyDossier tenantId={activeTenant.id} />
             </div>
           )}
+
+          {/* Zone de Démonstration (Visible at bottom) */}
+          <div className="mt-8 rounded-xl border border-indigo-200 bg-indigo-50/50 p-6 animate-in fade-in">
+            <h3 className="text-sm font-bold text-indigo-900 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-indigo-600" />
+              Environnement de Démonstration
+            </h3>
+            <p className="mt-1 text-xs text-indigo-700 max-w-3xl">
+              Générez des données fictives réalistes (véhicules, rapports d'incidents, interventions, inventaire) pour tester la plateforme. 
+              Toutes ces données sont marquées et peuvent être supprimées en un clic lorsque vous passez en production (ex: souscription abonnement).
+            </p>
+            
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={handleLoadDemoData}
+                disabled={isSeedingDemo || isCleaningDemo}
+                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-xs hover:bg-indigo-700 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSeedingDemo ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Génération...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Générer données fictives
+                  </>
+                )}
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleCleanupDemoData}
+                disabled={isSeedingDemo || isCleaningDemo}
+                className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-600 shadow-xs hover:bg-red-50 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCleaningDemo ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Suppression...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    Nettoyer données fictives
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
 
         {/* Wizard Navigation Footer */}
           <div className="pt-6 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4">

@@ -212,6 +212,7 @@ export type Database = {
           fault_code: string
           fault_name: string
           id: string
+          is_demo: boolean | null
           rank_score: number
           repair_cost: number
           scheduled_use_days: number
@@ -232,6 +233,7 @@ export type Database = {
           fault_code: string
           fault_name: string
           id?: string
+          is_demo?: boolean | null
           rank_score?: number
           repair_cost?: number
           scheduled_use_days?: number
@@ -252,6 +254,7 @@ export type Database = {
           fault_code?: string
           fault_name?: string
           id?: string
+          is_demo?: boolean | null
           rank_score?: number
           repair_cost?: number
           scheduled_use_days?: number
@@ -432,6 +435,101 @@ export type Database = {
           },
         ]
       }
+      control_room_screens: {
+        Row: {
+          configuration: Json
+          control_room_id: string
+          created_at: string
+          dashboard_type: string
+          id: string
+          is_active: boolean
+          last_seen_at: string | null
+          name: string
+          screen_number: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          configuration?: Json
+          control_room_id: string
+          created_at?: string
+          dashboard_type: string
+          id?: string
+          is_active?: boolean
+          last_seen_at?: string | null
+          name: string
+          screen_number: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          configuration?: Json
+          control_room_id?: string
+          created_at?: string
+          dashboard_type?: string
+          id?: string
+          is_active?: boolean
+          last_seen_at?: string | null
+          name?: string
+          screen_number?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "control_room_screens_control_room_id_fkey"
+            columns: ["control_room_id"]
+            isOneToOne: false
+            referencedRelation: "control_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "control_room_screens_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      control_rooms: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "control_rooms_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_records: {
         Row: {
           amount: number
@@ -439,6 +537,7 @@ export type Database = {
           category: string
           created_at: string
           id: string
+          is_demo: boolean | null
           period: string
           related_fault_code: string | null
           related_part_id: string | null
@@ -453,6 +552,7 @@ export type Database = {
           category: string
           created_at?: string
           id?: string
+          is_demo?: boolean | null
           period: string
           related_fault_code?: string | null
           related_part_id?: string | null
@@ -467,6 +567,7 @@ export type Database = {
           category?: string
           created_at?: string
           id?: string
+          is_demo?: boolean | null
           period?: string
           related_fault_code?: string | null
           related_part_id?: string | null
@@ -785,6 +886,7 @@ export type Database = {
           data_source: string | null
           description: string
           id: string
+          is_demo: boolean | null
           part_id: string | null
           read: boolean
           rule_id: string
@@ -798,6 +900,7 @@ export type Database = {
           data_source?: string | null
           description: string
           id?: string
+          is_demo?: boolean | null
           part_id?: string | null
           read?: boolean
           rule_id: string
@@ -811,6 +914,7 @@ export type Database = {
           data_source?: string | null
           description?: string
           id?: string
+          is_demo?: boolean | null
           part_id?: string | null
           read?: boolean
           rule_id?: string
@@ -852,6 +956,7 @@ export type Database = {
           data_source: string | null
           date: string
           id: string
+          is_demo: boolean | null
           liters: number
           odometer: number
           route_id: string | null
@@ -866,6 +971,7 @@ export type Database = {
           data_source?: string | null
           date?: string
           id?: string
+          is_demo?: boolean | null
           liters: number
           odometer: number
           route_id?: string | null
@@ -880,6 +986,7 @@ export type Database = {
           data_source?: string | null
           date?: string
           id?: string
+          is_demo?: boolean | null
           liters?: number
           odometer?: number
           route_id?: string | null
@@ -910,6 +1017,7 @@ export type Database = {
           compatible_vehicles: string[]
           created_at: string
           id: string
+          is_demo: boolean | null
           lead_time_days: number
           name: string
           quantity: number
@@ -925,6 +1033,7 @@ export type Database = {
           compatible_vehicles?: string[]
           created_at?: string
           id?: string
+          is_demo?: boolean | null
           lead_time_days?: number
           name: string
           quantity?: number
@@ -940,6 +1049,7 @@ export type Database = {
           compatible_vehicles?: string[]
           created_at?: string
           id?: string
+          is_demo?: boolean | null
           lead_time_days?: number
           name?: string
           quantity?: number
@@ -1254,6 +1364,7 @@ export type Database = {
           interval_unit: string
           interval_value: number
           is_active: boolean
+          is_demo: boolean | null
           required_parts: Json | null
           system_category: string
           tenant_id: string
@@ -1269,6 +1380,7 @@ export type Database = {
           interval_unit: string
           interval_value: number
           is_active?: boolean
+          is_demo?: boolean | null
           required_parts?: Json | null
           system_category: string
           tenant_id?: string
@@ -1284,6 +1396,7 @@ export type Database = {
           interval_unit?: string
           interval_value?: number
           is_active?: boolean
+          is_demo?: boolean | null
           required_parts?: Json | null
           system_category?: string
           tenant_id?: string
@@ -2163,6 +2276,7 @@ export type Database = {
           fault_score: number
           fuel_type: string | null
           id: string
+          is_demo: boolean | null
           last_check_date: string
           lifecycle_status: string
           maintenance_history: Json
@@ -2199,6 +2313,7 @@ export type Database = {
           fault_score?: number
           fuel_type?: string | null
           id?: string
+          is_demo?: boolean | null
           last_check_date?: string
           lifecycle_status?: string
           maintenance_history?: Json
@@ -2235,6 +2350,7 @@ export type Database = {
           fault_score?: number
           fuel_type?: string | null
           id?: string
+          is_demo?: boolean | null
           last_check_date?: string
           lifecycle_status?: string
           maintenance_history?: Json
@@ -2352,6 +2468,7 @@ export type Database = {
           data_source: string | null
           hourly_rate: number
           id: string
+          is_demo: boolean | null
           labor_cost: number
           labor_hours: number
           parts_used: Json
@@ -2381,6 +2498,7 @@ export type Database = {
           data_source?: string | null
           hourly_rate?: number
           id?: string
+          is_demo?: boolean | null
           labor_cost?: number
           labor_hours?: number
           parts_used?: Json
@@ -2410,6 +2528,7 @@ export type Database = {
           data_source?: string | null
           hourly_rate?: number
           id?: string
+          is_demo?: boolean | null
           labor_cost?: number
           labor_hours?: number
           parts_used?: Json
@@ -2461,7 +2580,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      vehicle_latest_position: {
+        Row: {
+          heading: number | null
+          latitude: number | null
+          longitude: number | null
+          recorded_at: string | null
+          speed: number | null
+          tenant_id: string | null
+          vehicle_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telemetry_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telemetry_events_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_tenant_invitation: {

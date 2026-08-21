@@ -13,6 +13,7 @@ import {
   Truck,
   CheckCircle2,
   X,
+  Building2,
 } from 'lucide-react';
 
 interface RoleSelectorModalProps {
@@ -27,6 +28,8 @@ export const RoleSelectorModal: React.FC<RoleSelectorModalProps> = ({ onClose })
     switch (roleId) {
       case 'SUPER_ADMIN':
         return ShieldCheck;
+      case 'TENANT_ADMIN':
+        return Building2;
       case 'DIRECTOR':
         return TrendingUp;
       case 'FLEET_MANAGER':

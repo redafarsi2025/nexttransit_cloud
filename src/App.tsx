@@ -18,6 +18,7 @@ import { LandingPage } from './components/screens/LandingPage';
 const StrategicDashboard = lazy(() => import('./components/screens/StrategicDashboard').then(m => ({ default: m.StrategicDashboard })));
 const VarianceDashboard = lazy(() => import('./components/screens/VarianceDashboard').then(m => ({ default: m.VarianceDashboard })));
 const FleetHealthGrid = lazy(() => import('./components/screens/FleetHealthGrid').then(m => ({ default: m.FleetHealthGrid })));
+const FleetMapScreen = lazy(() => import('./components/screens/FleetMapScreen').then(m => ({ default: m.FleetMapScreen })));
 const InventoryDashboard = lazy(() => import('./components/screens/InventoryDashboard').then(m => ({ default: m.InventoryDashboard })));
 const WorkOrderQueue = lazy(() => import('./components/screens/WorkOrderQueue').then(m => ({ default: m.WorkOrderQueue })));
 // PMSchedulesView lazy import removed: route redirected below, out of pilot scope (see comment there).
@@ -40,6 +41,12 @@ const OnboardingWizard = lazy(() => import('./components/screens/OnboardingWizar
 import { DemoBanner } from './components/common/DemoBanner';
 import { ForbiddenScreen } from './components/screens/ForbiddenScreen';
 import { AdminLayout } from './components/admin/AdminLayout';
+import { WallboardLayout } from './components/control-room/WallboardLayout';
+
+const LiveMapBoard = lazy(() => import('./components/screens/control-room/LiveMapBoard').then(m => ({ default: m.LiveMapBoard })));
+const AlertBoard = lazy(() => import('./components/screens/control-room/AlertBoard').then(m => ({ default: m.AlertBoard })));
+const KpiBoard = lazy(() => import('./components/screens/control-room/KpiBoard').then(m => ({ default: m.KpiBoard })));
+const MaintenanceBoard = lazy(() => import('./components/screens/control-room/MaintenanceBoard').then(m => ({ default: m.MaintenanceBoard })));
 
 const RouteFallback: React.FC = () => (
   <div className="flex items-center justify-center h-full w-full py-24">
@@ -88,12 +95,16 @@ const AppLayout: React.FC = () => {
     }
   }, [location.pathname, currentScreen, changeScreen]);
 
-  const showNavigation = location.pathname !== '/';
+  const isPublicRoute = location.pathname === '/';
+  const isControlRoom = location.pathname.startsWith('/control-room');
+  const showNavigation = !isPublicRoute && !isControlRoom;
 
   return (
     <div
       dir={dir}
-      className="min-h-screen bg-slate-100 flex flex-col font-sans antialiased text-slate-900 transition-all duration-200"
+      className={`min-h-screen flex flex-col font-sans antialiased transition-all duration-200 ${
+        isControlRoom ? 'bg-slate-950 text-slate-200' : 'bg-slate-100 text-slate-900'
+      }`}
     >
       <DemoBanner />
       {showNavigation && <TopBar />}
@@ -101,7 +112,7 @@ const AppLayout: React.FC = () => {
       <div className="flex flex-1 overflow-hidden">
         {showNavigation && <Sidebar />}
 
-        <main className="flex-1 overflow-y-auto min-w-0 p-4 lg:p-6 pb-12">
+        <main className={`flex-1 overflow-y-auto min-w-0 ${isControlRoom ? '' : 'p-4 lg:p-6 pb-12'}`}>
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               {/* Public Route */}
@@ -129,6 +140,14 @@ const AppLayout: React.FC = () => {
                 element={
                   <ProtectedRoute screenId="FLEET_HEALTH_GRID">
                     <FleetHealthGrid />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/map"
+                element={
+                  <ProtectedRoute screenId="FLEET_MAP">
+                    <FleetMapScreen />
                   </ProtectedRoute>
                 }
               />
@@ -279,6 +298,42 @@ const AppLayout: React.FC = () => {
 
               {/* Post-registration onboarding wizard — public, no auth guard */}
               <Route path="/onboarding" element={<OnboardingWizard />} />
+
+              {/* Control Room Routes */}
+              <Route element={<WallboardLayout />}>
+                <Route
+                  path="/control-room/map"
+                  element={
+                    <ProtectedRoute screenId="CONTROL_ROOM_MAP">
+                      <LiveMapBoard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/control-room/alerts"
+                  element={
+                    <ProtectedRoute screenId="CONTROL_ROOM_ALERTS">
+                      <AlertBoard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/control-room/kpi"
+                  element={
+                    <ProtectedRoute screenId="CONTROL_ROOM_KPI">
+                      <KpiBoard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/control-room/maintenance"
+                  element={
+                    <ProtectedRoute screenId="CONTROL_ROOM_MAINTENANCE">
+                      <MaintenanceBoard />
+                    </ProtectedRoute>
+                  }
+                />
+              </Route>
 
               {/* Smart Fallback Wildcard Route */}
               <Route path="*" element={<SmartRouteFallback />} />

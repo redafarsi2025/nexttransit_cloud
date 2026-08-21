@@ -160,6 +160,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       isDemoMode ||
       !currentUser || // not authenticated yet
       isPlatformAdmin ||
+      userProfile?.role === 'SUPER_ADMIN' ||
+      userProfile?.role === 'TENANT_ADMIN' ||
       userProfile?.role === role; // switching to own role is always fine
 
     if (!canSwitch) {

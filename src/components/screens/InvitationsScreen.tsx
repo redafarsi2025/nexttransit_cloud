@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Send, Trash2, CheckCircle, Clock, Shield, AlertCircle, RefreshCw, Copy } from 'lucide-react';
+import { Mail, Send, Trash2, CheckCircle, Clock, Shield, AlertCircle, RefreshCw, Copy, UserPlus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { Invitation, Role } from '../../types';
 import { createInvitation, listPendingInvitations, revokeInvitation } from '../../services/invitationService';
+import { supabase } from '../../lib/supabase';
 
 const INVITAIBLE_ROLES: { role: Role; label: string; desc: string }[] = [
   { role: 'DIRECTOR', label: 'Director', desc: 'Executive KPIs, budget approvals, strategic decisions' },
@@ -25,6 +26,13 @@ export const InvitationsScreen: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [email, setEmail] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<Role>('FLEET_MANAGER');
+  
+  // New state for direct creation
+  const [creationMode, setCreationMode] = useState<'invite' | 'direct'>('invite');
+  const [fullName, setFullName] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [phone, setPhone] = useState<string>('');
+
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string; token?: string } | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
@@ -74,6 +82,64 @@ export const InvitationsScreen: React.FC = () => {
       await loadInvitations();
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || 'Failed to send invitation.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDirectCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password || !fullName) {
+      setFeedback({ type: 'error', message: 'Please provide email, password, and full name.' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFeedback(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
+      const response = await fetch('/api/tenant-users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          full_name: fullName,
+          role: selectedRole,
+          phone
+        })
+      });
+      
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        let errorMessage = 'Échec de la création de l\'utilisateur.';
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } else {
+          const errorText = await response.text();
+          console.error('Non-JSON error response:', errorText);
+          errorMessage = `Erreur serveur HTTP ${response.status}. Vérifiez que le serveur backend a bien été redémarré.`;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      setFeedback({
+        type: 'success',
+        message: `User ${fullName} successfully created as ${selectedRole}.`,
+      });
+      setEmail('');
+      setFullName('');
+      setPassword('');
+      setPhone('');
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || 'Failed to create user directly.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -148,14 +214,46 @@ export const InvitationsScreen: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Form Column */}
         <div className="lg:col-span-1 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+          <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
+            <button
+              onClick={() => setCreationMode('invite')}
+              className={`flex-1 py-1.5 px-3 text-sm font-medium rounded-md transition-colors ${creationMode === 'invite' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Send Invitation
+            </button>
+            <button
+              onClick={() => setCreationMode('direct')}
+              className={`flex-1 py-1.5 px-3 text-sm font-medium rounded-md transition-colors ${creationMode === 'direct' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Create User
+            </button>
+          </div>
+
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Send className="w-5 h-5 text-indigo-600" />
-            Send New Invitation
+            {creationMode === 'invite' ? (
+              <><Send className="w-5 h-5 text-indigo-600" /> Send New Invitation</>
+            ) : (
+              <><UserPlus className="w-5 h-5 text-indigo-600" /> Create User Directly</>
+            )}
           </h2>
 
-          <form onSubmit={handleSendInvite} className="space-y-4">
+          <form onSubmit={creationMode === 'invite' ? handleSendInvite : handleDirectCreate} className="space-y-4">
+            {creationMode === 'direct' && (
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="John Doe"
+                  className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            )}
+
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Invitee Email Address *</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Email Address *</label>
               <input
                 type="email"
                 required
@@ -165,6 +263,32 @@ export const InvitationsScreen: React.FC = () => {
                 className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
+
+            {creationMode === 'direct' && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Password *</label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Phone Number (Optional)</label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+1 234 567 890"
+                    className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </>
+            )}
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Assigned Operational Role *</label>
@@ -192,8 +316,11 @@ export const InvitationsScreen: React.FC = () => {
               disabled={isSubmitting}
               className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
             >
-              <Send className="w-4 h-4" />
-              {isSubmitting ? 'Issuing Token...' : 'Send Invitation'}
+              {creationMode === 'invite' ? (
+                <><Send className="w-4 h-4" /> {isSubmitting ? 'Issuing Token...' : 'Send Invitation'}</>
+              ) : (
+                <><UserPlus className="w-4 h-4" /> {isSubmitting ? 'Creating User...' : 'Create User'}</>
+              )}
             </button>
           </form>
         </div>

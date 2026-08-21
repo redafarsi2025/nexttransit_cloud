@@ -23,6 +23,7 @@ export type ScreenId =
   | 'STRATEGIC_DASHBOARD'
   | 'VARIANCE_DASHBOARD'
   | 'FLEET_HEALTH_GRID'
+  | 'FLEET_MAP'
   | 'INVENTORY_DASHBOARD'
   | 'WORK_ORDER_QUEUE'
   | 'PM_SCHEDULES'
@@ -41,7 +42,11 @@ export type ScreenId =
   | 'INVITATIONS'
   | 'BILLING'
   | 'API_DOCS'
-  | 'FORBIDDEN_403';
+  | 'FORBIDDEN_403'
+  | 'CONTROL_ROOM_MAP'
+  | 'CONTROL_ROOM_ALERTS'
+  | 'CONTROL_ROOM_KPI'
+  | 'CONTROL_ROOM_MAINTENANCE';
 
 export type PermissionLevel = 'full' | 'view' | 'none' | 'resolve' | 'parts_status' | 'assigned_only' | 'own_only' | 'submit';
 

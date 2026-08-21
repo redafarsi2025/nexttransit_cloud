@@ -5,6 +5,7 @@ import { useLocalization } from '../../context/LocalizationContext';
 import { KPIBadge } from '../common/KPIBadge';
 import { AddEditVehicleModal } from '../vehicle/AddEditVehicleModal';
 import { ImportVehiclesModal } from '../vehicle/ImportVehiclesModal';
+import { FleetMap } from '../vehicle/FleetMap';
 import {
   Activity,
   Search,
@@ -23,6 +24,8 @@ import {
   Trash2,
   UploadCloud,
   Shield,
+  Map as MapIcon,
+  LayoutGrid
 } from 'lucide-react';
 
 export const FleetHealthGrid: React.FC = () => {
@@ -34,6 +37,7 @@ export const FleetHealthGrid: React.FC = () => {
   const [classificationFilter, setClassificationFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showSubscores, setShowSubscores] = useState<Record<string, boolean>>({});
+  const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
 
   // RBAC Guards for CRUD
   const canAdd = ['SUPER_ADMIN', 'FLEET_MANAGER', 'MAINTENANCE_MANAGER'].includes(currentRole);
@@ -201,11 +205,38 @@ export const FleetHealthGrid: React.FC = () => {
             <option value="Keystone">Keystone Fleet (1.5x Weight)</option>
             <option value="Standard">Standard Fleet (1.0x Weight)</option>
           </select>
+
+          {/* View Toggle */}
+          <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${
+                viewMode === 'grid' ? 'bg-white shadow-xs text-indigo-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+              }`}
+              title="View as Grid"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${
+                viewMode === 'map' ? 'bg-white shadow-xs text-indigo-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+              }`}
+              title="View on Map"
+            >
+              <MapIcon className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Map View */}
+      {viewMode === 'map' && (
+        <FleetMap vehicles={filteredVehicles} onVehicleClick={(id) => setSelectedVehicleId(id)} />
+      )}
+
       {/* Grid of Vehicles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 ${viewMode === 'map' ? 'hidden' : ''}`}>
         {filteredVehicles.map((vehicle) => {
           const isSubscoreOpen = !!showSubscores[vehicle.id];
 

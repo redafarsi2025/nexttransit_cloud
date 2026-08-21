@@ -25,6 +25,7 @@ export const routeToScreenMap: Record<string, ScreenId> = {
   '/dashboard': 'STRATEGIC_DASHBOARD',
   '/variance': 'VARIANCE_DASHBOARD',
   '/vehicles': 'FLEET_HEALTH_GRID',
+  '/map': 'FLEET_MAP',
   '/inventory': 'INVENTORY_DASHBOARD',
   '/work-orders': 'WORK_ORDER_QUEUE',
   '/pm-schedules': 'PM_SCHEDULES',
@@ -44,6 +45,10 @@ export const routeToScreenMap: Record<string, ScreenId> = {
   '/billing': 'BILLING',
   '/api-docs': 'API_DOCS',
   '/forbidden': 'FORBIDDEN_403',
+  '/control-room/map': 'CONTROL_ROOM_MAP',
+  '/control-room/alerts': 'CONTROL_ROOM_ALERTS',
+  '/control-room/kpi': 'CONTROL_ROOM_KPI',
+  '/control-room/maintenance': 'CONTROL_ROOM_MAINTENANCE',
 };
 
 export const screenToRouteMap: Record<ScreenId, string> = {
@@ -51,6 +56,7 @@ export const screenToRouteMap: Record<ScreenId, string> = {
   STRATEGIC_DASHBOARD: '/dashboard',
   VARIANCE_DASHBOARD: '/variance',
   FLEET_HEALTH_GRID: '/vehicles',
+  FLEET_MAP: '/map',
   INVENTORY_DASHBOARD: '/inventory',
   WORK_ORDER_QUEUE: '/work-orders',
   PM_SCHEDULES: '/pm-schedules',
@@ -70,4 +76,8 @@ export const screenToRouteMap: Record<ScreenId, string> = {
   BILLING: '/billing',
   API_DOCS: '/api-docs',
   FORBIDDEN_403: '/forbidden',
+  CONTROL_ROOM_MAP: '/control-room/map',
+  CONTROL_ROOM_ALERTS: '/control-room/alerts',
+  CONTROL_ROOM_KPI: '/control-room/kpi',
+  CONTROL_ROOM_MAINTENANCE: '/control-room/maintenance',
 };

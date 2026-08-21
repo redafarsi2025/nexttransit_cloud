@@ -37,7 +37,7 @@ import { LanguageSelector } from '../localization/LanguageSelector';
 export const TopBar: React.FC = () => {
   const { alerts, resetSeedData } = useFleet();
   const { activeTenant } = useTenant();
-  const { currentRole, changeRole, isRoleSelectorOpen, setIsRoleSelectorOpen, currentUser, syncStatus } = useAuth();
+  const { userProfile, currentRole, changeRole, isRoleSelectorOpen, setIsRoleSelectorOpen, currentUser, syncStatus, isPlatformAdmin, isDemoMode } = useAuth();
   const { t } = useLocalization();
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [showGoldenPathModal, setShowGoldenPathModal] = useState(false);
@@ -156,25 +156,40 @@ export const TopBar: React.FC = () => {
             <span className="truncate max-w-[160px]">{activeTenant.societyName}</span>
           </div>
 
-          {/* Read-Only Role Badge */}
-          <div
-            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-1.5 pr-3 shadow-xs select-none"
-            title={`Active Role: ${activeRoleInfo.name} (${activeRoleInfo.id}) — Read Only`}
-          >
-            <div
-              className={`flex h-8 w-8 items-center justify-center rounded-lg text-white font-bold text-xs ${activeRoleInfo.badgeColor}`}
-            >
-              <Icon className="h-4 w-4" />
-            </div>
-            <div className="text-left hidden md:block">
-              <div className="text-xs font-bold text-slate-900 leading-none">
-                {activeRoleInfo.name}
-              </div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">
-                Active Role
-              </div>
-            </div>
-          </div>
+          {/* Role Badge (Clickable for Admins) */}
+          {(() => {
+            const canSwitchRole = isDemoMode || isPlatformAdmin || userProfile?.role === 'SUPER_ADMIN' || userProfile?.role === 'TENANT_ADMIN';
+            const Wrapper = canSwitchRole ? 'button' : 'div';
+            const wrapperProps = canSwitchRole
+              ? {
+                  onClick: () => setIsRoleSelectorOpen(true),
+                  className: "flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 p-1.5 pr-3 shadow-xs transition cursor-pointer",
+                  title: "Changer de rôle (Vue de simulation)",
+                }
+              : {
+                  className: "flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-1.5 pr-3 shadow-xs select-none",
+                  title: `Active Role: ${activeRoleInfo.name} (${activeRoleInfo.id}) — Read Only`,
+                };
+
+            return (
+              <Wrapper {...(wrapperProps as any)}>
+                <div
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-white font-bold text-xs ${activeRoleInfo.badgeColor}`}
+                >
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div className="text-left hidden md:block">
+                  <div className="text-xs font-bold text-slate-900 leading-none">
+                    {activeRoleInfo.name}
+                  </div>
+                  <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">
+                    {canSwitchRole ? "Switch Role" : "Active Role"}
+                  </div>
+                </div>
+                {canSwitchRole && <ChevronDown className="h-3.5 w-3.5 text-indigo-600 ml-1 hidden md:block" />}
+              </Wrapper>
+            );
+          })()}
 
           {/* Alert count button */}
           <button
@@ -230,6 +245,9 @@ export const TopBar: React.FC = () => {
       )}
       {showAuthModal && (
         <AuthModal onClose={() => setShowAuthModal(false)} />
+      )}
+      {isRoleSelectorOpen && (
+        <RoleSelectorModal onClose={() => setIsRoleSelectorOpen(false)} />
       )}
     </>
   );

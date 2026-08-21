@@ -93,7 +93,7 @@ const DICTIONARY_RAW_DATA: RawTranslationItem[] = [
   { key: 'nav.strategic_desc', namespace: 'nav', fr: 'Indicateurs clés de direction & disponibilité flotte', ar: 'المؤشرات الرئيسية وتوفر الأسطول للمدير', en: 'Director KPI cards & fleet availability' },
   { key: 'nav.variance_dashboard', namespace: 'nav', fr: 'Écarts & Budgets', ar: 'تحليل الفروقات والميزانية', en: 'Variance & Budget' },
   { key: 'nav.variance_desc', namespace: 'nav', fr: 'Analyse détaillée des coûts : flotte → catégorie → véhicule → OT', ar: 'تحليل تكاليف الأسطول حسب المركبة وأمر الصيانة', en: 'Drill-down: fleet → category → vehicle → WO' },
-  { key: 'nav.fleet_health_grid', namespace: 'nav', fr: 'Grille de Santé de la Flotte', ar: 'شبكة الحالة الفنية للأسطول', en: 'Fleet Health Grid' },
+  { key: 'nav.fleet_health_grid', namespace: 'nav', fr: 'Gestion des véhicules (Flotte)', ar: 'إدارة المركبات (الأسطول)', en: 'Fleet Management' },
   { key: 'nav.fleet_health_desc', namespace: 'nav', fr: 'Diagnostic en direct & statuts opérationnels des véhicules', ar: 'التقرير التشخيصي وحالة المركبات المباشرة', en: 'Status filter counts & diagnostic snapshots' },
   { key: 'nav.inventory_dashboard', namespace: 'nav', fr: 'Gestion des Stocks & Pièces', ar: 'إدارة المخزون وقطع الغيار', en: 'Inventory Dashboard' },
   { key: 'nav.inventory_desc', namespace: 'nav', fr: 'Valeur du stock & prédictions de pénurie R3', ar: 'قيمة المخزون وتنبؤات النقص وتخصيص R3', en: 'Stock values & R3 projected shortfalls' },
